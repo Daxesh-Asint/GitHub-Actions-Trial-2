@@ -152,113 +152,104 @@ jobs:
         run: |
           PR_NUMBER="${{ env.pr_number }}"
           PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+          REPO="${{ github.repository }}"
           SOURCE="${{ inputs.compare }}"
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
+          # Determine merge status
           if [ "${{ job.status }}" = "success" ]; then
-            # ── SUCCESS card ──
-            if [ -n "$DEPLOY_NAME" ]; then
-              HEADLINE="🚀 Deploying $DEPLOY_NAME"
-              SUBTITLE="merge dropped · deployment triggered ⚡"
-            else
-              HEADLINE="✅ Merge Complete"
-              SUBTITLE="code shipped successfully 💅"
-            fi
-
-            PAYLOAD=$(cat <<EOF
-          {
-            "type": "message",
-            "attachments": [{
-              "contentType": "application/vnd.microsoft.card.adaptive",
-              "content": {
-                "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                "type": "AdaptiveCard",
-                "version": "1.4",
-                "body": [
-                  {
-                    "type": "TextBlock",
-                    "text": "$HEADLINE",
-                    "size": "ExtraLarge",
-                    "weight": "Bolder",
-                    "color": "Warning",
-                    "horizontalAlignment": "Center"
-                  },
-                  {
-                    "type": "TextBlock",
-                    "text": "$SUBTITLE",
-                    "size": "Small",
-                    "horizontalAlignment": "Center",
-                    "isSubtle": true
-                  },
-                  {
-                    "type": "TextBlock",
-                    "text": "📦 \`$SOURCE\` → \`$TARGET\`  ·  PR #$PR_NUMBER",
-                    "spacing": "Medium",
-                    "horizontalAlignment": "Center"
-                  }
-                ],
-                "actions": [
-                  {
-                    "type": "Action.OpenUrl",
-                    "title": "👀 View PR",
-                    "url": "$PR_URL"
-                  }
-                ]
-              }
-            }]
-          }
-          EOF
-          )
-
+            MERGE_STATUS="✅ Merged Successfully"
+            MERGE_COLOR="Good"
           else
-            # ── FAILURE card ──
-            PAYLOAD=$(cat <<EOF
-          {
-            "type": "message",
-            "attachments": [{
-              "contentType": "application/vnd.microsoft.card.adaptive",
-              "content": {
-                "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                "type": "AdaptiveCard",
-                "version": "1.4",
-                "body": [
-                  {
-                    "type": "TextBlock",
-                    "text": "❌ Merge Failed",
-                    "size": "ExtraLarge",
-                    "weight": "Bolder",
-                    "color": "Attention",
-                    "horizontalAlignment": "Center"
-                  },
-                  {
-                    "type": "TextBlock",
-                    "text": "something's off · needs a look 👀",
-                    "size": "Small",
-                    "horizontalAlignment": "Center",
-                    "isSubtle": true
-                  },
-                  {
-                    "type": "TextBlock",
-                    "text": "📦 \`$SOURCE\` → \`$TARGET\`  ·  PR #$PR_NUMBER",
-                    "spacing": "Medium",
-                    "horizontalAlignment": "Center"
-                  }
-                ],
-                "actions": [
-                  {
-                    "type": "Action.OpenUrl",
-                    "title": "🔧 Fix It",
-                    "url": "$PR_URL"
-                  }
-                ]
-              }
-            }]
-          }
-          EOF
-          )
+            MERGE_STATUS="❌ Failed / Blocked"
+            MERGE_COLOR="Attention"
           fi
 
+          # Build deployment banner (only if deployment_name is provided and merge succeeded)
+          DEPLOY_BLOCK=""
+          if [ -n "$DEPLOY_NAME" ] && [ "${{ job.status }}" = "success" ]; then
+            DEPLOY_BLOCK=',
+            {
+              "type": "Container",
+              "style": "emphasis",
+              "bleed": true,
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "🚀 Deploying '"$DEPLOY_NAME"'",
+                  "size": "Large",
+                  "weight": "Bolder",
+                  "color": "Warning",
+                  "horizontalAlignment": "Center"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "Deployment has been triggered automatically via SAP CI/CD",
+                  "size": "Small",
+                  "horizontalAlignment": "Center",
+                  "isSubtle": true
+                }
+              ]
+            }'
+          fi
+
+          # Build Adaptive Card JSON
+          PAYLOAD=$(cat <<EOF
+          {
+            "type": "message",
+            "attachments": [{
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                  {
+                    "type": "TextBlock",
+                    "size": "Medium",
+                    "weight": "Bolder",
+                    "text": "GitHub Auto-Merge Notification"
+                  },
+                  {
+                    "type": "ColumnSet",
+                    "columns": [
+                      {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [{
+                          "type": "TextBlock",
+                          "text": "$MERGE_STATUS",
+                          "weight": "Bolder",
+                          "color": "$MERGE_COLOR"
+                        }]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "FactSet",
+                    "facts": [
+                      { "title": "Repository", "value": "$REPO" },
+                      { "title": "Pull Request", "value": "PR #$PR_NUMBER" },
+                      { "title": "Source Branch", "value": "$SOURCE" },
+                      { "title": "Target Branch", "value": "$TARGET" }
+                    ]
+                  }$DEPLOY_BLOCK
+                ],
+                "actions": [
+                  {
+                    "type": "Action.OpenUrl",
+                    "title": "View PR on GitHub",
+                    "url": "$PR_URL"
+                  }
+                ]
+              }
+            }]
+          }
+          EOF
+          )
+
+          # Send to MS Teams webhook
           curl -s -X POST \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
