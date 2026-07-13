@@ -33,4 +33,5 @@ jobs:
     with:
       base: "tenant/asint-ais-02"
       compare: "dev"
+      deployment_name: "AIS-02"
     secrets: inherit

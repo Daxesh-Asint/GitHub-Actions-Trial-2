@@ -9,6 +9,11 @@ on:
       compare:
         required: true
         type: string
+      deployment_name:
+        description: "Name of the deployment environment (e.g. AIS-02). Used in Teams notifications."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   process:
@@ -150,14 +155,43 @@ jobs:
           REPO="${{ github.repository }}"
           SOURCE="${{ inputs.compare }}"
           TARGET="${{ inputs.base }}"
+          DEPLOY_NAME="${{ inputs.deployment_name }}"
 
-          # Determine status
+          # Determine merge status
           if [ "${{ job.status }}" = "success" ]; then
-            STATUS="✅ Merged Successfully"
-            STATUS_COLOR="Good"
+            MERGE_STATUS="✅ Merged Successfully"
+            MERGE_COLOR="Good"
           else
-            STATUS="❌ Failed / Blocked"
-            STATUS_COLOR="Attention"
+            MERGE_STATUS="❌ Failed / Blocked"
+            MERGE_COLOR="Attention"
+          fi
+
+          # Build deployment banner (only if deployment_name is provided and merge succeeded)
+          DEPLOY_BLOCK=""
+          if [ -n "$DEPLOY_NAME" ] && [ "${{ job.status }}" = "success" ]; then
+            DEPLOY_BLOCK=',
+            {
+              "type": "Container",
+              "style": "emphasis",
+              "bleed": true,
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "🚀 Deploying '"$DEPLOY_NAME"'",
+                  "size": "Large",
+                  "weight": "Bolder",
+                  "color": "Warning",
+                  "horizontalAlignment": "Center"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "Deployment has been triggered automatically via SAP CI/CD",
+                  "size": "Small",
+                  "horizontalAlignment": "Center",
+                  "isSubtle": true
+                }
+              ]
+            }'
           fi
 
           # Build Adaptive Card JSON
@@ -185,9 +219,9 @@ jobs:
                         "width": "auto",
                         "items": [{
                           "type": "TextBlock",
-                          "text": "$STATUS",
+                          "text": "$MERGE_STATUS",
                           "weight": "Bolder",
-                          "color": "$STATUS_COLOR"
+                          "color": "$MERGE_COLOR"
                         }]
                       }
                     ]
@@ -200,7 +234,7 @@ jobs:
                       { "title": "Source Branch", "value": "$SOURCE" },
                       { "title": "Target Branch", "value": "$TARGET" }
                     ]
-                  }
+                  }$DEPLOY_BLOCK
                 ],
                 "actions": [
                   {
