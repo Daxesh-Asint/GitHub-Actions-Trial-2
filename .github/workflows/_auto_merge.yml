@@ -157,40 +157,34 @@ jobs:
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
-          # Determine merge status
+          # Determine merge status and card title
           if [ "${{ job.status }}" = "success" ]; then
             MERGE_STATUS="✅ Merged Successfully"
             MERGE_COLOR="Good"
+            if [ -n "$DEPLOY_NAME" ]; then
+              CARD_TITLE="🚀 Deploying $DEPLOY_NAME"
+              CARD_SUBTITLE="Auto-merge completed • Deployment triggered via SAP CI/CD"
+            else
+              CARD_TITLE="GitHub Auto-Merge Notification"
+              CARD_SUBTITLE=""
+            fi
           else
             MERGE_STATUS="❌ Failed / Blocked"
             MERGE_COLOR="Attention"
+            CARD_TITLE="GitHub Auto-Merge Notification"
+            CARD_SUBTITLE=""
           fi
 
-          # Build deployment banner (only if deployment_name is provided and merge succeeded)
-          DEPLOY_BLOCK=""
-          if [ -n "$DEPLOY_NAME" ] && [ "${{ job.status }}" = "success" ]; then
-            DEPLOY_BLOCK=',
+          # Build subtitle block if present
+          SUBTITLE_BLOCK=""
+          if [ -n "$CARD_SUBTITLE" ]; then
+            SUBTITLE_BLOCK=',
             {
-              "type": "Container",
-              "style": "emphasis",
-              "bleed": true,
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "🚀 Deploying '"$DEPLOY_NAME"'",
-                  "size": "Large",
-                  "weight": "Bolder",
-                  "color": "Warning",
-                  "horizontalAlignment": "Center"
-                },
-                {
-                  "type": "TextBlock",
-                  "text": "Deployment has been triggered automatically via SAP CI/CD",
-                  "size": "Small",
-                  "horizontalAlignment": "Center",
-                  "isSubtle": true
-                }
-              ]
+              "type": "TextBlock",
+              "text": "'"$CARD_SUBTITLE"'",
+              "size": "Small",
+              "isSubtle": true,
+              "wrap": true
             }'
           fi
 
@@ -207,10 +201,11 @@ jobs:
                 "body": [
                   {
                     "type": "TextBlock",
-                    "size": "Medium",
+                    "size": "Large",
                     "weight": "Bolder",
-                    "text": "GitHub Auto-Merge Notification"
-                  },
+                    "text": "$CARD_TITLE",
+                    "wrap": true
+                  }$SUBTITLE_BLOCK,
                   {
                     "type": "ColumnSet",
                     "columns": [
@@ -234,7 +229,7 @@ jobs:
                       { "title": "Source Branch", "value": "$SOURCE" },
                       { "title": "Target Branch", "value": "$TARGET" }
                     ]
-                  }$DEPLOY_BLOCK
+                  }
                 ],
                 "actions": [
                   {
