@@ -1,15 +1,18 @@
 name: AsInt Bot [Dev -> AIS-02]
 
 on:
-  schedule:
-    # 11:00 AM IST = 05:30 UTC
-    - cron: '30 5 * * 1-5'
-    # 2:00 PM IST = 08:30 UTC
-    - cron: '30 8 * * 1-5'
-    # 5:00 PM IST = 11:30 UTC
-    - cron: '30 11 * * 1-5'
-    # 5:37 PM IST = 12:07 UTC
-    - cron: '7 12 * * 1-5'
+
+  # schedule:
+  #   # 11:00 AM IST = 05:30 UTC
+  #   - cron: '30 5 * * 1-5'
+  #   # 2:00 PM IST = 08:30 UTC
+  #   - cron: '30 8 * * 1-5'
+  #   # 5:00 PM IST = 11:30 UTC
+  #   - cron: '30 11 * * 1-5'
+
+  push:
+    branches:
+      - dev
 
   workflow_dispatch:
 
