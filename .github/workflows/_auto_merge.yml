@@ -34,6 +34,7 @@ jobs:
           echo "pr_mergeable=false" >> $GITHUB_ENV
           echo "pr_number=" >> $GITHUB_ENV
           echo "new_commits=false" >> $GITHUB_ENV
+          echo "has_conflicts=false" >> $GITHUB_ENV
 
       - name: Check for existing PR
         id: check-for-existing-pr
@@ -115,6 +116,7 @@ jobs:
               exit 0
             elif [[ "$STATUS" == "CONFLICTING" ]]; then
               echo "pr_mergeable=false" >> $GITHUB_ENV
+              echo "has_conflicts=true" >> $GITHUB_ENV
               gh pr comment "$PR_NUMBER" --body "Auto-merge blocked: merge conflicts detected between \`${{ inputs.compare }}\` and \`${{ inputs.base }}\`. Manual resolution required."
               echo "PR '$PR_NUMBER' has conflicts — manual intervention needed"
               exit 1
@@ -187,10 +189,28 @@ jobs:
               PR_FACT_VAL="PR #$PR_NUMBER"
             fi
           else
-            MERGE_STATUS="❌ Failed / Blocked"
-            MERGE_COLOR="attention"
-            CARD_TITLE="GitHub Auto-Merge Notification"
-            CARD_SUBTITLE=""
+            # Check if the failure is due to merge conflicts
+            if [ "${{ env.has_conflicts }}" = "true" ]; then
+              MERGE_STATUS="⚠️ Merge Conflicts Detected"
+              MERGE_COLOR="attention"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="⚠️ $DEPLOY_NAME Deployment Blocked"
+                CARD_SUBTITLE="Merge conflicts detected between $SOURCE and $TARGET. Manual resolution required before deployment can proceed."
+              else
+                CARD_TITLE="⚠️ Auto-Merge Blocked — Merge Conflicts"
+                CARD_SUBTITLE="Merge conflicts detected between $SOURCE and $TARGET. Manual resolution required."
+              fi
+            else
+              MERGE_STATUS="❌ Failed / Blocked"
+              MERGE_COLOR="attention"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="❌ $DEPLOY_NAME Deployment Failed"
+                CARD_SUBTITLE="Auto-merge workflow failed. Please check the workflow logs."
+              else
+                CARD_TITLE="GitHub Auto-Merge Notification"
+                CARD_SUBTITLE=""
+              fi
+            fi
             if [ -n "$PR_NUMBER" ]; then
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="View PR on GitHub"
