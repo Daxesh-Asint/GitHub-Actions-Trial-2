@@ -2,15 +2,13 @@ name: AsInt Bot [Dev -> AIS-02]
 
 on:
 
-  schedule:
-    # 11:00 AM IST = 05:30 UTC
-    - cron: '30 5 * * 1-5'
-    # 2:00 PM IST = 08:30 UTC
-    - cron: '30 8 * * 1-5'
-    # 5:00 PM IST = 11:30 UTC
-    - cron: '30 11 * * 1-5'
-    # 5:37 PM IST = 12:07 UTC
-    - cron: '7 12 * * 1-5'
+  # schedule:
+  #   # 11:00 AM IST = 05:30 UTC
+  #   - cron: '30 5 * * 1-5'
+  #   # 2:00 PM IST = 08:30 UTC
+  #   - cron: '30 8 * * 1-5'
+  #   # 5:00 PM IST = 11:30 UTC
+  #   - cron: '30 11 * * 1-5'
 
   push:
     branches:
@@ -24,7 +22,7 @@ jobs:
     outputs:
       in_window: ${{ steps.check.outputs.in_window }}
     steps:
-      - name: Check if within 7 AM - 9 PM IST window
+      - name: Check if within 7 AM - 11 PM IST window
         id: check
         run: |
           # Only apply window check for push events, not schedule/workflow_dispatch
@@ -33,11 +31,11 @@ jobs:
             exit 0
           fi
           HOUR=$(TZ="Asia/Kolkata" date +%-H)
-          if [ "$HOUR" -ge 7 ] && [ "$HOUR" -lt 21 ]; then
+          if [ "$HOUR" -ge 7 ] && [ "$HOUR" -lt 23 ]; then
             echo "in_window=true" >> $GITHUB_OUTPUT
           else
             echo "in_window=false" >> $GITHUB_OUTPUT
-            echo "Push received outside 7 AM - 9 PM IST window, skipping merge."
+            echo "Push received outside 7 AM - 11 PM IST window, skipping merge."
           fi
 
   merging-process:
