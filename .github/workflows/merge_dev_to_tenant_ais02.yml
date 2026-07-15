@@ -6,13 +6,13 @@ on:
   # (Mon–Fri) to merge dev into tenant/asint-ais-02.
   # Times are in IST (UTC+5:30).
   # ──────────────────────────────────────────────────────────
-  schedule:
-    # 11:00 AM IST = 05:30 UTC
-    - cron: '30 5 * * 1-5'
-    # 2:00 PM IST = 08:30 UTC
-    - cron: '30 8 * * 1-5'
-    # 5:00 PM IST = 11:30 UTC
-    - cron: '30 11 * * 1-5'
+  # schedule:
+  #   # 11:00 AM IST = 05:30 UTC
+  #   - cron: '30 5 * * 1-5'
+  #   # 2:00 PM IST = 08:30 UTC
+  #   - cron: '30 8 * * 1-5'
+  #   # 5:00 PM IST = 11:30 UTC
+  #   - cron: '30 11 * * 1-5'
 
   # ──────────────────────────────────────────────────────────
   # Instant auto merge — triggers immediately when code is
