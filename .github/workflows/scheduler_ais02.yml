@@ -1,0 +1,23 @@
+name: Scheduler [AIS-02 Trigger]
+
+on:
+  schedule:
+    # 11:00 AM IST = 05:30 UTC
+    - cron: '30 5 * * 1-5'
+    # 2:00 PM IST = 08:30 UTC
+    - cron: '30 8 * * 1-5'
+    # 5:00 PM IST = 11:30 UTC
+    - cron: '30 11 * * 1-5'
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger AIS-02 merge workflow
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/merge_dev_to_tenant_ais02.yml/dispatches" \
+            -d '{"ref":"dev"}'
