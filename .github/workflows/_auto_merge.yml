@@ -148,31 +148,58 @@ jobs:
       # Set TEAMS_WEBHOOK_URL secret in GitHub repo settings.
       # ──────────────────────────────────────────────────────────
       - name: Send MS Teams Notification
-        if: always() && env.pr_number != ''
+        if: always()
         run: |
           PR_NUMBER="${{ env.pr_number }}"
-          PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
           REPO="${{ github.repository }}"
           SOURCE="${{ inputs.compare }}"
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
+          # Check if webhook URL is set
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ]; then
+            echo "TEAMS_WEBHOOK_URL secret is not set, skipping notification."
+            exit 0
+          fi
+
           # Determine merge status and card title
           if [ "${{ job.status }}" = "success" ]; then
-            MERGE_STATUS="✅ Merged Successfully"
-            MERGE_COLOR="Good"
-            if [ -n "$DEPLOY_NAME" ]; then
-              CARD_TITLE="🚀 Deploying $DEPLOY_NAME"
-              CARD_SUBTITLE="Auto-merge completed • Deployment triggered via SAP CI/CD"
+            if [ -z "$PR_NUMBER" ]; then
+              MERGE_STATUS="🔄 Already Up to Date"
+              MERGE_COLOR="good"
+              CARD_TITLE="Sync Status: Up to Date"
+              CARD_SUBTITLE="No new commits to merge from $SOURCE to $TARGET"
+              PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              PR_LABEL="View Run on GitHub"
+              PR_FACT_VAL="None Required"
             else
-              CARD_TITLE="GitHub Auto-Merge Notification"
-              CARD_SUBTITLE=""
+              MERGE_STATUS="✅ Merged Successfully"
+              MERGE_COLOR="good"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="🚀 Deploying $DEPLOY_NAME"
+                CARD_SUBTITLE="Auto-merge completed • Deployment triggered via SAP CI/CD"
+              else
+                CARD_TITLE="GitHub Auto-Merge Notification"
+                CARD_SUBTITLE=""
+              fi
+              PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+              PR_LABEL="View PR on GitHub"
+              PR_FACT_VAL="PR #$PR_NUMBER"
             fi
           else
             MERGE_STATUS="❌ Failed / Blocked"
-            MERGE_COLOR="Attention"
+            MERGE_COLOR="attention"
             CARD_TITLE="GitHub Auto-Merge Notification"
             CARD_SUBTITLE=""
+            if [ -n "$PR_NUMBER" ]; then
+              PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+              PR_LABEL="View PR on GitHub"
+              PR_FACT_VAL="PR #$PR_NUMBER"
+            else
+              PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              PR_LABEL="View Run on GitHub"
+              PR_FACT_VAL="N/A"
+            fi
           fi
 
           # Build subtitle block if present
@@ -225,7 +252,7 @@ jobs:
                     "type": "FactSet",
                     "facts": [
                       { "title": "Repository", "value": "$REPO" },
-                      { "title": "Pull Request", "value": "PR #$PR_NUMBER" },
+                      { "title": "Pull Request", "value": "$PR_FACT_VAL" },
                       { "title": "Source Branch", "value": "$SOURCE" },
                       { "title": "Target Branch", "value": "$TARGET" }
                     ]
@@ -234,14 +261,14 @@ jobs:
                 "actions": [
                   {
                     "type": "Action.OpenUrl",
-                    "title": "View PR on GitHub",
+                    "title": "$PR_LABEL",
                     "url": "$PR_URL"
                   }
                 ]
               }
             }]
           }
-          EOF
+EOF
           )
 
           # Send to MS Teams webhook
