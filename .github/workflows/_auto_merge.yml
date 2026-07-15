@@ -303,7 +303,10 @@ jobs:
           for WEBHOOK_URL in \
             "${{ secrets.TEAMS_WEBHOOK_URL }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}"; do
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_6 }}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
