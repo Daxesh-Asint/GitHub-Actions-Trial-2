@@ -158,9 +158,9 @@ jobs:
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
-          # Check if webhook URL is set
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ]; then
-            echo "TEAMS_WEBHOOK_URL secret is not set, skipping notification."
+          # Check if at least one webhook URL is set
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
+            echo "No TEAMS_WEBHOOK_URL secrets are set, skipping notification."
             exit 0
           fi
 
@@ -299,10 +299,17 @@ jobs:
               }]
             }')
 
-          # Send to MS Teams webhook
-          curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}"
+          # Send to all MS Teams webhooks
+          for WEBHOOK_URL in \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}"; do
+            if [ -n "$WEBHOOK_URL" ]; then
+              curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -d "$PAYLOAD" \
+                "$WEBHOOK_URL"
+            fi
+          done
         env:
           GITHUB_TOKEN: ${{ github.token }}
