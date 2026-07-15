@@ -8,6 +8,8 @@ on:
     - cron: '30 8 * * 1-5'
     # 5:00 PM IST = 11:30 UTC
     - cron: '30 11 * * 1-5'
+    # 5:37 PM IST = 12:07 UTC
+    - cron: '7 12 * * 1-5'
 
 jobs:
   trigger:
