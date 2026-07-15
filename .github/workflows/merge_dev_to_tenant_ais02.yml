@@ -22,7 +22,7 @@ jobs:
     outputs:
       in_window: ${{ steps.check.outputs.in_window }}
     steps:
-      - name: Check if within 7 AM - 11 PM IST window
+      - name: Check if within 7 AM - 9 PM IST window
         id: check
         run: |
           # Only apply window check for push events, not schedule/workflow_dispatch
@@ -31,11 +31,11 @@ jobs:
             exit 0
           fi
           HOUR=$(TZ="Asia/Kolkata" date +%-H)
-          if [ "$HOUR" -ge 7 ] && [ "$HOUR" -lt 23 ]; then
+          if [ "$HOUR" -ge 7 ] && [ "$HOUR" -lt 21 ]; then
             echo "in_window=true" >> $GITHUB_OUTPUT
           else
             echo "in_window=false" >> $GITHUB_OUTPUT
-            echo "Push received outside 7 AM - 11 PM IST window, skipping merge."
+            echo "Push received outside 7 AM - 9 PM IST window, skipping merge."
           fi
 
   merging-process:
