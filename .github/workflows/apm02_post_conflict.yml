@@ -184,17 +184,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Clear APM02_ACTIVE_SNAPSHOT variable
-        run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="none" 2>/dev/null || true
-          echo "✅ APM02_ACTIVE_SNAPSHOT cleared"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
 
       - name: Update GitHub Release tag to closed
         run: |

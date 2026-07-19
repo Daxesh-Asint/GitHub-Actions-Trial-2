@@ -29,12 +29,10 @@ jobs:
       - name: Check for active snapshot
         id: check
         run: |
-          ACTIVE=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            --jq '.value' 2>/dev/null || echo "")
-
-          if [ -n "$ACTIVE" ] && [ "$ACTIVE" != "none" ] && [ "$ACTIVE" != "" ]; then
+          if gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
+            NOTES=$(gh release view "apm02-active-snapshot" --json body --jq '.body')
+            ACTIVE=$(echo "$NOTES" | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+' || echo "apm02-active-snapshot")
+            
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
             echo "❌ Blocked: Active snapshot '$ACTIVE' already exists. Complete or close it before starting a new deployment."
             exit 1
@@ -82,27 +80,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Set APM02_ACTIVE_SNAPSHOT repo variable
-        run: |
-          SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
-
-          # Try update first, create if not exists
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="$SNAPSHOT" 2>/dev/null || \
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="$SNAPSHOT"
-
-          echo "✅ Repo variable APM02_ACTIVE_SNAPSHOT set to '$SNAPSHOT'"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
 
       - name: Create GitHub Release tag for active snapshot
         run: |
@@ -452,17 +430,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Clear APM02_ACTIVE_SNAPSHOT variable
-        run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="none" 2>/dev/null || true
-          echo "✅ APM02_ACTIVE_SNAPSHOT cleared"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
 
       - name: Update GitHub Release tag to closed
         run: |
