@@ -26,7 +26,7 @@ jobs:
   guard:
     runs-on: ubuntu-latest
     permissions:
-      variables: read
+      contents: read
     outputs:
       active_snapshot: ${{ steps.check.outputs.active_snapshot }}
     steps:

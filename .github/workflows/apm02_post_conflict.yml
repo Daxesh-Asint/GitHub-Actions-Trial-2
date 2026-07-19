@@ -178,7 +178,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      variables: write
     steps:
       - uses: actions/checkout@v4
         with:
