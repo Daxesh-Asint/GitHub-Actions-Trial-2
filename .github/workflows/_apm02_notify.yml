@@ -1,0 +1,180 @@
+name: APM-02 Teams Notify
+
+on:
+  workflow_call:
+    inputs:
+      card_title:
+        required: true
+        type: string
+      card_subtitle:
+        required: false
+        type: string
+        default: ""
+      status_text:
+        required: true
+        type: string
+      status_color:
+        required: true
+        type: string
+        # good | attention | warning | accent
+      snapshot_branch:
+        required: false
+        type: string
+        default: ""
+      pr_number:
+        required: false
+        type: string
+        default: ""
+      extra_fact_title:
+        required: false
+        type: string
+        default: ""
+      extra_fact_value:
+        required: false
+        type: string
+        default: ""
+      action_url:
+        required: false
+        type: string
+        default: ""
+      action_label:
+        required: false
+        type: string
+        default: "View on GitHub"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send MS Teams Adaptive Card
+        run: |
+          REPO="${{ github.repository }}"
+          TITLE="${{ inputs.card_title }}"
+          SUBTITLE="${{ inputs.card_subtitle }}"
+          STATUS="${{ inputs.status_text }}"
+          COLOR="${{ inputs.status_color }}"
+          SNAPSHOT="${{ inputs.snapshot_branch }}"
+          PR_NUMBER="${{ inputs.pr_number }}"
+          EXTRA_FACT_TITLE="${{ inputs.extra_fact_title }}"
+          EXTRA_FACT_VALUE="${{ inputs.extra_fact_value }}"
+          ACTION_LABEL="${{ inputs.action_label }}"
+
+          # Build action URL
+          if [ -n "${{ inputs.action_url }}" ]; then
+            ACTION_URL="${{ inputs.action_url }}"
+          elif [ -n "$PR_NUMBER" ]; then
+            ACTION_URL="https://github.com/$REPO/pull/$PR_NUMBER"
+          else
+            ACTION_URL="https://github.com/$REPO/actions/runs/${{ github.run_id }}"
+          fi
+
+          # Build PR fact value
+          if [ -n "$PR_NUMBER" ]; then
+            PR_FACT="PR #$PR_NUMBER"
+          else
+            PR_FACT="N/A"
+          fi
+
+          # Build facts array — conditionally include extra fact
+          if [ -n "$EXTRA_FACT_TITLE" ] && [ -n "$EXTRA_FACT_VALUE" ]; then
+            FACTS=$(jq -n \
+              --arg repo "$REPO" \
+              --arg snapshot "$SNAPSHOT" \
+              --arg pr "$PR_FACT" \
+              --arg eft "$EXTRA_FACT_TITLE" \
+              --arg efv "$EXTRA_FACT_VALUE" \
+              '[
+                { title: "Repository",       value: $repo },
+                { title: "Snapshot Branch",  value: $snapshot },
+                { title: "Pull Request",     value: $pr },
+                { title: $eft,               value: $efv }
+              ]')
+          else
+            FACTS=$(jq -n \
+              --arg repo "$REPO" \
+              --arg snapshot "$SNAPSHOT" \
+              --arg pr "$PR_FACT" \
+              '[
+                { title: "Repository",       value: $repo },
+                { title: "Snapshot Branch",  value: $snapshot },
+                { title: "Pull Request",     value: $pr }
+              ]')
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg subtitle "$SUBTITLE" \
+            --arg status "$STATUS" \
+            --arg color "$COLOR" \
+            --arg action_url "$ACTION_URL" \
+            --arg action_label "$ACTION_LABEL" \
+            --argjson facts "$FACTS" \
+            '{
+              type: "message",
+              attachments: [{
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: (
+                    [
+                      {
+                        type: "TextBlock",
+                        size: "Large",
+                        weight: "Bolder",
+                        text: $title,
+                        wrap: true
+                      }
+                    ] +
+                    (if $subtitle != "" then [{
+                      type: "TextBlock",
+                      text: $subtitle,
+                      size: "Small",
+                      isSubtle: true,
+                      wrap: true
+                    }] else [] end) +
+                    [
+                      {
+                        type: "ColumnSet",
+                        columns: [{
+                          type: "Column",
+                          width: "auto",
+                          items: [{
+                            type: "TextBlock",
+                            text: $status,
+                            weight: "Bolder",
+                            color: $color
+                          }]
+                        }]
+                      },
+                      {
+                        type: "FactSet",
+                        facts: $facts
+                      }
+                    ]
+                  ),
+                  actions: [{
+                    type: "Action.OpenUrl",
+                    title: $action_label,
+                    url: $action_url
+                  }]
+                }
+              }]
+            }')
+
+          # Send to all configured webhook URLs (same pattern as _auto_merge.yml)
+          for WEBHOOK_URL in \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_6 }}"; do
+            if [ -n "$WEBHOOK_URL" ]; then
+              curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -d "$PAYLOAD" \
+                "$WEBHOOK_URL"
+            fi
+          done
