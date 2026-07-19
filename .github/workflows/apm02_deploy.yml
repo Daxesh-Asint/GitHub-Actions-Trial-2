@@ -129,7 +129,7 @@ jobs:
     with:
       card_title: "🌿 New APM-02 Snapshot Created"
       card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
-      status_text: "⏳ Waiting for Cherry-picks"
+      status_text: "⏳ Waiting for Cherry-picks (${{ inputs.waiting_minutes }} mins)"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Instructions"
