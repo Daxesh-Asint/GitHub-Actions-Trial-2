@@ -1,4 +1,4 @@
-name: APM-02 Extend Waiting Window
+name: "[2] APM-02 Extend Waiting Window (Optional)"
 
 # DevOps triggers this during the waiting window to give developers more time.
 # This workflow pauses for the requested extension duration, then notifies the

@@ -1,4 +1,4 @@
-name: APM-02 Teams Notify
+name: "[Helper] APM-02 Teams Notify"
 
 on:
   workflow_call:

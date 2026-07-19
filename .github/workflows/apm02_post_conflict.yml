@@ -1,4 +1,4 @@
-name: APM-02 Post-Conflict Merge
+name: "[3] APM-02 Post-Conflict Merge (On Conflict)"
 
 # DevOps triggers this AFTER manually resolving merge conflicts and merging
 # the snapshot into apm-02. This workflow completes the cycle by:
@@ -270,6 +270,8 @@ jobs:
     needs: [merge-to-main, close-snapshot]
     if: always() && needs.merge-to-main.result != 'skipped'
     uses: ./.github/workflows/_apm02_wiki.yml
+    permissions:
+      contents: write
     with:
       snapshot_branch: ${{ inputs.snapshot_branch }}
       date_ist: ${{ needs.merge-to-main.outputs.merge_time_ist }}

@@ -1,4 +1,4 @@
-name: APM-02 Wiki Update
+name: "[Helper] APM-02 Wiki Update"
 
 on:
   workflow_call:

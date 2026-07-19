@@ -1,4 +1,4 @@
-name: APM-02 Snapshot Deployment
+name: "[1] APM-02 Snapshot Deployment"
 
 on:
   workflow_dispatch:
@@ -516,6 +516,8 @@ jobs:
     needs: [create-snapshot, merge-to-apm02, merge-to-main, close-snapshot]
     if: always() && needs.merge-to-apm02.result != 'skipped'
     uses: ./.github/workflows/_apm02_wiki.yml
+    permissions:
+      contents: write
     with:
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       date_ist: ${{ needs.create-snapshot.outputs.date_ist }}
