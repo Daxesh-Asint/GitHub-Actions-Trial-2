@@ -1,0 +1,97 @@
+name: APM-02 Extend Waiting Window
+
+# DevOps triggers this during the waiting window to give developers more time.
+# This workflow pauses for the requested extension duration, then notifies the
+# channel that the extension is over and deployment will proceed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      extend_minutes:
+        description: "How many extra minutes to wait before deployment proceeds"
+        required: true
+        default: "10"
+        type: choice
+        options:
+          - "5"
+          - "10"
+          - "15"
+          - "20"
+          - "30"
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Guard: only allow extension if a snapshot is active
+  # ─────────────────────────────────────────────
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      active_snapshot: ${{ steps.check.outputs.active_snapshot }}
+    steps:
+      - name: Check active snapshot
+        id: check
+        run: |
+          ACTIVE=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
+            --jq '.value' 2>/dev/null || echo "")
+
+          if [ -z "$ACTIVE" ] || [ "$ACTIVE" = "none" ] || [ "$ACTIVE" = "" ]; then
+            echo "❌ No active snapshot found. Nothing to extend."
+            exit 1
+          fi
+
+          echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
+          echo "✅ Active snapshot: '$ACTIVE'"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # ─────────────────────────────────────────────
+  # Notify Teams: extension started
+  # ─────────────────────────────────────────────
+  notify-extension-started:
+    needs: guard
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "⏳ APM-02 Waiting Window Extended"
+      card_subtitle: "DevOps has extended the waiting window. Deployment will be delayed to give developers more time to cherry-pick."
+      status_text: "⏳ Extended by ${{ inputs.extend_minutes }} minutes"
+      status_color: "accent"
+      snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
+      extra_fact_title: "Extended By"
+      extra_fact_value: "${{ inputs.extend_minutes }} minutes — extended by ${{ github.actor }}"
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
+    secrets: inherit
+
+  # ─────────────────────────────────────────────
+  # Wait for the extension duration
+  # ─────────────────────────────────────────────
+  wait-extension:
+    needs: [guard, notify-extension-started]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for extended duration
+        run: |
+          EXTEND_MINUTES=${{ inputs.extend_minutes }}
+          echo "⏳ Waiting $EXTEND_MINUTES minutes (extension requested by ${{ github.actor }})..."
+          sleep $((EXTEND_MINUTES * 60))
+          echo "✅ Extension wait complete"
+
+  # ─────────────────────────────────────────────
+  # Notify Teams: extension over, deployment proceeding
+  # ─────────────────────────────────────────────
+  notify-extension-over:
+    needs: [guard, wait-extension]
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🚀 APM-02 Extended Window Closed — Deployment Proceeding"
+      card_subtitle: "The extended waiting window has ended. The deployment workflow will now continue automatically. No further cherry-picks will be accepted for this snapshot."
+      status_text: "✅ Extension Complete — Deployment Continuing"
+      status_color: "good"
+      snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
+      extra_fact_title: "⚠️ Cherry-picks Closed"
+      extra_fact_value: "No more commits will be accepted into this snapshot. If you missed it, wait for the next snapshot."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
+    secrets: inherit
