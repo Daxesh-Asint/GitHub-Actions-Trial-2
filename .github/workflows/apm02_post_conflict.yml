@@ -109,17 +109,20 @@ jobs:
             --jq '.[0].number' 2>/dev/null || echo "")
 
           if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            PR_BODY=$(printf '%s\n' \
+              "Post-conflict merge PR to sync snapshot back into \`main\`." \
+              "" \
+              "**Snapshot:** \`$SNAPSHOT\`" \
+              "**APM-02 PR:** #${{ inputs.apm02_pr_number }}" \
+              "**Initiated by:** ${{ github.actor }}" \
+              "" \
+              "> Conflicts were resolved manually. This PR completes the deployment cycle.")
+
             gh pr create \
               --base main \
               --head "$SNAPSHOT" \
               --title "🔁 Sync to Main: $SNAPSHOT" \
-              --body "Post-conflict merge PR to sync snapshot back into \`main\`.
-
-**Snapshot:** \`$SNAPSHOT\`
-**APM-02 PR:** #${{ inputs.apm02_pr_number }}
-**Initiated by:** ${{ github.actor }}
-
-> Conflicts were resolved manually. This PR completes the deployment cycle."
+              --body "$PR_BODY"
 
             PR_NUMBER=$(gh pr list \
               --base main \
@@ -202,15 +205,18 @@ jobs:
           gh release delete "apm02-active-snapshot" --yes 2>/dev/null || true
           git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
 
+          CLOSED_NOTES=$(printf '%s\n' \
+            "**Last Closed Snapshot:** \`$SNAPSHOT\`" \
+            "" \
+            "**Closed at:** $DATE_IST at $TIME_IST" \
+            "**Closed by:** ${{ github.actor }}" \
+            "**Status:** ✅ Fully merged into tenant/asint-apm-02 and main (post-conflict resolution)" \
+            "" \
+            "> No active deployment in progress. DevOps may start a new snapshot.")
+
           gh release create "apm02-active-snapshot" \
             --title "🔴 APM-02 Last Closed Snapshot" \
-            --notes "**Last Closed Snapshot:** \`$SNAPSHOT\`
-
-**Closed at:** $DATE_IST at $TIME_IST
-**Closed by:** ${{ github.actor }}
-**Status:** ✅ Fully merged into tenant/asint-apm-02 and main (post-conflict resolution)
-
-> No active deployment in progress. DevOps may start a new snapshot." \
+            --notes "$CLOSED_NOTES" \
             --target main \
             --latest
           echo "✅ Release tag updated to closed state"

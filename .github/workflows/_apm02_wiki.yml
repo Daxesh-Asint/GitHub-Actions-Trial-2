@@ -75,14 +75,13 @@ jobs:
 
           # Create file with header if it does not exist
           if [ ! -f "$FILE" ]; then
-            cat > "$FILE" << 'HEADER'
-# APM-02 Deployment History
-
-> Auto-updated by GitHub Actions after every deployment cycle.
-
-| # | **📅 Date (IST)** | **🌿 Snapshot Branch** | **🔀 APM-02 PR** | Main PR | Initiated By | Merge Time (IST) | Status |
-|---|---|---|---|---|---|---|---|
-HEADER
+            printf '%s\n' \
+              "# APM-02 Deployment History" \
+              "" \
+              "> Auto-updated by GitHub Actions after every deployment cycle." \
+              "" \
+              "| # | **📅 Date (IST)** | **🌿 Snapshot Branch** | **🔀 APM-02 PR** | Main PR | Initiated By | Merge Time (IST) | Status |" \
+              "|---|---|---|---|---|---|---|---|" > "$FILE"
             ROW_NUM=1
           else
             # Count existing data rows (exclude header lines)
