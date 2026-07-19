@@ -9,10 +9,16 @@ on:
         default: "30"
         type: choice
         options:
+          - "10"
           - "15"
           - "20"
+          - "25"
           - "30"
+          - "35"
+          - "40"
           - "45"
+          - "50"
+          - "55"
           - "60"
 
 jobs:
@@ -29,12 +35,10 @@ jobs:
       - name: Check for active snapshot
         id: check
         run: |
-          ACTIVE=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            --jq '.value' 2>/dev/null || echo "")
-
-          if [ -n "$ACTIVE" ] && [ "$ACTIVE" != "none" ] && [ "$ACTIVE" != "" ]; then
+          if gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
+            NOTES=$(gh release view "apm02-active-snapshot" --json body --jq '.body')
+            ACTIVE=$(echo "$NOTES" | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+' || echo "apm02-active-snapshot")
+            
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
             echo "❌ Blocked: Active snapshot '$ACTIVE' already exists. Complete or close it before starting a new deployment."
             exit 1
@@ -82,27 +86,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Set APM02_ACTIVE_SNAPSHOT repo variable
-        run: |
-          SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
-
-          # Try update first, create if not exists
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="$SNAPSHOT" 2>/dev/null || \
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="$SNAPSHOT"
-
-          echo "✅ Repo variable APM02_ACTIVE_SNAPSHOT set to '$SNAPSHOT'"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
 
       - name: Create GitHub Release tag for active snapshot
         run: |
@@ -145,11 +129,11 @@ jobs:
     with:
       card_title: "🌿 New APM-02 Snapshot Created"
       card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
-      status_text: "⏳ Waiting for Cherry-picks"
+      status_text: "⏳ Waiting for Cherry-picks (${{ inputs.waiting_minutes }} mins)"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Instructions"
-      extra_fact_value: "Cherry-pick into the snapshot branch only. Do NOT commit to main or tenant/asint-apm-02 directly. Waiting window closes in ${{ inputs.waiting_minutes }} minutes."
+      extra_fact_value: "Cherry-pick into the snapshot branch only. Do NOT commit to main or tenant/asint-apm-02 directly. Waiting window closes in ${{ inputs.waiting_minutes }} minutes and APM-02 deployment will start automatically after ${{ inputs.waiting_minutes }} mins."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit
@@ -164,6 +148,11 @@ jobs:
       - name: Wait for developers to cherry-pick
         run: |
           TOTAL_MINUTES=${{ inputs.waiting_minutes }}
+          if [ "$TOTAL_MINUTES" -eq 0 ]; then
+            echo "🚨 Emergency deployment selected. Skipping wait."
+            exit 0
+          fi
+
           WAIT_MINUTES=$((TOTAL_MINUTES - 5))
 
           if [ "$WAIT_MINUTES" -le 0 ]; then
@@ -179,6 +168,7 @@ jobs:
   # ─────────────────────────────────────────────
   notify-reminder:
     needs: [create-snapshot, wait-main]
+    if: inputs.waiting_minutes != '0'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
@@ -196,11 +186,15 @@ jobs:
   # STEP 6 — Wait final 5 minutes
   # ─────────────────────────────────────────────
   wait-final:
-    needs: [create-snapshot, notify-reminder]
+    needs: [create-snapshot, wait-main]
     runs-on: ubuntu-latest
     steps:
       - name: Wait final 5 minutes
         run: |
+          if [ "${{ inputs.waiting_minutes }}" = "0" ]; then
+            echo "🚨 Emergency deployment selected. Skipping final wait."
+            exit 0
+          fi
           echo "⏳ Waiting final 5 minutes..."
           sleep 300
           echo "✅ Final wait complete. Proceeding to deployment."
@@ -233,6 +227,14 @@ jobs:
           echo "merge_time_ist=$MERGE_TIME" >> $GITHUB_OUTPUT
 
           git fetch --all
+
+          if [ -z "$(git log origin/tenant/asint-apm-02..HEAD --oneline)" ]; then
+            echo "ℹ️ No new commits to merge. The apm-02 branch already contains all changes from the snapshot."
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "apm02_pr_number=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           # Ensure label exists
           gh label create "apm02-deploy" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
@@ -452,17 +454,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Clear APM02_ACTIVE_SNAPSHOT variable
-        run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_ACTIVE_SNAPSHOT \
-            -f name="APM02_ACTIVE_SNAPSHOT" \
-            -f value="none" 2>/dev/null || true
-          echo "✅ APM02_ACTIVE_SNAPSHOT cleared"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
 
       - name: Update GitHub Release tag to closed
         run: |
