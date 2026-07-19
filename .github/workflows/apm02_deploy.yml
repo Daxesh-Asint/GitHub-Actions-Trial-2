@@ -21,6 +21,8 @@ jobs:
   # ─────────────────────────────────────────────
   guard:
     runs-on: ubuntu-latest
+    permissions:
+      variables: read
     outputs:
       active_snapshot: ${{ steps.check.outputs.active_snapshot }}
     steps:
@@ -55,6 +57,7 @@ jobs:
       time_ist: ${{ steps.create.outputs.time_ist }}
     permissions:
       contents: write
+      variables: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -449,6 +452,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      variables: write
     steps:
       - name: Clear APM02_ACTIVE_SNAPSHOT variable
         run: |
