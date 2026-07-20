@@ -465,7 +465,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
+      - name: Run actions/checkout@v4
+        uses: actions/checkout@v4
 
       - name: Update GitHub Release tag to closed
         run: |
