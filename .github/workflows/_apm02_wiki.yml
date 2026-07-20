@@ -1,0 +1,101 @@
+name: "[Helper] APM-02 Wiki Update"
+
+on:
+  workflow_call:
+    inputs:
+      snapshot_branch:
+        required: true
+        type: string
+      date_ist:
+        required: true
+        type: string
+      apm02_pr_number:
+        required: true
+        type: string
+      main_pr_number:
+        required: false
+        type: string
+        default: ""
+      initiated_by:
+        required: true
+        type: string
+      merge_time_ist:
+        required: true
+        type: string
+      status:
+        required: true
+        type: string
+        # Merged | Conflict | Failed
+
+jobs:
+  update-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout wiki
+        run: |
+          git clone "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.wiki.git" wiki
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Update APM-02-Deployment-History.md
+        run: |
+          cd wiki
+          FILE="APM-02-Deployment-History.md"
+          REPO="${{ github.repository }}"
+          SNAPSHOT="${{ inputs.snapshot_branch }}"
+          DATE="${{ inputs.date_ist }}"
+          APM02_PR="${{ inputs.apm02_pr_number }}"
+          MAIN_PR="${{ inputs.main_pr_number }}"
+          INITIATED_BY="${{ inputs.initiated_by }}"
+          MERGE_TIME="${{ inputs.merge_time_ist }}"
+          STATUS="${{ inputs.status }}"
+
+          # Build PR links
+          if [ -n "$APM02_PR" ] && [ "$APM02_PR" != "N/A" ]; then
+            APM02_PR_LINK="[#$APM02_PR](https://github.com/$REPO/pull/$APM02_PR)"
+          else
+            APM02_PR_LINK="N/A"
+          fi
+
+          if [ -n "$MAIN_PR" ] && [ "$MAIN_PR" != "N/A" ] && [ "$MAIN_PR" != "" ]; then
+            MAIN_PR_LINK="[#$MAIN_PR](https://github.com/$REPO/pull/$MAIN_PR)"
+          else
+            MAIN_PR_LINK="N/A"
+          fi
+
+          # Status emoji
+          case "$STATUS" in
+            Merged)   STATUS_DISPLAY="✅ Merged" ;;
+            Conflict) STATUS_DISPLAY="⚠️ Conflict" ;;
+            Failed)   STATUS_DISPLAY="❌ Failed" ;;
+            *)        STATUS_DISPLAY="$STATUS" ;;
+          esac
+
+          # Create file with header if it does not exist
+          if [ ! -f "$FILE" ]; then
+            printf '%s\n' \
+              "# APM-02 Deployment History" \
+              "" \
+              "> Auto-updated by GitHub Actions after every deployment cycle." \
+              "" \
+              "| # | **📅 Date (IST)** | **🌿 Snapshot Branch** | **🔀 APM-02 PR** | Main PR | Initiated By | Merge Time (IST) | Status |" \
+              "|---|---|---|---|---|---|---|---|" > "$FILE"
+            ROW_NUM=1
+          else
+            # Count existing data rows (exclude header lines)
+            ROW_NUM=$(grep -c "^| [0-9]" "$FILE" 2>/dev/null || echo 0)
+            ROW_NUM=$((ROW_NUM + 1))
+          fi
+
+          # Append new row — first three columns bold as per requirement
+          echo "| $ROW_NUM | **$DATE** | **\`$SNAPSHOT\`** | **$APM02_PR_LINK** | $MAIN_PR_LINK | $INITIATED_BY | $MERGE_TIME | $STATUS_DISPLAY |" >> "$FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FILE"
+          git commit -m "APM-02 deployment record: $SNAPSHOT [$STATUS]" || echo "Nothing to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
