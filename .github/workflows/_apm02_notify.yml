@@ -165,7 +165,7 @@ jobs:
 
           # Send to all configured webhook URLs (same pattern as _auto_merge.yml)
           for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_APM02 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_4 }}" \

@@ -159,8 +159,8 @@ jobs:
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
           # Check if at least one webhook URL is set
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
-            echo "No TEAMS_WEBHOOK_URL secrets are set, skipping notification."
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
+            echo "No TEAMS_WEBHOOK_URL_AIS02 secrets are set, skipping notification."
             exit 0
           fi
 
@@ -169,7 +169,11 @@ jobs:
             if [ -z "$PR_NUMBER" ]; then
               MERGE_STATUS="🔄 Already Up to Date"
               MERGE_COLOR="good"
-              CARD_TITLE="Sync Status: Up to Date"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="✅ $DEPLOY_NAME Sync: Up to Date"
+              else
+                CARD_TITLE="Sync Status: Up to Date"
+              fi
               CARD_SUBTITLE="No new commits to merge from $SOURCE to $TARGET"
               PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               PR_LABEL="View Run on GitHub"
@@ -178,8 +182,8 @@ jobs:
               MERGE_STATUS="✅ Merged Successfully"
               MERGE_COLOR="good"
               if [ -n "$DEPLOY_NAME" ]; then
-                CARD_TITLE="🚀 Deploying $DEPLOY_NAME"
-                CARD_SUBTITLE="Auto-merge completed • Deployment triggered via SAP CI/CD"
+                CARD_TITLE="🚀 $DEPLOY_NAME Deployment Triggered"
+                CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
               else
                 CARD_TITLE="GitHub Auto-Merge Notification"
                 CARD_SUBTITLE=""
@@ -194,7 +198,7 @@ jobs:
               MERGE_STATUS="⚠️ Merge Conflicts Detected"
               MERGE_COLOR="attention"
               if [ -n "$DEPLOY_NAME" ]; then
-                CARD_TITLE="⚠️ $DEPLOY_NAME Deployment Blocked"
+                CARD_TITLE="⚠️ $DEPLOY_NAME Deployment Blocked — Merge Conflicts"
                 CARD_SUBTITLE="Merge conflicts detected between $SOURCE and $TARGET. Manual resolution required before deployment can proceed."
               else
                 CARD_TITLE="⚠️ Auto-Merge Blocked — Merge Conflicts"
@@ -301,7 +305,7 @@ jobs:
 
           # Send to all MS Teams webhooks
           for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_4 }}" \
