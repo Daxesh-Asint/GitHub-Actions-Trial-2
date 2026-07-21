@@ -158,9 +158,11 @@ jobs:
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
-          # Fetch list of unique authors for the changes
-          git fetch origin $TARGET $SOURCE
-          AUTHORS=$(git log origin/$TARGET..origin/$SOURCE --no-merges --format='%an' | sort -u | paste -sd, - | sed 's/,/, /g')
+          # Fetch list of unique authors from the PR commits
+          if [ -n "$PR_NUMBER" ]; then
+            AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | join(", ")' 2>/dev/null)
+          fi
+          
           if [ -z "$AUTHORS" ]; then
             AUTHORS="${{ github.actor }}"
           fi
