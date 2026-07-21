@@ -83,7 +83,7 @@ jobs:
           gh pr create \
             --base ${{ inputs.base }} \
             --head ${{ inputs.compare }} \
-            --title "Merge from ${{ inputs.compare }} to ${{ inputs.base }}" \
+            --title "Merging from ${{ inputs.compare }} into ${{ inputs.base }}" \
             --body "Auto-generated PR to merge changes from \`${{ inputs.compare }}\` to \`${{ inputs.base }}\`."
 
           # Fetch PR number
