@@ -300,7 +300,7 @@ jobs:
                     },
                     {
                       type: "Action.OpenUrl",
-                      title: "Track Deployment Status in SAP CI/CD Dashboard",
+                      title: "Track AIS-02 Deployment Status in SAP CI/CD Dashboard",
                       url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
                     }
                   ]
