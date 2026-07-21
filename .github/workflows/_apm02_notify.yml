@@ -161,7 +161,7 @@ jobs:
                   },
                   {
                     type: "Action.OpenUrl",
-                    title: "View SAP CI/CD Dashboard",
+                    title: "Track Deployment Status in SAP CI/CD Dashboard",
                     url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
                   }]
                 }
