@@ -306,11 +306,11 @@ jobs:
           # Send to all MS Teams webhooks
           for WEBHOOK_URL in \
             "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_6 }}"; do
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \

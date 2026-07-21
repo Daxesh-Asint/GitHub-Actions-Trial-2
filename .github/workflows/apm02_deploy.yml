@@ -9,6 +9,9 @@ on:
         default: "30"
         type: choice
         options:
+          - "0"
+          - "1"
+          - "2"
           - "10"
           - "15"
           - "20"
@@ -377,6 +380,14 @@ jobs:
 
           git fetch --all
 
+          # Check for new commits first to avoid GraphQL error
+          NEW_COMMITS=$(git rev-list --count origin/main..origin/"$SNAPSHOT")
+          if [ "$NEW_COMMITS" -eq 0 ]; then
+            echo "ℹ️ No commits to sync back to main. Skipping."
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Ensure label exists
           gh label create "apm02-to-main" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
 
@@ -454,7 +465,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
+      - name: Run actions/checkout@v4
+        uses: actions/checkout@v4
 
       - name: Update GitHub Release tag to closed
         run: |
