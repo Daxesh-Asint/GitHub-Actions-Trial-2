@@ -42,16 +42,16 @@ jobs:
           PR_LIST_RESP=$(gh pr list \
             --base ${{ inputs.base }} \
             --head ${{ inputs.compare }} \
-            --label "auto-merge" \
+            --label "auto merge for AIS02" \
             --json number)
           PR_NUMBER=$(echo "$PR_LIST_RESP" | jq -r '.[0].number')
           if [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
             echo "pr_exists=true" >> $GITHUB_ENV
             echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
-            echo "Existing auto-merge PR found: '$PR_NUMBER'"
+            echo "Existing auto merge PR found: '$PR_NUMBER'"
           else
             echo "pr_exists=false" >> $GITHUB_ENV
-            echo "No existing auto-merge PR, will check for new commits"
+            echo "No existing auto merge PR, will check for new commits"
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -77,7 +77,7 @@ jobs:
         if: env.pr_exists == 'false' && env.new_commits == 'true'
         run: |
           # Ensure label exists, create if missing
-          gh label create "auto-merge" --color "#0075ca" --description "Automated merge PR" 2>/dev/null || true
+          gh label create "auto merge for AIS02" --color "#0075ca" --description "Automated merge PR" 2>/dev/null || true
 
           # Create PR without label to avoid race condition
           gh pr create \
@@ -94,7 +94,7 @@ jobs:
             --jq '.[0].number')
 
           # Add label separately after PR exists
-          gh pr edit "$PR_NUMBER" --add-label "auto-merge"
+          gh pr edit "$PR_NUMBER" --add-label "auto merge for AIS02"
 
           echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
           echo "pr_created=true" >> $GITHUB_ENV

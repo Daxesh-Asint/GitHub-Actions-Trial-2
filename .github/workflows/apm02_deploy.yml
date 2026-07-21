@@ -240,7 +240,7 @@ jobs:
           fi
 
           # Ensure label exists
-          gh label create "apm02-deploy" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
+          gh label create "auto merge for APM02" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
 
           # Check for existing PR
           PR_NUMBER=$(gh pr list \
@@ -272,7 +272,7 @@ jobs:
               --json number \
               --jq '.[0].number')
 
-            gh pr edit "$PR_NUMBER" --add-label "apm02-deploy"
+            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
             echo "✅ PR #$PR_NUMBER created"
           else
             echo "ℹ️ Existing PR #$PR_NUMBER found"
@@ -389,7 +389,7 @@ jobs:
           fi
 
           # Ensure label exists
-          gh label create "apm02-to-main" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
+          gh label create "auto merge for APM02" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
 
           # Check for existing PR
           PR_NUMBER=$(gh pr list \
@@ -420,7 +420,7 @@ jobs:
               --json number \
               --jq '.[0].number')
 
-            gh pr edit "$PR_NUMBER" --add-label "apm02-to-main"
+            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
             echo "✅ PR #$PR_NUMBER created for snapshot → main"
           else
             echo "ℹ️ Existing PR #$PR_NUMBER found"
