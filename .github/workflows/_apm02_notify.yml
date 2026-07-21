@@ -158,6 +158,11 @@ jobs:
                     type: "Action.OpenUrl",
                     title: $action_label,
                     url: $action_url
+                  },
+                  {
+                    type: "Action.OpenUrl",
+                    title: "View SAP CI/CD Dashboard",
+                    url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
                   }]
                 }
               }]
