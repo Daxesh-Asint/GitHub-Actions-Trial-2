@@ -263,7 +263,7 @@ jobs:
             gh pr create \
               --base tenant/asint-apm-02 \
               --head "$SNAPSHOT" \
-              --title "🚀 APM-02 Deploy: $SNAPSHOT" \
+              --title "Merging from $SNAPSHOT into tenant/asint-apm-02" \
               --body "$PR_BODY_APM02"
 
             PR_NUMBER=$(gh pr list \
@@ -411,7 +411,7 @@ jobs:
             gh pr create \
               --base main \
               --head "$SNAPSHOT" \
-              --title "🔁 Sync to Main: $SNAPSHOT" \
+              --title "Merging from $SNAPSHOT into main" \
               --body "$PR_BODY"
 
             PR_NUMBER=$(gh pr list \
