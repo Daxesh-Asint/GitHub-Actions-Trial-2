@@ -5,6 +5,3 @@ d
 e
 f
 g 
-h
-e
-j
