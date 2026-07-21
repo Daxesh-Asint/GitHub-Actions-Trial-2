@@ -9,9 +9,6 @@ on:
         default: "30"
         type: choice
         options:
-          - "0"
-          - "1"
-          - "2"
           - "10"
           - "15"
           - "20"
