@@ -157,7 +157,13 @@ jobs:
           SOURCE="${{ inputs.compare }}"
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
-          ACTOR="${{ github.actor }}"
+
+          # Fetch list of unique authors for the changes
+          git fetch origin $TARGET $SOURCE
+          AUTHORS=$(git log origin/$TARGET..origin/$SOURCE --no-merges --format='%an' | sort -u | paste -sd, - | sed 's/,/, /g')
+          if [ -z "$AUTHORS" ]; then
+            AUTHORS="${{ github.actor }}"
+          fi
 
           # Check if at least one webhook URL is set
           if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
@@ -236,7 +242,7 @@ jobs:
             --arg pr "$PR_FACT_VAL" \
             --arg source "$SOURCE" \
             --arg target "$TARGET" \
-            --arg actor "$ACTOR" \
+            --arg authors "$AUTHORS" \
             --arg pr_url "$PR_URL" \
             --arg pr_label "$PR_LABEL" \
             --arg subtitle "$CARD_SUBTITLE" \
@@ -287,7 +293,7 @@ jobs:
                         type: "FactSet",
                         facts: [
                           { title: "Repository", value: $repo },
-                          { title: "Triggered By", value: $actor },
+                          { title: "Changes By", value: $authors },
                           { title: "Pull Request", value: $pr },
                           { title: "Source Branch", value: $source },
                           { title: "Target Branch", value: $target }
