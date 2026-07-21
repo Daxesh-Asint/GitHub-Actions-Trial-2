@@ -22,31 +22,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-window:
-    runs-on: ubuntu-latest
-    outputs:
-      in_window: ${{ steps.check.outputs.in_window }}
-    steps:
-      - name: Check if within 7 AM - 9 PM IST window
-        id: check
-        run: |
-          # Only apply window check for push events, not schedule/workflow_dispatch
-          # if [ "${{ github.event_name }}" != "push" ]; then
-          #   echo "in_window=true" >> $GITHUB_OUTPUT
-          #   exit 0
-          # fi
-          # HOUR=$(TZ="Asia/Kolkata" date +%-H)
-          # if [ "$HOUR" -ge 7 ] && [ "$HOUR" -lt 21 ]; then
-          #   echo "in_window=true" >> $GITHUB_OUTPUT
-          # else
-          #   echo "in_window=false" >> $GITHUB_OUTPUT
-          #   echo "Push received outside 7 AM - 9 PM IST window, skipping merge."
-          # fi
-          echo "in_window=true" >> $GITHUB_OUTPUT
-
   merging-process:
-    needs: check-window
-    if: needs.check-window.outputs.in_window == 'true'
     uses: ./.github/workflows/_auto_merge.yml
     permissions:
       contents: write
