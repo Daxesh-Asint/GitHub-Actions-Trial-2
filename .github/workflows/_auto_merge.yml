@@ -309,7 +309,7 @@ jobs:
                         facts: [
                           { title: "Repository", value: $repo },
                           { title: "Changes By", value: $authors },
-                          { title: "What's New", value: $pr_title },
+                          { title: "PR Title", value: $pr_title },
                           { title: "Pull Request", value: $pr },
                           { title: "Source Branch", value: $source },
                           { title: "Target Branch", value: $target }
