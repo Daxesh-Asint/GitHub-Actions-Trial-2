@@ -158,9 +158,13 @@ jobs:
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
-          # Fetch list of unique authors from the PR commits
+          # Fetch list of unique authors, PR title, and commit count
+          PR_TITLE="N/A"
+          COMMIT_COUNT="0"
           if [ -n "$PR_NUMBER" ]; then
-            AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | join(", ")' 2>/dev/null)
+            AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | if length > 3 then (.[0:3] + ["and \(length - 3) others"]) else . end | join(", ")' 2>/dev/null)
+            PR_TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title' 2>/dev/null)
+            COMMIT_COUNT=$(gh pr view "$PR_NUMBER" --json commits --jq '.commits | length' 2>/dev/null)
           fi
           
           if [ -z "$AUTHORS" ]; then
@@ -199,7 +203,11 @@ jobs:
               fi
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="View PR on GitHub"
-              PR_FACT_VAL="PR #$PR_NUMBER"
+              if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+                PR_FACT_VAL="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+              else
+                PR_FACT_VAL="PR #$PR_NUMBER"
+              fi
             fi
           else
             # Check if the failure is due to merge conflicts
@@ -227,7 +235,11 @@ jobs:
             if [ -n "$PR_NUMBER" ]; then
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="View PR on GitHub"
-              PR_FACT_VAL="PR #$PR_NUMBER"
+              if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+                PR_FACT_VAL="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+              else
+                PR_FACT_VAL="PR #$PR_NUMBER"
+              fi
             else
               PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               PR_LABEL="View Run on GitHub"
@@ -245,6 +257,7 @@ jobs:
             --arg source "$SOURCE" \
             --arg target "$TARGET" \
             --arg authors "$AUTHORS" \
+            --arg pr_title "$PR_TITLE" \
             --arg pr_url "$PR_URL" \
             --arg pr_label "$PR_LABEL" \
             --arg subtitle "$CARD_SUBTITLE" \
@@ -296,6 +309,7 @@ jobs:
                         facts: [
                           { title: "Repository", value: $repo },
                           { title: "Changes By", value: $authors },
+                          { title: "What's New", value: $pr_title },
                           { title: "Pull Request", value: $pr },
                           { title: "Source Branch", value: $source },
                           { title: "Target Branch", value: $target }
