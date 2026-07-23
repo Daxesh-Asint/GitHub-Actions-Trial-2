@@ -161,8 +161,8 @@ jobs:
           # Fetch list of unique authors and commit count
           COMMIT_COUNT="0"
           if [ -n "$PR_NUMBER" ]; then
-            AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | if length > 3 then (.[0:3] + ["and \(length - 3) others"]) else . end | join(", ")' 2>/dev/null)
-            COMMIT_COUNT=$(gh pr view "$PR_NUMBER" --json commits --jq '.commits | length' 2>/dev/null)
+            AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --paginate --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | if length > 3 then (.[0:3] + ["and \(length - 3) others"]) else . end | join(", ")' 2>/dev/null)
+            COMMIT_COUNT=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --paginate --jq 'length' 2>/dev/null)
           fi
           
           if [ -z "$AUTHORS" ]; then
