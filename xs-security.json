@@ -1,4 +1,4 @@
-{{
+{
     "xsappname": "asint-ais",
     "tenant-mode": "dedicated",
     "scopes": [
