@@ -317,7 +317,7 @@ jobs:
                           { title: "Pull Request", value: $pr },
                           { title: "Source Branch", value: $source },
                           { title: "Target Branch", value: $target },
-                          { title: "Merge Commit", value: $merge_commit }
+                          { title: "CI/CD Commit ID", value: $merge_commit }
                         ]
                       }
                     ]
