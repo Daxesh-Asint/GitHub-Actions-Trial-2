@@ -160,9 +160,16 @@ jobs:
 
           # Fetch list of unique authors and commit count
           COMMIT_COUNT="0"
+          MERGE_COMMIT_ID="N/A"
           if [ -n "$PR_NUMBER" ]; then
             AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --paginate --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | if length > 3 then (.[0:3] + ["and \(length - 3) others"]) else . end | join(", ")' 2>/dev/null)
             COMMIT_COUNT=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --paginate --jq 'length' 2>/dev/null)
+            
+            # Fetch the resulting merge commit ID (shortened to 7 characters)
+            if [ "${{ job.status }}" = "success" ]; then
+              MERGE_COMMIT_ID=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null | cut -c 1-7)
+              [ -z "$MERGE_COMMIT_ID" ] && MERGE_COMMIT_ID="N/A"
+            fi
           fi
           
           if [ -z "$AUTHORS" ]; then
@@ -254,6 +261,7 @@ jobs:
             --arg pr "$PR_FACT_VAL" \
             --arg source "$SOURCE" \
             --arg target "$TARGET" \
+            --arg merge_commit "$MERGE_COMMIT_ID" \
             --arg authors "$AUTHORS" \
             --arg pr_url "$PR_URL" \
             --arg pr_label "$PR_LABEL" \
@@ -308,7 +316,8 @@ jobs:
                           { title: "Changes By", value: $authors },
                           { title: "Pull Request", value: $pr },
                           { title: "Source Branch", value: $source },
-                          { title: "Target Branch", value: $target }
+                          { title: "Target Branch", value: $target },
+                          { title: "Merge Commit", value: $merge_commit }
                         ]
                       }
                     ]
