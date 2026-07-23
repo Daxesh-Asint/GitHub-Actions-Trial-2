@@ -1,1 +1,210 @@
-
+{
+    "xsappname": "asint-ais",
+    "tenant-mode": "dedicated",
+    "scopes": [
+        {
+            "name": "uaa.user",
+            "description": "UAA"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_SUPER_ADMIN",
+            "description": "AIS Super Admin"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_DATA_CONDUIT_LITE",
+            "description": "AIS Data Conduit Lite"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_3RD_PARTY_ENGINEER",
+            "description": "3rd Party Engineer"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_ENGINEER",
+            "description": "Engineer"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_FACILITATOR",
+            "description": "Facilitator"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_READ_ONLY",
+            "description": "Data Read Only"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_DATA_ADMIN",
+            "description": "Data Admin"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_SITE_ADMIN",
+            "description": "Site Admin"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_EXT_INSPECTOR",
+            "description": "3rd Party Inspector"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_INSPECTOR",
+            "description": "Inspector XOM"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_INSPECTOR_QA",
+            "description": "Inspector QA"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_GLOBAL_SME",
+            "description": "Global SME"
+        },
+        {
+            "name": "$XSAPPNAME.API_EXPLORER",
+            "description": "API Explorer"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_FIRE_FIGHTER_SUPP_NONPROD",
+            "description": "Firefighter Support Role (Non-Prod)"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_FIRE_FIGHTER_SUPP_PROD",
+            "description": "Firefighter Support Role (Prod)"
+        },
+        {
+            "name": "$XSAPPNAME.AIS_DATA_CONDUIT",
+            "description": "Data Conduit"
+        }
+    ],
+    "role-templates": [
+        {
+            "name": "AIS_SUPER_ADMIN",
+            "description": "Role Template for 'AIS Super Admin'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_SUPER_ADMIN",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_DATA_CONDUIT_LITE",
+            "description": "Role Template for 'AIS Data Conduit Lite'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_DATA_CONDUIT_LITE",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_3RD_PARTY_ENGINEER",
+            "description": "Role Template for '3rd Party Engineer'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_3RD_PARTY_ENGINEER",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_ENGINEER",
+            "description": "Role Template for 'AIS Engineer'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_ENGINEER",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_FACILITATOR",
+            "description": "Role Template for 'Facilitator'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_FACILITATOR",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_READ_ONLY",
+            "description": "Role Template for 'Data Read Only'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_READ_ONLY",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_DATA_ADMIN",
+            "description": "Role Template for 'Data Admin'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_DATA_ADMIN",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_SITE_ADMIN",
+            "description": "Role Template for 'Site Admin'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_SITE_ADMIN",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_EXT_INSPECTOR",
+            "description": "Role Template for '3rd Party Inspector'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_EXT_INSPECTOR",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_INSPECTOR",
+            "description": "Role Template for 'Inspector XOM'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_INSPECTOR",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_INSPECTOR_QA",
+            "description": "Role Template for 'Inspector QA'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_INSPECTOR_QA",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "AIS_GLOBAL_SME",
+            "description": "Role Template for 'Global SME'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_GLOBAL_SME",
+                "uaa.user"
+            ]
+        },
+        {
+            "name": "API_EXPLORER",
+            "description": "Role Template for 'AIS - API Explorer'",
+            "scope-references": [
+                "$XSAPPNAME.API_EXPLORER"
+            ]
+        },
+        {
+            "name": "AIS_FIRE_FIGHTER_SUPP_NONPROD",
+            "description": "Role Template for 'Firefighter Support Role (Non-Prod)'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_FIRE_FIGHTER_SUPP_NONPROD"
+            ]
+        },
+        {
+            "name": "AIS_FIRE_FIGHTER_SUPP_PROD",
+            "description": "Role Template for 'Firefighter Support Role (Prod)'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_FIRE_FIGHTER_SUPP_PROD"
+            ]
+        },
+        {
+            "name": "AIS_DATA_CONDUIT",
+            "description": "Role Template for 'Data Conduit'",
+            "scope-references": [
+                "$XSAPPNAME.AIS_DATA_CONDUIT"
+            ]
+        }
+    ],
+    "oauth2-configuration": {
+        "token-validity": 3600,
+        "redirect-uris": [
+            "net.asint.intellisuite://oauth2redirect",
+            "http://localhost:*/login/callback",
+            "https://*.cfapps.*.hana.ondemand.com/login/callback",
+            "https://*-asint-ais-approuter.cfapps.*.hana.ondemand.com/**",
+            "https://*-workspaces-ws-*.*.applicationstudio.cloud.sap/**"
+        ]
+    }
+}
