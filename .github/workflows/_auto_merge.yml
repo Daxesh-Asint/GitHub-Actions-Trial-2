@@ -102,6 +102,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Check for Protected Files
+        id: check-protected
+        if: env.pr_exists == 'true' || env.pr_created == 'true'
+        run: |
+          PR_NUMBER="${{ env.pr_number }}"
+          echo "Checking for protected files in PR #$PR_NUMBER..."
+          CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json changedFiles --jq '.changedFiles[].path')
+          if echo "$CHANGED_FILES" | grep -E '(^|/)mta\.yaml$|(^|/)xs-security\.json$'; then
+            echo "protected_files_modified=true" >> $GITHUB_ENV
+            gh pr comment "$PR_NUMBER" --body "⚠️ **Auto-merge blocked:** Protected files (\`mta.yaml\` or \`xs-security.json\`) were modified in this Pull Request. These files should not be overwritten in \`${{ inputs.base }}\`. Please revert these changes in the \`${{ inputs.compare }}\` branch before proceeding."
+            echo "Protected files modified! Aborting merge."
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Wait and check mergeability
         id: check-for-conflicts
         if: env.pr_exists == 'true' || env.pr_created == 'true'
@@ -215,8 +231,18 @@ jobs:
               fi
             fi
           else
-            # Check if the failure is due to merge conflicts
-            if [ "${{ env.has_conflicts }}" = "true" ]; then
+            # Check the specific reason for failure
+            if [ "${{ env.protected_files_modified }}" = "true" ]; then
+              MERGE_STATUS="🚫 Protected Files Modified"
+              MERGE_COLOR="attention"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="🚫 $DEPLOY_NAME Deployment Blocked — Protected Files"
+                CARD_SUBTITLE="mta.yaml or xs-security.json were modified. Please revert these changes before merging."
+              else
+                CARD_TITLE="🚫 Auto-Merge Blocked — Protected Files"
+                CARD_SUBTITLE="mta.yaml or xs-security.json were modified. Please revert these changes."
+              fi
+            elif [ "${{ env.has_conflicts }}" = "true" ]; then
               MERGE_STATUS="⚠️ Merge Conflicts Detected"
               MERGE_COLOR="attention"
               if [ -n "$DEPLOY_NAME" ]; then
