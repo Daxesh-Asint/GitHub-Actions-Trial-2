@@ -35,8 +35,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
-            TITLE=$(gh release view "apm02-active-snapshot" --json name --jq '.name')
+          if gh release view "apm02-active-snapshot" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            TITLE=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json name --jq '.name')
             echo "❌ ERROR: Active deployment exists ($TITLE). Complete or close it before starting a new one."
             exit 1
           fi
@@ -86,7 +86,7 @@ jobs:
           TIME_IST="${{ steps.create.outputs.time_ist }}"
           INITIATED_BY="${{ github.actor }}"
 
-          gh release delete "apm02-active-snapshot" --yes 2>/dev/null || true
+          gh release delete "apm02-active-snapshot" --repo ${{ github.repository }} --yes 2>/dev/null || true
           git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
 
           RELEASE_NOTES=$(printf '%s\n' \
@@ -99,7 +99,7 @@ jobs:
             "> Developers: cherry-pick your changes into this branch before the deployment begins." \
             "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02\`.")
 
-          gh release create "apm02-active-snapshot" \
+          gh release create "apm02-active-snapshot" --repo ${{ github.repository }} \
             --title "🟢 APM-02 Active Snapshot" \
             --notes "$RELEASE_NOTES" \
             --target main \
@@ -202,7 +202,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit "apm02-active-snapshot" --title "🔵 APM-02 Deploying to SAP CI/CD"
+          gh release edit "apm02-active-snapshot" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying to SAP CI/CD"
           echo "✅ State updated to DEPLOYING"
 
       - name: Merge snapshot into apm-02

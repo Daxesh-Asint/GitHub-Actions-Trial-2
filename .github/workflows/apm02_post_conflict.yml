@@ -192,7 +192,7 @@ jobs:
           DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
           TIME_IST=$(TZ='Asia/Kolkata' date +'%H:%M IST')
 
-          gh release delete "apm02-active-snapshot" --yes 2>/dev/null || true
+          gh release delete "apm02-active-snapshot" --repo ${{ github.repository }} --yes 2>/dev/null || true
           git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
 
           CLOSED_NOTES=$(printf '%s\n' \
@@ -204,7 +204,7 @@ jobs:
             "" \
             "> No active deployment in progress. DevOps may start a new snapshot.")
 
-          gh release create "apm02-active-snapshot" \
+          gh release create "apm02-active-snapshot" --repo ${{ github.repository }} \
             --title "🔴 APM-02 Last Closed Snapshot" \
             --notes "$CLOSED_NOTES" \
             --target main \

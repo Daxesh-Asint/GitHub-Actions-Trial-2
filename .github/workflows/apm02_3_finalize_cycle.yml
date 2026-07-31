@@ -17,11 +17,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
+          if ! gh release view "apm02-active-snapshot" --repo ${{ github.repository }} >/dev/null 2>&1; then
             echo "❌ ERROR: No active snapshot found. State is IDLE."
             exit 1
           fi
-          TITLE=$(gh release view "apm02-active-snapshot" --json name --jq '.name')
+          TITLE=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json name --jq '.name')
           if [[ "$TITLE" != *"Deploying"* ]]; then
             echo "❌ ERROR: Expected state to be DEPLOYING, but it is $TITLE. Aborting."
             exit 1
@@ -36,7 +36,7 @@ jobs:
           STATUS="${{ github.event.client_payload.status }}"
           
           # Extract the snapshot branch name securely from our Release tag!
-          SNAPSHOT=$(gh release view "apm02-active-snapshot" --json body --jq '.body' | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+')
+          SNAPSHOT=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+')
           
           echo "SAP CI/CD Status: $STATUS"
           echo "Snapshot Branch: $SNAPSHOT"
@@ -55,7 +55,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit "apm02-active-snapshot" --title "🔴 APM-02 Failed"
+          gh release edit "apm02-active-snapshot" --repo ${{ github.repository }} --title "🔴 APM-02 Failed"
           echo "✅ State set to FAILED"
           exit 1 # Stop workflow here
 
@@ -110,7 +110,7 @@ jobs:
                 fi
                 break
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
-                gh release edit "apm02-active-snapshot" --title "🟠 APM-02 Blocked (Conflicts)"
+                gh release edit "apm02-active-snapshot" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts)"
                 gh pr comment "$PR_NUMBER" --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
                 exit 1
               fi
@@ -118,7 +118,7 @@ jobs:
             done
           fi
 
-          gh release delete "apm02-active-snapshot" --yes 2>/dev/null || true
+          gh release delete "apm02-active-snapshot" --repo ${{ github.repository }} --yes 2>/dev/null || true
           git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
           
           echo "✅ State reset to IDLE (Cycle Closed)"
