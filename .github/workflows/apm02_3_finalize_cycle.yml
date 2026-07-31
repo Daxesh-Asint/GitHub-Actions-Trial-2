@@ -1,0 +1,157 @@
+name: "[3] APM-02 Finalize Cycle (Merge to Main)"
+
+on:
+  repository_dispatch:
+    types: [sap_cicd_finished]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Current State
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATE=$(gh api /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE -q .value || echo "IDLE")
+          if [ "$STATE" != "DEPLOYING" ]; then
+            echo "❌ ERROR: Expected state to be DEPLOYING, but it is $STATE. Aborting."
+            exit 1
+          fi
+
+      - name: Evaluate SAP CI/CD Payload
+        id: eval
+        run: |
+          STATUS="${{ github.event.client_payload.status }}"
+          SNAPSHOT="${{ github.event.client_payload.snapshot }}"
+          
+          echo "SAP CI/CD Status: $STATUS"
+          echo "Snapshot Branch: $SNAPSHOT"
+          
+          if [ "$STATUS" != "INFO" ] && [ "$STATUS" != "SUCCESS" ]; then
+            echo "❌ SAP CI/CD Deployment Failed."
+            echo "success=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ SAP CI/CD Deployment Succeeded."
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "snapshot=$SNAPSHOT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set State to FAILED if SAP CI/CD failed
+        if: steps.eval.outputs.success == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
+            -f name='APM02_CYCLE_STATE' \
+            -f value='FAILED'
+          echo "✅ APM02_CYCLE_STATE set to FAILED"
+          exit 1 # Stop workflow here
+
+      - uses: actions/checkout@v4
+        if: steps.eval.outputs.success == 'true'
+        with:
+          ref: ${{ steps.eval.outputs.snapshot }}
+          fetch-depth: 0
+
+      - name: Merge snapshot into main
+        if: steps.eval.outputs.success == 'true'
+        id: merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SNAPSHOT="${{ steps.eval.outputs.snapshot }}"
+          git fetch --all
+
+          NEW_COMMITS=$(git rev-list --count origin/main..origin/"$SNAPSHOT" 2>/dev/null || echo 0)
+          if [ "$NEW_COMMITS" -eq 0 ]; then
+            echo "ℹ️ No commits to sync back to main. Skipping."
+          else
+            gh label create "auto merge for APM02" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
+            
+            PR_NUMBER=$(gh pr list --base main --head "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+              PR_BODY=$(printf '%s\n' \
+                "Auto-generated PR to sync snapshot back into \`main\` after successful APM-02 deployment." \
+                "" \
+                "**Snapshot:** \`$SNAPSHOT\`" \
+                "**Triggered by:** SAP CI/CD Webhook callback")
+
+              gh pr create \
+                --base main \
+                --head "$SNAPSHOT" \
+                --title "Merging from $SNAPSHOT into main" \
+                --body "$PR_BODY"
+              
+              PR_NUMBER=$(gh pr list --base main --head "$SNAPSHOT" --json number --jq '.[0].number')
+              gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+              echo "✅ PR #$PR_NUMBER created for snapshot → main"
+            fi
+
+            for i in {1..10}; do
+              STATUS=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+              if [[ "$STATUS" == "MERGEABLE" ]]; then
+                if gh pr merge "$PR_NUMBER" --merge; then
+                  echo "✅ PR #$PR_NUMBER merged into main successfully"
+                else
+                  gh pr comment "$PR_NUMBER" --body "Auto-merge into main failed."
+                  exit 1
+                fi
+                break
+              elif [[ "$STATUS" == "CONFLICTING" ]]; then
+                gh api \
+                  --method PATCH \
+                  -H "Accept: application/vnd.github+json" \
+                  /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
+                  -f name='APM02_CYCLE_STATE' \
+                  -f value='BLOCKED'
+                gh pr comment "$PR_NUMBER" --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
+                exit 1
+              fi
+              sleep 10
+            done
+          fi
+
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
+            -f name='APM02_CYCLE_STATE' \
+            -f value='IDLE'
+          echo "✅ APM02_CYCLE_STATE reset to IDLE (Cycle Closed)"
+          echo "main_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+  notify-success:
+    needs: finalize
+    if: success()
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "✅ APM-02 Deployment Cycle Complete"
+      card_subtitle: "SAP CI/CD deployment finished successfully. Snapshot has been merged into main. Cycle is now CLOSED."
+      status_text: "✅ Deployment & Merge Complete"
+      status_color: "good"
+      snapshot_branch: "Check GitHub PRs"
+      extra_fact_title: "Cycle State"
+      extra_fact_value: "Reset to IDLE. Ready for next deployment."
+    secrets: inherit
+
+  notify-failure:
+    needs: finalize
+    if: failure()
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "❌ APM-02 Deployment Failed or Blocked"
+      card_subtitle: "SAP CI/CD failed or a merge conflict occurred while syncing to main. State is FAILED/BLOCKED."
+      status_text: "❌ Action Required"
+      status_color: "attention"
+      snapshot_branch: "Check SAP BTP or GitHub Logs"
+      extra_fact_title: "State Locked"
+      extra_fact_value: "New snapshots cannot be created until this is resolved."
+    secrets: inherit
