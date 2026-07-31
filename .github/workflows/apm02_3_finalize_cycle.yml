@@ -15,13 +15,18 @@ jobs:
     steps:
       - name: Check Current State
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          STATE=$(gh api /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE -q .value || echo "IDLE")
-          if [ "$STATE" != "DEPLOYING" ]; then
-            echo "❌ ERROR: Expected state to be DEPLOYING, but it is $STATE. Aborting."
+          if ! gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
+            echo "❌ ERROR: No active snapshot found. State is IDLE."
             exit 1
           fi
+          TITLE=$(gh release view "apm02-active-snapshot" --json name --jq '.name')
+          if [[ "$TITLE" != *"Deploying"* ]]; then
+            echo "❌ ERROR: Expected state to be DEPLOYING, but it is $TITLE. Aborting."
+            exit 1
+          fi
+          echo "✅ State is DEPLOYING. Proceeding."
 
       - name: Evaluate SAP CI/CD Payload
         id: eval
@@ -44,15 +49,10 @@ jobs:
       - name: Set State to FAILED if SAP CI/CD failed
         if: steps.eval.outputs.success == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
-            -f name='APM02_CYCLE_STATE' \
-            -f value='FAILED'
-          echo "✅ APM02_CYCLE_STATE set to FAILED"
+          gh release edit "apm02-active-snapshot" --title "🔴 APM-02 Failed"
+          echo "✅ State set to FAILED"
           exit 1 # Stop workflow here
 
       - uses: actions/checkout@v4
@@ -106,12 +106,7 @@ jobs:
                 fi
                 break
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
-                gh api \
-                  --method PATCH \
-                  -H "Accept: application/vnd.github+json" \
-                  /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
-                  -f name='APM02_CYCLE_STATE' \
-                  -f value='BLOCKED'
+                gh release edit "apm02-active-snapshot" --title "🟠 APM-02 Blocked (Conflicts)"
                 gh pr comment "$PR_NUMBER" --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
                 exit 1
               fi
@@ -119,13 +114,10 @@ jobs:
             done
           fi
 
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
-            -f name='APM02_CYCLE_STATE' \
-            -f value='IDLE'
-          echo "✅ APM02_CYCLE_STATE reset to IDLE (Cycle Closed)"
+          gh release delete "apm02-active-snapshot" --yes 2>/dev/null || true
+          git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
+          
+          echo "✅ State reset to IDLE (Cycle Closed)"
           echo "main_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
   notify-success:

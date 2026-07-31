@@ -33,42 +33,22 @@ jobs:
       - name: Check for active snapshot
         id: check
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          STATE=$(gh api /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE -q .value || echo "IDLE")
-          if [ "$STATE" != "IDLE" ]; then
-            echo "❌ ERROR: Active deployment exists. State: $STATE"
-            echo "Complete or close the active deployment before starting a new one."
+          if gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
+            TITLE=$(gh release view "apm02-active-snapshot" --json name --jq '.name')
+            echo "❌ ERROR: Active deployment exists ($TITLE). Complete or close it before starting a new one."
             exit 1
           fi
           echo "✅ State is IDLE. Proceeding."
 
-  # ─────────────────────────────────────────────
-  # STEP 2 — Set State to ACTIVE
-  # ─────────────────────────────────────────────
-  set-active:
-    needs: guard
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Set State to ACTIVE
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
-            -f name='APM02_CYCLE_STATE' \
-            -f value='ACTIVE'
-          echo "✅ APM02_CYCLE_STATE set to ACTIVE"
+  # (Removed set-active step because create-snapshot will create the release tag)
 
   # ─────────────────────────────────────────────
   # STEP 3 — Create snapshot branch from main
   # ─────────────────────────────────────────────
   create-snapshot:
-    needs: set-active
+    needs: guard
     runs-on: ubuntu-latest
     outputs:
       snapshot_branch: ${{ steps.create.outputs.snapshot_branch }}
@@ -218,17 +198,12 @@ jobs:
           ref: ${{ needs.create-snapshot.outputs.snapshot_branch }}
           fetch-depth: 0
 
-      - name: Set State to DEPLOYING
+      - name: Set State to DEPLOYING (Update Release)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/APM02_CYCLE_STATE \
-            -f name='APM02_CYCLE_STATE' \
-            -f value='DEPLOYING'
-          echo "✅ APM02_CYCLE_STATE set to DEPLOYING"
+          gh release edit "apm02-active-snapshot" --title "🔵 APM-02 Deploying to SAP CI/CD"
+          echo "✅ State updated to DEPLOYING"
 
       - name: Merge snapshot into apm-02
         id: merge
