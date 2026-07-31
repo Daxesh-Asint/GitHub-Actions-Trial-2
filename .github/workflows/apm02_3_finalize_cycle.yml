@@ -17,13 +17,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "apm02-active-snapshot" --repo ${{ github.repository }} >/dev/null 2>&1; then
-            echo "❌ ERROR: No active snapshot found. State is IDLE."
-            exit 1
-          fi
-          TITLE=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json name --jq '.name')
-          if [[ "$TITLE" != *"Deploying"* ]]; then
-            echo "❌ ERROR: Expected state to be DEPLOYING, but it is $TITLE. Aborting."
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+          
+          if [ -z "$DEPLOYING_PR" ]; then
+            echo "❌ ERROR: No active deployment found (No PR with 'APM-02 Deploying' label). State is IDLE."
             exit 1
           fi
           echo "✅ State is DEPLOYING. Proceeding."
@@ -35,8 +32,11 @@ jobs:
         run: |
           STATUS="${{ github.event.client_payload.status }}"
           
-          # Extract the snapshot branch name securely from our Release tag!
-          SNAPSHOT=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+')
+          # Extract the snapshot branch name securely from our Tracking PR!
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number,headRefName --jq '.[0]')
+          SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
+          PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           
           echo "SAP CI/CD Status: $STATUS"
           echo "Snapshot Branch: $SNAPSHOT"
@@ -55,7 +55,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit "apm02-active-snapshot" --repo ${{ github.repository }} --title "🔴 APM-02 Failed"
+          gh pr edit "${{ steps.eval.outputs.pr_number }}" --repo ${{ github.repository }} --title "🔴 APM-02 Failed: ${{ steps.eval.outputs.snapshot }}" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
           echo "✅ State set to FAILED"
           exit 1 # Stop workflow here
 
@@ -72,54 +72,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           SNAPSHOT="${{ steps.eval.outputs.snapshot }}"
+          PR_NUMBER="${{ steps.eval.outputs.pr_number }}"
           git fetch --all
 
           NEW_COMMITS=$(git rev-list --count origin/main..origin/"$SNAPSHOT" 2>/dev/null || echo 0)
           if [ "$NEW_COMMITS" -eq 0 ]; then
-            echo "ℹ️ No commits to sync back to main. Skipping."
+            echo "ℹ️ No commits to sync back to main. Closing PR."
+            gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
           else
-            gh label create "auto merge for APM02" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
-            
-            PR_NUMBER=$(gh pr list --base main --head "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
-            if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
-              PR_BODY=$(printf '%s\n' \
-                "Auto-generated PR to sync snapshot back into \`main\` after successful APM-02 deployment." \
-                "" \
-                "**Snapshot:** \`$SNAPSHOT\`" \
-                "**Triggered by:** SAP CI/CD Webhook callback")
-
-              gh pr create \
-                --base main \
-                --head "$SNAPSHOT" \
-                --title "Merging from $SNAPSHOT into main" \
-                --body "$PR_BODY"
-              
-              PR_NUMBER=$(gh pr list --base main --head "$SNAPSHOT" --json number --jq '.[0].number')
-              gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
-              echo "✅ PR #$PR_NUMBER created for snapshot → main"
-            fi
-
             for i in {1..10}; do
-              STATUS=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+              STATUS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
               if [[ "$STATUS" == "MERGEABLE" ]]; then
-                if gh pr merge "$PR_NUMBER" --merge; then
+                if gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge; then
                   echo "✅ PR #$PR_NUMBER merged into main successfully"
                 else
-                  gh pr comment "$PR_NUMBER" --body "Auto-merge into main failed."
+                  gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "Auto-merge into main failed."
                   exit 1
                 fi
                 break
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
-                gh release edit "apm02-active-snapshot" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts)"
-                gh pr comment "$PR_NUMBER" --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
+                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+                gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
                 exit 1
               fi
               sleep 10
             done
           fi
-
-          gh release delete "apm02-active-snapshot" --repo ${{ github.repository }} --yes 2>/dev/null || true
-          git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
           
           echo "✅ State reset to IDLE (Cycle Closed)"
           echo "main_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT

@@ -35,9 +35,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "apm02-active-snapshot" --repo ${{ github.repository }} >/dev/null 2>&1; then
-            TITLE=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json name --jq '.name')
-            echo "❌ ERROR: Active deployment exists ($TITLE). Complete or close it before starting a new one."
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+          
+          if [ -n "$ACTIVE_PR" ] || [ -n "$DEPLOYING_PR" ]; then
+            echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR$DEPLOYING_PR). Complete or close it before starting a new one."
             exit 1
           fi
           echo "✅ State is IDLE. Proceeding."
@@ -79,17 +81,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Create GitHub Release tag for active snapshot
+      - name: Create Tracking Pull Request
         run: |
           SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
           DATE_IST="${{ steps.create.outputs.date_ist }}"
           TIME_IST="${{ steps.create.outputs.time_ist }}"
           INITIATED_BY="${{ github.actor }}"
 
-          gh release delete "apm02-active-snapshot" --repo ${{ github.repository }} --yes 2>/dev/null || true
-          git push origin --delete refs/tags/apm02-active-snapshot 2>/dev/null || true
+          gh label create "APM-02 Active" --color "#0E8A16" --description "APM-02 Snapshot is active and accepting cherry-picks" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Deploying" --color "#1D76DB" --description "APM-02 is deploying to SAP CI/CD" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Failed" --color "#B60205" --description "APM-02 deployment failed" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Blocked" --color "#D93F0B" --description "APM-02 blocked by conflicts" --repo ${{ github.repository }} 2>/dev/null || true
 
-          RELEASE_NOTES=$(printf '%s\n' \
+          PR_BODY=$(printf '%s\n' \
             "**Active Snapshot:** \`$SNAPSHOT\`" \
             "" \
             "**Started:** $DATE_IST at $TIME_IST" \
@@ -99,12 +103,14 @@ jobs:
             "> Developers: cherry-pick your changes into this branch before the deployment begins." \
             "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02\`.")
 
-          gh release create "apm02-active-snapshot" --repo ${{ github.repository }} \
-            --title "🟢 APM-02 Active Snapshot" \
-            --notes "$RELEASE_NOTES" \
-            --target main \
-            --prerelease
-          echo "✅ GitHub Release tag 'apm02-active-snapshot' created"
+          gh pr create --repo ${{ github.repository }} \
+            --base main \
+            --head "$SNAPSHOT" \
+            --title "🟢 APM-02 Active Snapshot: $SNAPSHOT" \
+            --body "$PR_BODY" \
+            --draft \
+            --label "APM-02 Active"
+          echo "✅ Tracking PR created and labeled"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -198,12 +204,17 @@ jobs:
           ref: ${{ needs.create-snapshot.outputs.snapshot_branch }}
           fetch-depth: 0
 
-      - name: Set State to DEPLOYING (Update Release)
+      - name: Set State to DEPLOYING (Update Tracking PR)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit "apm02-active-snapshot" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying to SAP CI/CD"
-          echo "✅ State updated to DEPLOYING"
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+          if [ -n "$ACTIVE_PR" ]; then
+            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: ${{ needs.create-snapshot.outputs.snapshot_branch }}" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
+            echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
+          else
+            echo "⚠️ Could not find open PR to update state."
+          fi
 
       - name: Merge snapshot into apm-02
         id: merge
