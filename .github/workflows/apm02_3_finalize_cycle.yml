@@ -28,11 +28,15 @@ jobs:
           fi
           echo "✅ State is DEPLOYING. Proceeding."
 
-      - name: Evaluate SAP CI/CD Payload
+      - name: Evaluate SAP CI/CD Payload and Get Snapshot
         id: eval
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           STATUS="${{ github.event.client_payload.status }}"
-          SNAPSHOT="${{ github.event.client_payload.snapshot }}"
+          
+          # Extract the snapshot branch name securely from our Release tag!
+          SNAPSHOT=$(gh release view "apm02-active-snapshot" --json body --jq '.body' | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+')
           
           echo "SAP CI/CD Status: $STATUS"
           echo "Snapshot Branch: $SNAPSHOT"
