@@ -33,8 +33,8 @@ jobs:
       - name: Check active snapshot
         id: check
         run: |
-          if gh release view "apm02-active-snapshot" >/dev/null 2>&1; then
-            NOTES=$(gh release view "apm02-active-snapshot" --json body --jq '.body')
+          if gh release view "apm02-active-snapshot" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            NOTES=$(gh release view "apm02-active-snapshot" --repo ${{ github.repository }} --json body --jq '.body')
             ACTIVE=$(echo "$NOTES" | grep -oP '\*\*Active Snapshot:\*\* `\K[^`]+' || echo "apm02-active-snapshot")
             
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
