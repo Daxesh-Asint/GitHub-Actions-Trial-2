@@ -149,8 +149,11 @@ jobs:
   wait-main:
     needs: [create-snapshot, notify-developers]
     runs-on: ubuntu-latest
+    outputs:
+      current_deploy_time: ${{ steps.wait.outputs.current_deploy_time }}
     steps:
       - name: Wait for developers to cherry-pick
+        id: wait
         run: |
           echo "⏳ Waiting for developers to cherry-pick. Polling Tracking PR for target time..."
           
@@ -166,6 +169,7 @@ jobs:
             
             if [ "$DIFF" -le 300 ]; then
               echo "✅ Less than 5 minutes remaining. Main wait complete."
+              echo "current_deploy_time=$TARGET_TIME_IST" >> $GITHUB_OUTPUT
               break
             fi
             
@@ -184,7 +188,7 @@ jobs:
     with:
       card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
       card_subtitle: "The waiting window is almost over. If you still need more time for cherry-picking, please inform DevOps immediately to extend the window."
-      status_text: "⚠️ Starting in 5 minutes at ${{ needs.create-snapshot.outputs.deploy_time_ist }}"
+      status_text: "⚠️ Starting in 5 minutes at ${{ needs.wait-main.outputs.current_deploy_time }}"
       status_color: "warning"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Need More Time?"
