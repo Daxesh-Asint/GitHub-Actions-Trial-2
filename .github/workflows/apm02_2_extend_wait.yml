@@ -48,6 +48,13 @@ jobs:
             
             OLD_BODY=$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json body -q '.body')
             NEW_BODY="${OLD_BODY//$CURRENT_TARGET/$EXTEND_TIME_IST}"
+            
+            if ! echo "$NEW_BODY" | grep -q "---"; then
+              NEW_BODY=$(printf '%s\n\n---\n**Extensions Log:**' "$NEW_BODY")
+            fi
+            
+            NEW_BODY=$(printf '%s\n- ⏳ Extended by **%s minutes** by @%s (New time: %s)' "$NEW_BODY" "${{ inputs.extend_minutes }}" "${{ github.actor }}" "$EXTEND_TIME_IST")
+            
             gh pr edit "$PR_NUM" --repo ${{ github.repository }} --body "$NEW_BODY"
             
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
