@@ -82,6 +82,7 @@ jobs:
             for i in {1..10}; do
               STATUS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
               if [[ "$STATUS" == "MERGEABLE" ]]; then
+                gh pr ready "$PR_NUMBER" --repo ${{ github.repository }} 2>/dev/null || true
                 if gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge; then
                   echo "✅ PR #$PR_NUMBER merged into main successfully"
                 else
