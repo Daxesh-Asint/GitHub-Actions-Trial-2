@@ -253,8 +253,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
-          if [ -n "$ACTIVE_PR" ]; then
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --head "${{ needs.create-snapshot.outputs.snapshot_branch }}" --base main --json number --jq '.[0].number')
+          if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: ${{ needs.create-snapshot.outputs.snapshot_branch }}" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
             echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
           else
@@ -273,8 +273,8 @@ jobs:
           if [ -z "$(git diff origin/tenant/asint-apm-02...HEAD)" ]; then
             echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
             
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
-            if [ -n "$ACTIVE_PR" ]; then
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --head "$SNAPSHOT" --base main --json number --jq '.[0].number')
+            if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
               gh pr close "$ACTIVE_PR" --repo ${{ github.repository }} -c "No new commits to deploy. Snapshot already synced with APM-02. Closing tracking PR."
               gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Deploying"
             fi
