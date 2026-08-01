@@ -56,6 +56,7 @@ jobs:
       snapshot_branch: ${{ steps.create.outputs.snapshot_branch }}
       date_ist: ${{ steps.create.outputs.date_ist }}
       time_ist: ${{ steps.create.outputs.time_ist }}
+      deploy_time_ist: ${{ steps.create.outputs.deploy_time_ist }}
     permissions:
       contents: write
       pull-requests: write
@@ -72,10 +73,12 @@ jobs:
           SNAPSHOT_NAME="snapshot/main-$(TZ='Asia/Kolkata' date +'%y%m%d-%H%M')"
           DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
           TIME_IST=$(TZ='Asia/Kolkata' date +'%H:%M IST')
+          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.waiting_minutes }} minutes" +'%H:%M IST')
 
           echo "snapshot_branch=$SNAPSHOT_NAME" >> $GITHUB_OUTPUT
           echo "date_ist=$DATE_IST" >> $GITHUB_OUTPUT
           echo "time_ist=$TIME_IST" >> $GITHUB_OUTPUT
+          echo "deploy_time_ist=$DEPLOY_TIME_IST" >> $GITHUB_OUTPUT
 
           git checkout -b "$SNAPSHOT_NAME"
           
@@ -128,13 +131,13 @@ jobs:
     needs: create-snapshot
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "🌿 New APM-02 Snapshot Created"
+      card_title: "🌿 New Snapshot Branch Created"
       card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
-      status_text: "⏳ Waiting for Cherry-picks (${{ inputs.waiting_minutes }} mins)"
+      status_text: "⏳ Waiting for Cherry-picks (until ${{ needs.create-snapshot.outputs.deploy_time_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      extra_fact_title: "Instructions"
-      extra_fact_value: "Cherry-pick into the snapshot branch only. Do NOT commit to main or tenant/asint-apm-02 directly. Waiting window closes in ${{ inputs.waiting_minutes }} minutes and APM-02 deployment will start automatically after ${{ inputs.waiting_minutes }} mins."
+      extra_fact_title: "Deployment Schedule"
+      extra_fact_value: "The waiting window closes and APM-02 deployment will start automatically at ${{ needs.create-snapshot.outputs.deploy_time_ist }}."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit
@@ -168,7 +171,7 @@ jobs:
     with:
       card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
       card_subtitle: "The waiting window is almost over. If you still need more time for cherry-picking, please inform DevOps immediately to extend the window."
-      status_text: "⚠️ 5-Minute Warning"
+      status_text: "⚠️ Starting at ${{ needs.create-snapshot.outputs.deploy_time_ist }}"
       status_color: "warning"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Need More Time?"
