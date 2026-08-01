@@ -27,21 +27,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
     outputs:
       active_snapshot: ${{ steps.check.outputs.active_snapshot }}
       extend_time_ist: ${{ steps.check.outputs.extend_time_ist }}
     steps:
-      - name: Check active snapshot
+      - name: Check active snapshot and update PR
         id: check
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number,headRefName --jq '.[0]')
+          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number,headRefName --jq '.[0]')
           
-          if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-            ACTIVE=$(echo "$ACTIVE_PR" | jq -r '.headRefName')
-            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.extend_minutes }} minutes" +'%I:%M %p IST')
+          if [ -n "$ACTIVE_PR_JSON" ] && [ "$ACTIVE_PR_JSON" != "null" ]; then
+            ACTIVE=$(echo "$ACTIVE_PR_JSON" | jq -r '.headRefName')
+            PR_NUM=$(echo "$ACTIVE_PR_JSON" | jq -r '.number')
+            
+            CURRENT_TARGET=$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json body -q '.body' | grep -oP 'starts at \K.*?(?=\))')
+            TIME_STR=$(echo "$CURRENT_TARGET" | sed 's/ IST//')
+            
+            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${{ inputs.extend_minutes }} minutes" +'%I:%M %p IST')
+            
+            OLD_BODY=$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json body -q '.body')
+            NEW_BODY="${OLD_BODY//$CURRENT_TARGET/$EXTEND_TIME_IST}"
+            gh pr edit "$PR_NUM" --repo ${{ github.repository }} --body "$NEW_BODY"
+            
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
             echo "extend_time_ist=$EXTEND_TIME_IST" >> $GITHUB_OUTPUT
-            echo "✅ Active snapshot '$ACTIVE' found (PR). Proceeding."
+            echo "✅ Active snapshot '$ACTIVE' found (PR #$PR_NUM). Time extended to $EXTEND_TIME_IST."
           else
             echo "active_snapshot=" >> $GITHUB_OUTPUT
             echo "❌ Blocked: No active snapshot found. You can only extend when a deployment is active."
@@ -59,43 +70,11 @@ jobs:
     with:
       card_title: "⏳ APM-02 Waiting Window Extended"
       card_subtitle: "DevOps has extended the waiting window. Deployment will be delayed to give developers more time to cherry-pick."
-      status_text: "⏳ Extended until ${{ needs.guard.outputs.extend_time_ist }}"
+      status_text: "⏳ Extended by ${{ inputs.extend_minutes }} minutes (until ${{ needs.guard.outputs.extend_time_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
       extra_fact_title: "Deployment Schedule"
       extra_fact_value: "Extended by ${{ inputs.extend_minutes }} minutes. APM-02 deployment will now start at ${{ needs.guard.outputs.extend_time_ist }}."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
-    secrets: inherit
-
-  # ─────────────────────────────────────────────
-  # Wait for the extension duration
-  # ─────────────────────────────────────────────
-  wait-extension:
-    needs: [guard, notify-extension-started]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for extended duration
-        run: |
-          EXTEND_MINUTES=${{ inputs.extend_minutes }}
-          echo "⏳ Waiting $EXTEND_MINUTES minutes (extension requested by ${{ github.actor }})..."
-          sleep $((EXTEND_MINUTES * 60))
-          echo "✅ Extension wait complete"
-
-  # ─────────────────────────────────────────────
-  # Notify Teams: extension over, deployment proceeding
-  # ─────────────────────────────────────────────
-  notify-extension-over:
-    needs: [guard, wait-extension]
-    uses: ./.github/workflows/_apm02_notify.yml
-    with:
-      card_title: "🚀 APM-02 Extended Window Closed — Deployment Proceeding"
-      card_subtitle: "The extended waiting window has ended. The deployment workflow will now continue automatically. No further cherry-picks will be accepted for this snapshot."
-      status_text: "✅ Extension Complete — Deployment Continuing"
-      status_color: "good"
-      snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
-      extra_fact_title: "⚠️ Cherry-picks Closed"
-      extra_fact_value: "No more commits will be accepted into this snapshot. If you missed it, wait for the next snapshot."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
     secrets: inherit
