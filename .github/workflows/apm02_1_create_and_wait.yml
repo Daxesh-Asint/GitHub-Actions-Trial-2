@@ -108,7 +108,7 @@ jobs:
             "" \
             "**Started:** $DATE_IST at $TIME_IST" \
             "**Initiated by:** $INITIATED_BY" \
-            "**Waiting window:** ${{ inputs.waiting_minutes }} minutes" \
+            "**Waiting window:** ${{ inputs.waiting_minutes }} minutes (Deployment automatically starts at $DEPLOY_TIME_IST)" \
             "" \
             "> Developers: cherry-pick your changes into this branch before the deployment begins." \
             "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02\`.")
