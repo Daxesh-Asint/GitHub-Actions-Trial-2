@@ -29,6 +29,7 @@ jobs:
       contents: read
     outputs:
       active_snapshot: ${{ steps.check.outputs.active_snapshot }}
+      extend_time_ist: ${{ steps.check.outputs.extend_time_ist }}
     steps:
       - name: Check active snapshot
         id: check
@@ -37,7 +38,9 @@ jobs:
           
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             ACTIVE=$(echo "$ACTIVE_PR" | jq -r '.headRefName')
+            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.extend_minutes }} minutes" +'%H:%M IST')
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
+            echo "extend_time_ist=$EXTEND_TIME_IST" >> $GITHUB_OUTPUT
             echo "✅ Active snapshot '$ACTIVE' found (PR). Proceeding."
           else
             echo "active_snapshot=" >> $GITHUB_OUTPUT
@@ -56,11 +59,11 @@ jobs:
     with:
       card_title: "⏳ APM-02 Waiting Window Extended"
       card_subtitle: "DevOps has extended the waiting window. Deployment will be delayed to give developers more time to cherry-pick."
-      status_text: "⏳ Extended by ${{ inputs.extend_minutes }} minutes"
+      status_text: "⏳ Extended until ${{ needs.guard.outputs.extend_time_ist }}"
       status_color: "accent"
       snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
-      extra_fact_title: "Extended By"
-      extra_fact_value: "${{ inputs.extend_minutes }} minutes — extended by ${{ github.actor }}"
+      extra_fact_title: "Deployment Schedule"
+      extra_fact_value: "Extended by ${{ inputs.extend_minutes }} minutes. APM-02 deployment will now start at ${{ needs.guard.outputs.extend_time_ist }}."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
     secrets: inherit
