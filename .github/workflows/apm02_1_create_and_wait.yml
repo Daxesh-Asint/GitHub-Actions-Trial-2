@@ -96,6 +96,7 @@ jobs:
           SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
           DATE_IST="${{ steps.create.outputs.date_ist }}"
           TIME_IST="${{ steps.create.outputs.time_ist }}"
+          DEPLOY_TIME_IST="${{ steps.create.outputs.deploy_time_ist }}"
           INITIATED_BY="${{ github.actor }}"
 
           gh label create "APM-02 Active" --color "#0E8A16" --description "APM-02 Snapshot is active and accepting cherry-picks" --repo ${{ github.repository }} 2>/dev/null || true
