@@ -270,11 +270,18 @@ jobs:
 
           git fetch --all
 
-          if [ -z "$(git log origin/tenant/asint-apm-02..HEAD --oneline)" ]; then
-            echo "ℹ️ No new commits to merge. The apm-02 branch already contains all changes from the snapshot."
+          if [ -z "$(git diff origin/tenant/asint-apm-02...HEAD)" ]; then
+            echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
+            
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+            if [ -n "$ACTIVE_PR" ]; then
+              gh pr close "$ACTIVE_PR" --repo ${{ github.repository }} -c "No new commits to deploy. Snapshot already synced with APM-02. Closing tracking PR."
+              gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Deploying"
+            fi
+            
             echo "merge_success=true" >> $GITHUB_OUTPUT
             echo "has_conflicts=false" >> $GITHUB_OUTPUT
-            echo "apm02_pr_number=" >> $GITHUB_OUTPUT
+            echo "apm02_pr_number=NO_COMMITS" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -373,7 +380,7 @@ jobs:
   # ─────────────────────────────────────────────
   notify-apm02-merged:
     needs: [create-snapshot, merge-to-apm02]
-    if: success()
+    if: success() && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "🚀 APM-02 Deployment Triggered"
@@ -386,4 +393,24 @@ jobs:
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes."
       action_label: "View PR on GitHub"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+    secrets: inherit
+
+  # ─────────────────────────────────────────────
+  # STEP 11 — Notify already synced (No Deployment)
+  # ─────────────────────────────────────────────
+  notify-already-synced:
+    needs: [create-snapshot, merge-to-apm02]
+    if: success() && needs.merge-to-apm02.outputs.apm02_pr_number == 'NO_COMMITS'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🏁 APM-02 Deployment Skipped — Already Synced"
+      card_subtitle: "No developers cherry-picked any new changes during the waiting window, and the main branch is already fully synced with tenant/asint-apm-02."
+      status_text: "✅ Snapshot already synced with APM-02"
+      status_color: "good"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: "N/A"
+      extra_fact_title: "Cycle Complete"
+      extra_fact_value: "There are no new commits to deploy. SAP CI/CD will not be triggered. The tracking PR has been closed and the cycle is complete."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit

@@ -75,9 +75,8 @@ jobs:
           PR_NUMBER="${{ steps.eval.outputs.pr_number }}"
           git fetch --all
 
-          NEW_COMMITS=$(git rev-list --count origin/main..origin/"$SNAPSHOT" 2>/dev/null || echo 0)
-          if [ "$NEW_COMMITS" -eq 0 ]; then
-            echo "ℹ️ No commits to sync back to main. Closing PR."
+          if [ -z "$(git diff origin/main...origin/"$SNAPSHOT")" ]; then
+            echo "ℹ️ No new commits to sync back to main. Closing PR."
             gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
           else
             for i in {1..10}; do
