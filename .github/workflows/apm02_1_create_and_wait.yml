@@ -72,8 +72,8 @@ jobs:
         run: |
           SNAPSHOT_NAME="snapshot/main-$(TZ='Asia/Kolkata' date +'%y%m%d-%H%M')"
           DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
-          TIME_IST=$(TZ='Asia/Kolkata' date +'%H:%M IST')
-          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.waiting_minutes }} minutes" +'%H:%M IST')
+          TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
+          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.waiting_minutes }} minutes" +'%I:%M %p IST')
 
           echo "snapshot_branch=$SNAPSHOT_NAME" >> $GITHUB_OUTPUT
           echo "date_ist=$DATE_IST" >> $GITHUB_OUTPUT
@@ -131,13 +131,13 @@ jobs:
     needs: create-snapshot
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "🌿 New Snapshot Branch Created"
+      card_title: "🌿 New Snapshot Branch Created For APM02 Deployment"
       card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
-      status_text: "⏳ Waiting for Cherry-picks (until ${{ needs.create-snapshot.outputs.deploy_time_ist }})"
+      status_text: "⏳ Waiting for Cherry-picks (${{ inputs.waiting_minutes }} minutes until ${{ needs.create-snapshot.outputs.deploy_time_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Deployment Schedule"
-      extra_fact_value: "The waiting window closes and APM-02 deployment will start automatically at ${{ needs.create-snapshot.outputs.deploy_time_ist }}."
+      extra_fact_value: "The waiting window closes in ${{ inputs.waiting_minutes }} minutes. APM-02 deployment will start automatically at ${{ needs.create-snapshot.outputs.deploy_time_ist }}."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit
@@ -171,7 +171,7 @@ jobs:
     with:
       card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
       card_subtitle: "The waiting window is almost over. If you still need more time for cherry-picking, please inform DevOps immediately to extend the window."
-      status_text: "⚠️ Starting at ${{ needs.create-snapshot.outputs.deploy_time_ist }}"
+      status_text: "⚠️ Starting in 5 minutes at ${{ needs.create-snapshot.outputs.deploy_time_ist }}"
       status_color: "warning"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Need More Time?"

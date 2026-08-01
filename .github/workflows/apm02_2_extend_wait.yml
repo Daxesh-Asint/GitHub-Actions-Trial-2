@@ -38,7 +38,7 @@ jobs:
           
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             ACTIVE=$(echo "$ACTIVE_PR" | jq -r '.headRefName')
-            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.extend_minutes }} minutes" +'%H:%M IST')
+            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${{ inputs.extend_minutes }} minutes" +'%I:%M %p IST')
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
             echo "extend_time_ist=$EXTEND_TIME_IST" >> $GITHUB_OUTPUT
             echo "✅ Active snapshot '$ACTIVE' found (PR). Proceeding."
