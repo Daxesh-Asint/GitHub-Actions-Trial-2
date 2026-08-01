@@ -151,16 +151,28 @@ jobs:
     steps:
       - name: Wait for developers to cherry-pick
         run: |
-          TOTAL_MINUTES=${{ inputs.waiting_minutes }}
-          WAIT_MINUTES=$((TOTAL_MINUTES - 5))
-
-          if [ "$WAIT_MINUTES" -le 0 ]; then
-            WAIT_MINUTES=1
-          fi
-
-          echo "⏳ Waiting $WAIT_MINUTES minutes before sending 5-minute reminder..."
-          sleep $((WAIT_MINUTES * 60))
-          echo "✅ Main wait complete"
+          echo "⏳ Waiting for developers to cherry-pick. Polling Tracking PR for target time..."
+          
+          while true; do
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
+            TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
+            
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            NOW_TS=$(TZ='Asia/Kolkata' date +%s)
+            
+            DIFF=$((TARGET_TS - NOW_TS))
+            
+            if [ "$DIFF" -le 300 ]; then
+              echo "✅ Less than 5 minutes remaining. Main wait complete."
+              break
+            fi
+            
+            echo "⏳ $DIFF seconds remaining until deployment. Sleeping for 30s..."
+            sleep 30
+          done
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   # ─────────────────────────────────────────────
   # STEP 6 — Send 5-minute reminder
@@ -189,9 +201,27 @@ jobs:
     steps:
       - name: Wait final 5 minutes
         run: |
-          echo "⏳ Waiting final 5 minutes..."
-          sleep 300
-          echo "✅ Final wait complete. Proceeding to deployment."
+          echo "⏳ Final wait started. Polling Tracking PR for target time..."
+          
+          while true; do
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
+            TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
+            
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            NOW_TS=$(TZ='Asia/Kolkata' date +%s)
+            
+            if [ "$NOW_TS" -ge "$TARGET_TS" ]; then
+              echo "✅ Final wait complete. Target time reached. Proceeding to deployment."
+              break
+            fi
+            
+            DIFF=$((TARGET_TS - NOW_TS))
+            echo "⏳ Final wait: $DIFF seconds remaining. Sleeping for 15s..."
+            sleep 15
+          done
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   # ─────────────────────────────────────────────
   # STEP 8 — Merge snapshot → apm-02
