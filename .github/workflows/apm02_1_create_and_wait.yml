@@ -78,6 +78,11 @@ jobs:
           echo "time_ist=$TIME_IST" >> $GITHUB_OUTPUT
 
           git checkout -b "$SNAPSHOT_NAME"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: initiate APM-02 snapshot tracking"
+          
           git push origin "$SNAPSHOT_NAME"
           echo "✅ Snapshot branch '$SNAPSHOT_NAME' created from main"
         env:
