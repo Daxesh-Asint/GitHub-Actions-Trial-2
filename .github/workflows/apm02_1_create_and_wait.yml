@@ -30,6 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      blocked_pr: ${{ steps.check.outputs.blocked_pr }}
+      blocked_label: ${{ steps.check.outputs.blocked_label }}
     steps:
       - name: Check for active snapshot
         id: check
@@ -38,9 +41,22 @@ jobs:
         run: |
           ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
           DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+          FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Failed" --json number --jq '.[0].number')
           
-          if [ -n "$ACTIVE_PR" ] || [ -n "$DEPLOYING_PR" ]; then
-            echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR$DEPLOYING_PR). Complete or close it before starting a new one."
+          if [ -n "$ACTIVE_PR" ]; then
+            echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR). Complete or close it before starting a new one."
+            echo "blocked_pr=$ACTIVE_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Active" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$DEPLOYING_PR" ]; then
+            echo "❌ ERROR: Active deployment exists (PR #$DEPLOYING_PR). Complete or close it before starting a new one."
+            echo "blocked_pr=$DEPLOYING_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Deploying" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$FAILED_PR" ]; then
+            echo "❌ ERROR: Failed deployment exists (PR #$FAILED_PR). Merge or close it before starting a new one."
+            echo "blocked_pr=$FAILED_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Failed" >> $GITHUB_OUTPUT
             exit 1
           fi
           echo "✅ State is IDLE. Proceeding."
@@ -450,4 +466,19 @@ jobs:
       extra_fact_value: "There are no new commits to deploy. SAP CI/CD will not be triggered. The tracking PR has been closed and the cycle is complete."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+    secrets: inherit
+
+  notify-blocked:
+    needs: guard
+    if: failure() && needs.guard.outputs.blocked_pr != ''
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🚫 APM-02 Deployment Blocked"
+      card_subtitle: "Cannot create a new snapshot because an old snapshot is still pending."
+      status_text: "🚫 Blocked by PR #${{ needs.guard.outputs.blocked_pr }} (${{ needs.guard.outputs.blocked_label }})"
+      status_color: "attention"
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Please merge or close PR #${{ needs.guard.outputs.blocked_pr }} before starting a new deployment."
+      action_label: "View Blocking PR"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.guard.outputs.blocked_pr }}"
     secrets: inherit
