@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   finalize:
+    if: contains(github.event.client_payload.job_name, 'AsInt-AIS-02-Safety-Test-DND')
     runs-on: ubuntu-latest
     outputs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
