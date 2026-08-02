@@ -240,6 +240,7 @@ jobs:
       merge_success: ${{ steps.merge.outputs.merge_success }}
       has_conflicts: ${{ steps.merge.outputs.has_conflicts }}
       merge_time_ist: ${{ steps.merge.outputs.merge_time_ist }}
+      has_protected_changes: ${{ steps.check_protected.outputs.has_protected_changes }}
     permissions:
       contents: write
       pull-requests: write
@@ -249,6 +250,17 @@ jobs:
         with:
           ref: ${{ needs.create-snapshot.outputs.snapshot_branch }}
           fetch-depth: 0
+
+      - name: Check for Protected Files
+        id: check_protected
+        run: |
+          git fetch --all
+          DIFF=$(git diff origin/tenant/asint-apm-02...HEAD --name-only)
+          if echo "$DIFF" | grep -qE "(mta\.yaml|xs-security\.json)"; then
+            echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
+            echo "has_protected_changes=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
       - name: Set State to DEPLOYING (Update Tracking PR)
         env:
@@ -392,8 +404,24 @@ jobs:
       pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes. A new snapshot branch can be created after the current APM-02 cycle is complete (i.e., when this snapshot is successfully merged into main)."
-      action_label: "View PR on GitHub"
+      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+    secrets: inherit
+
+  notify-protected-file-violation:
+    needs: [create-snapshot, merge-to-apm02]
+    if: always() && needs.merge-to-apm02.result == 'failure' && needs.merge-to-apm02.outputs.has_protected_changes == 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
+      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Take confirmation from DevOps."
+      status_text: "⛔ Deployment Blocked"
+      status_color: "attention"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Review the snapshot branch. DevOps must approve or resolve the changes manually."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit
 
   # ─────────────────────────────────────────────

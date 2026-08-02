@@ -80,6 +80,15 @@ jobs:
           PR_NUMBER="${{ steps.eval.outputs.pr_number }}"
           git fetch --all
 
+          DIFF=$(git diff origin/main...origin/"$SNAPSHOT" --name-only || true)
+          if echo "$DIFF" | grep -qE "(mta\.yaml|xs-security\.json)"; then
+            echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
+            echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Protected Files): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+            gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Take confirmation from DevOps."
+            exit 1
+          fi
+
           if [ -z "$(git diff origin/main...origin/"$SNAPSHOT")" ]; then
             echo "ℹ️ No new commits to sync back to main. Closing PR."
             gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
@@ -148,4 +157,20 @@ jobs:
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
+    secrets: inherit
+
+  notify-protected-file-conflict:
+    needs: finalize
+    if: failure() && needs.finalize.outputs.merge_failure_reason == 'protected_file'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
+      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Take confirmation from DevOps."
+      status_text: "⛔ Deployment Blocked"
+      status_color: "attention"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Review the PR. DevOps must approve or resolve the changes manually."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.finalize.outputs.snapshot }}"
     secrets: inherit
