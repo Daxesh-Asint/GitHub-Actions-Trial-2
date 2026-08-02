@@ -1,0 +1,1257 @@
+#########################################################################################
+###################                 Managed Approuter                 ###################
+
+# - Please adjusted the disk-quota & memory accordingly to the CF-Space
+# - Maintain the xs-security-managed-approuter.json content in xs-security.json
+# - If the sub-account doesn't have APM service, please create it (asint-apm-instance) as user-provided service and configure it under resources
+
+#########################################################################################
+
+_schema-version: "3.2"
+ID: asint-ais
+version: 0.0.1
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm install
+        - echo "Building UI modules"
+        - npm run build-ui
+        - echo "CDS Build for analytics-backend (nodeJS)"
+        - cp .cdsrc-nodejs.json .cdsrc.json
+        - cds build --for nodejs
+        - echo "CDS Build for hana"
+        - cp .cdsrc-java.json .cdsrc.json
+        - cds build --for hana
+
+modules:
+  - name: asint-ais-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: asint-ais-backend-api
+      - name: asint_ais_event_layer-api
+      - name: asint-ais-analytics-backend-api
+      - name: asint-ais-destination
+        parameters:
+          content-target: true
+      # --- Asset Integrity ---
+      - name: asint-ais-html_repo_host-integrity-1
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-integrity-1-key
+      - name: asint-ais-html_repo_host-integrity-2
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-integrity-2-key
+      # --- Asset Risk and Reliability Suite ---
+      - name: asint-ais-html_repo_host-reliability-1
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-reliability-1-key
+      - name: asint-ais-html_repo_host-reliability-2
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-reliability-2-key
+      # --- Default ---
+      - name: asint-ais-html_repo_host-default-1
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-default-1-key
+      - name: asint-ais-html_repo_host-default-2
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-default-2-key
+      - name: asint-ais-html_repo_host-default-3
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-default-3-key
+      # --- Master Data ---
+      - name: asint-ais-html_repo_host-masterdata-1
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-masterdata-1-key
+      # --- Planning ---
+      - name: asint-ais-html_repo_host-planning-1
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-planning-1-key
+      - name: asint-ais-html_repo_host-planning-2
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-planning-2-key
+      # --- Safety Suite (Functional Safety + Functions & Barriers + Process Safety) ---
+      - name: asint-ais-html_repo_host-safety-1
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-safety-1-key
+      - name: asint-ais-html_repo_host-safety-2
+        parameters:
+          service-key:
+            name: asint-ais-html_repo_host-safety-2-key
+      - name: asint-ais-xsuaa_service
+        parameters:
+          service-key:
+            name: asint-ais-xsuaa_service-key
+      - name: asint-ais-feature_flag
+        parameters:
+          service-key:
+            name: asint-ais-feature_flag-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Authentication: OAuth2UserTokenExchange
+              Name: asint-ais-backend-api
+              TokenServiceInstanceName: asint-ais-xsuaa_service
+              TokenServiceKeyName: asint-ais-xsuaa_service-key
+              URL: ~{asint-ais-backend-api/url}
+              HTML5.Timeout: 300000
+            - Authentication: OAuth2UserTokenExchange
+              Name: asint_ais_event_layer-api
+              TokenServiceInstanceName: asint-ais-xsuaa_service
+              TokenServiceKeyName: asint-ais-xsuaa_service-key
+              URL: ~{asint_ais_event_layer-api/url}
+              HTML5.Timeout: 300000
+            - Authentication: OAuth2UserTokenExchange
+              Name: asint-ais-analytics-backend-api
+              TokenServiceInstanceName: asint-ais-xsuaa_service
+              TokenServiceKeyName: asint-ais-xsuaa_service-key
+              URL: ~{asint-ais-analytics-backend-api/url}
+              HTML5.Timeout: 300000
+            # --- Asset Integrity ---
+            - Name: asint-ais-html_repo_host-integrity-1
+              ServiceInstanceName: asint-ais-html_repo_host-integrity-1
+              ServiceKeyName: asint-ais-html_repo_host-integrity-1-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-html_repo_host-integrity-2
+              ServiceInstanceName: asint-ais-html_repo_host-integrity-2
+              ServiceKeyName: asint-ais-html_repo_host-integrity-2-key
+              sap.cloud.service: asint.ais
+            # --- Asset Risk and Reliability Suite ---
+            - Name: asint-ais-html_repo_host-reliability-1
+              ServiceInstanceName: asint-ais-html_repo_host-reliability-1
+              ServiceKeyName: asint-ais-html_repo_host-reliability-1-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-html_repo_host-reliability-2
+              ServiceInstanceName: asint-ais-html_repo_host-reliability-2
+              ServiceKeyName: asint-ais-html_repo_host-reliability-2-key
+              sap.cloud.service: asint.ais
+            # --- Default ---
+            - Name: asint-ais-html_repo_host-default-1
+              ServiceInstanceName: asint-ais-html_repo_host-default-1
+              ServiceKeyName: asint-ais-html_repo_host-default-1-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-html_repo_host-default-2
+              ServiceInstanceName: asint-ais-html_repo_host-default-2
+              ServiceKeyName: asint-ais-html_repo_host-default-2-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-html_repo_host-default-3
+              ServiceInstanceName: asint-ais-html_repo_host-default-3
+              ServiceKeyName: asint-ais-html_repo_host-default-3-key
+              sap.cloud.service: asint.ais
+            # --- Master Data ---
+            - Name: asint-ais-html_repo_host-masterdata-1
+              ServiceInstanceName: asint-ais-html_repo_host-masterdata-1
+              ServiceKeyName: asint-ais-html_repo_host-masterdata-1-key
+              sap.cloud.service: asint.ais
+            # --- Planning ---
+            - Name: asint-ais-html_repo_host-planning-1
+              ServiceInstanceName: asint-ais-html_repo_host-planning-1
+              ServiceKeyName: asint-ais-html_repo_host-planning-1-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-html_repo_host-planning-2
+              ServiceInstanceName: asint-ais-html_repo_host-planning-2
+              ServiceKeyName: asint-ais-html_repo_host-planning-2-key
+              sap.cloud.service: asint.ais
+            # --- Safety Suite ---
+            - Name: asint-ais-html_repo_host-safety-1
+              ServiceInstanceName: asint-ais-html_repo_host-safety-1
+              ServiceKeyName: asint-ais-html_repo_host-safety-1-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-html_repo_host-safety-2
+              ServiceInstanceName: asint-ais-html_repo_host-safety-2
+              ServiceKeyName: asint-ais-html_repo_host-safety-2-key
+              sap.cloud.service: asint.ais
+            - Authentication: OAuth2UserTokenExchange
+              Name: asint-ais-xsuaa_service
+              ServiceInstanceName: asint-ais-xsuaa_service
+              ServiceKeyName: asint-ais-xsuaa_service-key
+              sap.cloud.service: asint.ais
+            - Name: asint-ais-feature_flag
+              ServiceInstanceName: asint-ais-feature_flag
+              ServiceKeyName: asint-ais-feature_flag-key
+          existing_destinations_policy: update
+    build-parameters:
+      no-source: true
+
+  # ============================================================
+  # ASSET INTEGRITY GROUP (hosts: integrity-1, integrity-2, integrity-3)
+  # ============================================================
+
+  - name: asint-ais-app-content-integrity-1
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-integrity-1
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-integrity-1
+      requires:
+        - artifacts:
+            - comasintaismicloneapp.zip
+          name: asint-ais-cloneapp
+          target-path: resources-integrity-1/
+        - artifacts:
+            - comasintaismiidms.zip
+          name: asint-ais-idms
+          target-path: resources-integrity-1/
+        - artifacts:
+            - comasintaismiassetstrategydevelopment.zip
+          name: asint-ais-asset-strategy-development
+          target-path: resources-integrity-1/
+        - artifacts:
+            - comasintaismicml.zip
+          name: asint-ais-cml
+          target-path: resources-integrity-1/
+
+  - name: asint-ais-app-content-integrity-2
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-integrity-2
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-integrity-2
+      requires:
+        - artifacts:
+            - comasintaismiassessmenttemp.zip
+          name: asint-ais-assessment-template
+          target-path: resources-integrity-2/
+        - artifacts:
+            - comasintaismicmlconfig.zip
+          name: asint-ais-cml-config
+          target-path: resources-integrity-2/
+        - artifacts:
+            - comasintaismiidmstemp.zip
+          name: asint-ais-idms-template
+          target-path: resources-integrity-2/
+
+
+  # ============================================================
+  # ASSET RISK AND RELIABILITY SUITE GROUP (hosts: reliability-1, arrs-2)
+  # ============================================================
+
+  - name: asint-ais-app-content-reliability-1
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-reliability-1
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-reliability-1
+      requires:
+        - artifacts:
+            - comasintaismircm.zip
+          name: asint-ais-rcm
+          target-path: resources-reliability-1/
+        - artifacts:
+            - comasintaismirca.zip
+          name: asint-ais-rca
+          target-path: resources-reliability-1/
+        - artifacts:
+            - comasintaismircatemp.zip
+          name: asint-ais-rcatemp
+          target-path: resources-reliability-1/
+        - artifacts:
+            - comasintaismireliabilityanalytics.zip
+          name: asint-ais-reliabilityanalytics
+          target-path: resources-reliability-1/
+
+  - name: asint-ais-app-content-reliability-2
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-reliability-2
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-reliability-2
+      requires:
+        - artifacts:
+            - comasintaismirootcauseanalysis.zip
+          name: asint-ais-rootcauseanalysis
+          target-path: resources-reliability-2/
+        - artifacts:
+            - comasintaismifleet.zip
+          name: asint-ais-fleet
+          target-path: resources-reliability-2/
+
+  # ============================================================
+  # DEFAULT GROUP - includes Workflow (hosts: default-1, core-2, core-3)
+  # ============================================================
+
+  - name: asint-ais-app-content-default-1
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-default-1
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-default-1
+      requires:
+        - artifacts:
+            - comasintaisflpplugin.zip
+          name: asint-ais-flp_plugin
+          target-path: resources-default-1/
+        - artifacts:
+            - comasintaisfioritile1x1.zip
+          name: asint-ais-fiori_tile_1x1
+          target-path: resources-default-1/
+        - artifacts:
+            - comasintaislibrary.zip
+          name: asint-ais-library
+          target-path: resources-default-1/
+        - artifacts:
+            - comasintaisapiexplorer.zip
+          name: asint-ais-api-explorer
+          target-path: resources-default-1/
+
+  - name: asint-ais-app-content-default-2
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-default-2
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-default-2
+      requires:
+        - artifacts:
+            - comasintaismidataconduitlite.zip
+          name: asint-ais-data-conduit-lite
+          target-path: resources-default-2/
+        - artifacts:
+            - comasintaismobileadmin.zip
+          name: asint-ais-mobile-admin
+          target-path: resources-default-2/
+        - artifacts:
+            - comasintaisreportstimeline.zip
+          name: asint-ais-timeline
+          target-path: resources-default-2/
+        - artifacts:
+            - comasintaisbpainbox.zip
+          name: asint-ais-inbox
+          target-path: resources-default-2/
+
+  - name: asint-ais-app-content-default-3
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-default-3
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-default-3
+      requires:
+        - artifacts:
+            - comasintaisbpaprocessmonitor.zip
+          name: asint-ais-process-monitor
+          target-path: resources-default-3/
+        - artifacts:
+            - comasintworkflowbuilder.zip
+          name: asint-ais-workflow-builder
+          target-path: resources-default-3/
+        - artifacts:
+            - comasintaismiconfigmatrix.zip
+          name: asint-ais-configuration-matrix
+          target-path: resources-default-3/
+        - artifacts:
+            - comasintaismiconfig.zip
+          name: asint-ais-configurations
+          target-path: resources-default-3/
+        - artifacts:
+            - comasintaismireplicator.zip
+          name: asint-ais-content-replicator
+          target-path: resources-default-3/
+
+  # ============================================================
+  # MASTER DATA GROUP (hosts: masterdata-1)
+  # ============================================================
+
+  - name: asint-ais-app-content-masterdata-1
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-masterdata-1
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-masterdata-1
+      requires:
+        - artifacts:
+            - comasintaismidocuments.zip
+          name: asint-ais-documents
+          target-path: resources-masterdata-1/
+        - artifacts:
+            - comasintaismiequipment.zip
+          name: asint-ais-equipment
+          target-path: resources-masterdata-1/
+        - artifacts:
+            - comasintaismifunctionallocation.zip
+          name: asint-ais-functional-location
+          target-path: resources-masterdata-1/
+
+  # ============================================================
+  # PLANNING GROUP (hosts: planning-1, planning-2)
+  # ============================================================
+
+  - name: asint-ais-app-content-planning-1
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-planning-1
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-planning-1
+      requires:
+        - artifacts:
+            - comasintaismiworkorders.zip
+          name: asint-ais-workorders
+          target-path: resources-planning-1/
+        - artifacts:
+            - comasintaismimsp.zip
+          name: asint-ais-msp
+          target-path: resources-planning-1/
+        - artifacts:
+            - comasintaismimaintplan.zip
+          name: asint-ais-maintenance-plan
+          target-path: resources-planning-1/
+        - artifacts:
+            - comasintaisminotifications.zip
+          name: asint-ais-notifications
+          target-path: resources-planning-1/
+
+  - name: asint-ais-app-content-planning-2
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-planning-2
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-planning-2
+      requires:
+        - artifacts:
+            - comasintaismirecommendationworkbenchplus.zip
+          name: asint-ais-recommendation-workbench-plus
+          target-path: resources-planning-2/
+        - artifacts:
+            - comasintaismitaskmanagement.zip
+          name: asint-ais-task-management
+          target-path: resources-planning-2/
+        - artifacts:
+            - comasintaismimpot.zip
+          name: asint-ais-mpot
+          target-path: resources-planning-2/
+
+  # ============================================================
+  # SAFETY SUITE GROUP (hosts: safety-1, safety-2)
+  # ============================================================
+
+  - name: asint-ais-app-content-safety-1
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-safety-1
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-safety-1
+      requires:
+        - artifacts:
+            - comasintaissssil.zip
+          name: asint-ais-sil
+          target-path: resources-safety-1/
+        - artifacts:
+            - comasintaissssrs.zip
+          name: asint-ais-srs
+          target-path: resources-safety-1/
+        - artifacts:
+            - comasintaismibarriers.zip
+          name: asint-ais-barriers
+          target-path: resources-safety-1/
+        - artifacts:
+            - comasintaisssevntsprooftesting.zip
+          name: asint-ais-events-proof
+          target-path: resources-safety-1/
+
+  - name: asint-ais-app-content-safety-2
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: asint-ais-html_repo_host-safety-2
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources-safety-2
+      requires:
+        - artifacts:
+            - comasintaismifunctions.zip
+          name: asint-ais-functions
+          target-path: resources-safety-2/
+        - artifacts:
+            - comasintaissshazop.zip
+          name: asint-ais-hazop
+          target-path: resources-safety-2/
+        - artifacts:
+            - comasintaissslopa.zip
+          name: asint-ais-lopa
+          target-path: resources-safety-2/
+
+  - name: asint-ais-fiori_tile_1x1
+    type: html5
+    path: asint_ais_fiori_tile_1x1
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-flp_plugin
+    type: html5
+    path: asint_ais_flp_plugin
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-schema-deployer
+    type: hdb
+    path: asint_ais_model/src/gen
+    parameters:
+      memory: 1280M
+      buildpack: nodejs_buildpack
+      tasks:
+        - name: deploy
+          memory: 1280M 
+          command: npm start
+    requires:
+      - name: asint-hana-key-service
+
+  - name: asint-ais-backend
+    type: java
+    path: asint_ais_backend
+    parameters:
+      memory: 1536M
+      stack: cflinuxfs4
+      buildpack: sap_java_buildpack_jakarta
+      health-check-type: port
+      health-check-timeout: 120
+    properties:
+      SPRING_PROFILES_ACTIVE: cloud
+      JBP_CONFIG_COMPONENTS: "jres: ['com.sap.xs.java.buildpack.jre.SAPMachineJRE']"
+      JBP_CONFIG_SAP_MACHINE_JRE: '{ version: 17.+ }'
+    requires:
+      - name: asint-ais-xsuaa_service
+      - name: asint-hana-key-service
+      - name: asint-apm-instance
+      - name: asint-ais-connectivity
+      - name: asint-ais-destination
+      - name: asint_ais_scaler
+        parameters:
+          path: ./autoscaler.json
+      - name: asint-ais-logger
+    provides:
+      - name: asint-ais-backend-api
+        properties:
+          url: ${default-url}
+    build-parameters:
+      build-result: "target/*.jar"
+      timeout: 30m
+    deployed-after: [ asint-ais-schema-deployer ]
+
+  - name: asint_ais_event_layer
+    type: java
+    path: asint_ais_event_layer
+    parameters:
+      memory: 1024M
+      stack: cflinuxfs4
+      buildpack: sap_java_buildpack_jakarta
+      health-check-type: port
+      health-check-timeout: 120
+    properties:
+      SPRING_PROFILES_ACTIVE: cloud
+      JBP_CONFIG_COMPONENTS: "jres: ['com.sap.xs.java.buildpack.jre.SAPMachineJRE']"
+      JBP_CONFIG_SAP_MACHINE_JRE: '{ version: 17.+ }'
+    requires:
+      - name: asint-apm-instance
+      - name: asint-hana-key-service
+      - name: asint-ais-xsuaa_apiaccess
+      - name: asint-ais-xsuaa_service
+      - name: asint-ais-connectivity
+      - name: asint-ais-destination
+      - name: asint-ais-logger
+      - name: asint-ais-event_mesh
+    provides:
+      - name: asint_ais_event_layer-api
+        properties:
+          url: ${default-url}
+    build-parameters:
+      build-result: "target/*.jar"
+    deployed-after: [ asint-ais-schema-deployer ]
+
+  - name: asint-ais-analytics-backend
+    type: nodejs
+    path: asint_ais_analytics_backend/gen
+    parameters:
+      memory: 512M
+      buildpack: nodejs_buildpack
+      readiness-health-check-type: http
+      readiness-health-check-http-endpoint: /health
+    requires:
+      - name: asint-ais-xsuaa_service
+      - name: asint-hana-key-service
+      - name: asint-apm-instance
+      - name: asint-ais-connectivity
+      - name: asint-ais-destination
+      - name: asint-ais-logger
+    provides:
+      - name: asint-ais-analytics-backend-api
+        properties:
+          url: ${default-url}
+    build-parameters:
+      builder: npm
+    deployed-after: [ asint-ais-schema-deployer ]
+
+  - name: asint-ais-library
+    type: html5
+    path: asint_ais_library
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-equipment
+    type: html5
+    path: asint_ais_equipment
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-functional-location
+    type: html5
+    path: asint_ais_functional_location
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-documents
+    type: html5
+    path: asint_ais_documents
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  # - name: asint-ais-groups
+  #   type: html5
+  #   path: asint_ais_groups
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  - name: asint-ais-barriers
+    type: html5
+    path: asint_ais_barriers
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-functions
+    type: html5
+    path: asint_ais_functions
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-idms
+    type: html5
+    path: asint_ais_idms
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-cml
+    type: html5
+    path: asint_ais_cml
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-asset-strategy-development
+    type: html5
+    path: asint_ais_asset_strategy_development
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+  
+  - name: asint-ais-cloneapp
+    type: html5
+    path: asint_ais_cloneApp
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-lopa
+    type: html5
+    path: asint_ais_lopa
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-hazop
+    type: html5
+    path: asint_ais_hazop
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-srs
+    type: html5
+    path: asint_ais_srs
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-sil
+    type: html5
+    path: asint_ais_sil
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-events-proof
+    type: html5
+    path: asint_ais_events_proof
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+
+  # - name: asint-ais-administrator
+  #   type: html5
+  #   path: asint_ais_administrator
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-inspector
+  #   type: html5
+  #   path: asint_ais_inspector
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-manager
+  #   type: html5
+  #   path: asint_ais_manager
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  - name: asint-ais-recommendation-workbench-plus
+    type: html5
+    path: asint_ais_recommendation_workbench_plus
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  # - name: asint-ais-task-lists
+  #   type: html5
+  #   path: asint_ais_task_lists
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  - name: asint-ais-maintenance-plan
+    type: html5
+    path: asint_ais_maintenance_plan
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-notifications
+    type: html5
+    path: asint_ais_notifications
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-workorders
+    type: html5
+    path: asint_ais_workorders
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-msp
+    type: html5
+    path: asint_ais_msp
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-timeline
+    type: html5
+    path: asint_ais_timeline
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-mobile-admin
+    type: html5
+    path: asint_ais_mobile_admin
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  # - name: asint-ais-reporting
+  #   type: html5
+  #   path: asint_ais_reporting
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-company-profile-settings
+  #   type: html5
+  #   path: asint_ais_company_profile_settings
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-user-authorizations
+  #   type: html5
+  #   path: asint_ais_user_authorizations
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-data-protection-privacy
+  #   type: html5
+  #   path: asint_ais_data_protection_privacy
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-integration-manager
+  #   type: html5
+  #   path: asint_ais_integration_manager
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-integration-monitor
+  #   type: html5
+  #   path: asint_ais_integration_monitor
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  # - name: asint-ais-classifications
+  #   type: html5
+  #   path: asint_ais_classifications
+  #   build-parameters:
+  #     build-result: dist
+  #     builder: custom
+  #     commands: []
+  #     supported-platforms: []
+
+  - name: asint-ais-configurations
+    type: html5
+    path: asint_ais_configurations
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-configuration-matrix
+    type: html5
+    path: asint_ais_matrix_configuration
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-cml-config
+    type: html5
+    path: asint_ais_cml_config
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-task-management
+    type: html5
+    path: asint_ais_task_management
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-idms-template
+    type: html5
+    path: asint_ais_idms_template
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-assessment-template
+    type: html5
+    path: asint_ais_assessment_template
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-content-replicator
+    type: html5
+    path: asint_ais_content_replicator
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-inbox
+    type: html5
+    path: asint_ais_inbox
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-process-monitor
+    type: html5
+    path: asint_ais_process_monitor
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-data-conduit-lite
+    type: html5
+    path: asint_ais_data_conduit_lite
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-api-explorer
+    type: html5
+    path: asint_ais_api_explorer
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+  
+  - name: asint-ais-mpot
+    type: html5
+    path: asint_ais_mpot
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-rcm
+    type: html5
+    path: asint_ais_rcm_freestyle
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-fleet
+    type: html5
+    path: asint_ais_fleet_freestyle
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-rcatemp
+    type: html5
+    path: asint_ais_rca_template
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-rca
+    type: html5
+    path: asint_ais_rca
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-rootcauseanalysis
+    type: html5
+    path: asint_ais_root_cause_analysis
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-reliabilityanalytics
+    type: html5
+    path: asint_ais_reliability_analytics
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+
+  - name: asint-ais-workflow-builder
+    type: html5
+    path: asint_ais_workflow_builder
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands: []
+      supported-platforms: []
+resources:
+  - name: asint-ais-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      config:
+        HTML5Runtime_enabled: true
+        init_data:
+          instance:
+            destinations:
+              - Authentication: NoAuthentication
+                Name: ui5
+                ProxyType: Internet
+                Type: HTTP
+                URL: https://ui5.sap.com
+            existing_destinations_policy: update
+        version: 1.0.0
+      service: destination
+      service-plan: lite
+
+  - name: asint-ais-xsuaa_service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      path: ./xs-security.json
+      service: xsuaa
+      service-plan: application
+
+  # --- Asset Integrity ---
+  - name: asint-ais-html_repo_host-integrity-1
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-ais-html_repo_host-integrity-2
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  # --- Asset Risk and Reliability Suite ---
+  - name: asint-ais-html_repo_host-reliability-1
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-ais-html_repo_host-reliability-2
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  # --- Default ---
+  - name: asint-ais-html_repo_host-default-1
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-ais-html_repo_host-default-2
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-ais-html_repo_host-default-3
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  # --- Master Data ---
+  - name: asint-ais-html_repo_host-masterdata-1
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  # --- Planning ---
+  - name: asint-ais-html_repo_host-planning-1
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-ais-html_repo_host-planning-2
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  # --- Safety Suite (Functional Safety + Functions & Barriers + Process Safety) ---
+  - name: asint-ais-html_repo_host-safety-1
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-ais-html_repo_host-safety-2
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: asint-hana-key-service
+    type: org.cloudfoundry.user-provided-service
+    parameters:
+      service: user-provided
+      service-tags: ["hana","relational", "database"]
+
+  - name: asint-apm-instance
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: apm
+      service-plan: standard
+
+  - name: asint_ais_scaler
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: autoscaler
+      service-plan: standard
+  
+  - name: asint-ais-xsuaa_apiaccess
+    type: org.cloudfoundry.existing-service
+
+  - name: asint-ais-logger
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: application-logs
+      service-plan: lite
+
+  - name: asint-ais-connectivity
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: connectivity
+      service-plan: lite
+
+  - name: asint-ais-event_mesh
+    type: org.cloudfoundry.existing-service
+
+  - name: asint-ais-feature_flag
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: feature-flags
+      service-plan: standard
+
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
