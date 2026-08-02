@@ -15,6 +15,7 @@ jobs:
     outputs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
+      snapshot: ${{ steps.eval.outputs.snapshot }}
     steps:
       - name: Check Current State
         env:
@@ -40,6 +41,7 @@ jobs:
           SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
           PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "snapshot=$SNAPSHOT" >> $GITHUB_OUTPUT
           
           echo "SAP CI/CD Status: $STATUS"
           echo "Snapshot Branch: $SNAPSHOT"
@@ -51,7 +53,6 @@ jobs:
           else
             echo "✅ SAP CI/CD Deployment Succeeded."
             echo "success=true" >> $GITHUB_OUTPUT
-            echo "snapshot=$SNAPSHOT" >> $GITHUB_OUTPUT
           fi
 
       - name: Set State to FAILED if SAP CI/CD failed
@@ -116,7 +117,7 @@ jobs:
       card_subtitle: "APM02 deployed successfully. Now merging snapshot back into main."
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
-      snapshot_branch: "Check GitHub PRs"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
     secrets: inherit
@@ -130,7 +131,7 @@ jobs:
       card_subtitle: "APM02 deployment failed due to SAP CI/CD Pipeline failed. we can not merge this snapshot into main."
       status_text: "❌ Action Required"
       status_color: "attention"
-      snapshot_branch: "Check SAP BTP Logs"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
     secrets: inherit
@@ -144,7 +145,7 @@ jobs:
       card_subtitle: "APM02 deployment completed, got merge conflict while merging snapshot back into main."
       status_text: "⚠️ Manual Resolution Required"
       status_color: "attention"
-      snapshot_branch: "Check GitHub PRs"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
     secrets: inherit
