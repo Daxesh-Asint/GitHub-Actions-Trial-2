@@ -1255,3 +1255,5 @@ resources:
 parameters:
   deploy_mode: html5-repo
   enable-parallel-deployments: true
+#   t e s t i n g   p r o t e c t e d   f i l e   s a f e g u a r d  
+ 
