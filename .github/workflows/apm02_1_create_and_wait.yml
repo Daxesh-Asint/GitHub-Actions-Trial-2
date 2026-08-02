@@ -152,6 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       current_deploy_time: ${{ steps.wait.outputs.current_deploy_time }}
+      is_immediate: ${{ steps.wait.outputs.is_immediate }}
     steps:
       - name: Wait for developers to cherry-pick
         id: wait
@@ -169,7 +170,13 @@ jobs:
             DIFF=$((TARGET_TS - NOW_TS))
             
             if [ "$DIFF" -le 300 ]; then
-              echo "✅ Less than 5 minutes remaining. Main wait complete."
+              if [ "$DIFF" -le 0 ]; then
+                echo "is_immediate=true" >> $GITHUB_OUTPUT
+                echo "✅ Target time reached immediately (Force started)."
+              else
+                echo "is_immediate=false" >> $GITHUB_OUTPUT
+                echo "✅ Less than 5 minutes remaining. Main wait complete."
+              fi
               echo "current_deploy_time=$TARGET_TIME_IST" >> $GITHUB_OUTPUT
               break
             fi
@@ -185,6 +192,7 @@ jobs:
   # ─────────────────────────────────────────────
   notify-reminder:
     needs: [create-snapshot, wait-main]
+    if: needs.wait-main.outputs.is_immediate != 'true'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
