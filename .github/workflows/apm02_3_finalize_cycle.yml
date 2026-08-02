@@ -12,6 +12,9 @@ permissions:
 jobs:
   finalize:
     runs-on: ubuntu-latest
+    outputs:
+      failure_reason: ${{ steps.eval.outputs.failure_reason }}
+      merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
     steps:
       - name: Check Current State
         env:
@@ -44,6 +47,7 @@ jobs:
           if [ "$STATUS" != "INFO" ] && [ "$STATUS" != "SUCCESS" ]; then
             echo "❌ SAP CI/CD Deployment Failed."
             echo "success=false" >> $GITHUB_OUTPUT
+            echo "failure_reason=sap_cicd" >> $GITHUB_OUTPUT
           else
             echo "✅ SAP CI/CD Deployment Succeeded."
             echo "success=true" >> $GITHUB_OUTPUT
@@ -93,6 +97,7 @@ jobs:
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
                 gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
                 gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
+                echo "failure_reason=conflict" >> $GITHUB_OUTPUT
                 exit 1
               fi
               sleep 10
@@ -108,7 +113,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ APM-02 Deployment Cycle Complete"
-      card_subtitle: "SAP CI/CD deployment finished successfully. Snapshot has been merged into main. Cycle is now CLOSED."
+      card_subtitle: "APM02 deployed successfully. Now merging snapshot back into main."
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
       snapshot_branch: "Check GitHub PRs"
@@ -116,16 +121,30 @@ jobs:
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
     secrets: inherit
 
-  notify-failure:
+  notify-sap-failure:
     needs: finalize
-    if: failure()
+    if: failure() && needs.finalize.outputs.failure_reason == 'sap_cicd'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "❌ APM-02 Deployment Failed or Blocked"
-      card_subtitle: "SAP CI/CD failed or a merge conflict occurred while syncing to main. State is FAILED/BLOCKED."
+      card_title: "❌ APM02 Deployment Failed"
+      card_subtitle: "APM02 deployment failed due to SAP CI/CD Pipeline failed. we can not merge this snapshot into main."
       status_text: "❌ Action Required"
       status_color: "attention"
-      snapshot_branch: "Check SAP BTP or GitHub Logs"
+      snapshot_branch: "Check SAP BTP Logs"
+      extra_fact_title: "State Locked"
+      extra_fact_value: "New snapshots cannot be created until this is resolved."
+    secrets: inherit
+
+  notify-main-merge-conflict:
+    needs: finalize
+    if: failure() && needs.finalize.outputs.merge_failure_reason == 'conflict'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "APM02 Deployment completed, but APM02 deployment cycle is not completed. Next Snapshot from main we can't create until this snapshot merged back into main."
+      card_subtitle: "APM02 deployment completed, got merge conflict while merging snapshot back into main."
+      status_text: "⚠️ Manual Resolution Required"
+      status_color: "attention"
+      snapshot_branch: "Check GitHub PRs"
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
     secrets: inherit
