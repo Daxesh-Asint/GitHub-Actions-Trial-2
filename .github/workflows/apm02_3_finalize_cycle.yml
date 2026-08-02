@@ -17,6 +17,9 @@ jobs:
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
       snapshot: ${{ steps.eval.outputs.snapshot }}
     steps:
+      - name: Dump Webhook Payload
+        run: echo '${{ toJSON(github.event.client_payload) }}'
+
       - name: Check Current State
         env:
           GH_TOKEN: ${{ github.token }}
