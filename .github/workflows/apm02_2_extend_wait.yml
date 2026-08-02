@@ -1,22 +1,23 @@
-name: "[2] APM-02 Extend Waiting Window (Optional)"
+name: "[2] APM-02 Modify Waiting Window (Optional)"
 
-# DevOps triggers this during the waiting window to give developers more time.
-# This workflow pauses for the requested extension duration, then notifies the
-# channel that the extension is over and deployment will proceed.
+# DevOps triggers this during the waiting window to give developers more (or less) time.
+# This workflow adjusts the requested duration, then notifies the channel.
 
 on:
   workflow_dispatch:
     inputs:
-      extend_minutes:
-        description: "How many extra minutes to wait before deployment proceeds"
+      adjust_minutes:
+        description: "How many minutes to adjust? (+ for extend, - for decrease)"
         required: true
         default: "10"
         type: choice
         options:
-          - "2"
+          - "-30"
+          - "-20"
+          - "-10"
+          - "-5"
           - "5"
           - "10"
-          - "15"
           - "20"
           - "30"
 
@@ -31,7 +32,9 @@ jobs:
       pull-requests: write
     outputs:
       active_snapshot: ${{ steps.check.outputs.active_snapshot }}
-      extend_time_ist: ${{ steps.check.outputs.extend_time_ist }}
+      adjust_time_ist: ${{ steps.check.outputs.adjust_time_ist }}
+      action_word: ${{ steps.check.outputs.action_word }}
+      adjust_val: ${{ steps.check.outputs.adjust_val }}
     steps:
       - name: Check active snapshot and update PR
         id: check
@@ -45,7 +48,7 @@ jobs:
             CURRENT_TARGET=$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json body -q '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$CURRENT_TARGET" | sed 's/ IST//')
             
-            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${{ inputs.extend_minutes }} minutes" +'%I:%M %p IST')
+            EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${{ inputs.adjust_minutes }} minutes" +'%I:%M %p IST')
             
             OLD_BODY=$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json body -q '.body')
             NEW_BODY="${OLD_BODY//$CURRENT_TARGET/$EXTEND_TIME_IST}"
@@ -54,12 +57,21 @@ jobs:
               NEW_BODY=$(printf '%s\n\n---\n**Extensions Log:**' "$NEW_BODY")
             fi
             
-            NEW_BODY=$(printf '%s\n- ⏳ Extended by **%s minutes** by @%s (New time: %s)' "$NEW_BODY" "${{ inputs.extend_minutes }}" "${{ github.actor }}" "$EXTEND_TIME_IST")
+            ADJUST_VAL="${{ inputs.adjust_minutes }}"
+            if [[ "$ADJUST_VAL" == -* ]]; then
+              ACTION_WORD="Decreased"
+            else
+              ACTION_WORD="Extended"
+            fi
+            
+            NEW_BODY=$(printf '%s\n- ⏳ %s by **%s minutes** by @%s (New time: %s)' "$NEW_BODY" "$ACTION_WORD" "$ADJUST_VAL" "${{ github.actor }}" "$EXTEND_TIME_IST")
             
             gh pr edit "$PR_NUM" --repo ${{ github.repository }} --body "$NEW_BODY"
             
             echo "active_snapshot=$ACTIVE" >> $GITHUB_OUTPUT
-            echo "extend_time_ist=$EXTEND_TIME_IST" >> $GITHUB_OUTPUT
+            echo "adjust_time_ist=$EXTEND_TIME_IST" >> $GITHUB_OUTPUT
+            echo "action_word=$ACTION_WORD" >> $GITHUB_OUTPUT
+            echo "adjust_val=$ADJUST_VAL" >> $GITHUB_OUTPUT
             echo "✅ Active snapshot '$ACTIVE' found (PR #$PR_NUM). Time extended to $EXTEND_TIME_IST."
           else
             echo "active_snapshot=" >> $GITHUB_OUTPUT
@@ -70,19 +82,19 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
   # ─────────────────────────────────────────────
-  # Notify Teams: extension started
+  # Notify Teams: adjustment started
   # ─────────────────────────────────────────────
-  notify-extension-started:
+  notify-adjustment:
     needs: guard
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "⏳ APM-02 Waiting Window Extended"
-      card_subtitle: "DevOps has extended the waiting window. Deployment will be delayed to give developers more time to cherry-pick."
-      status_text: "⏳ Extended by ${{ inputs.extend_minutes }} minutes (until ${{ needs.guard.outputs.extend_time_ist }})"
+      card_title: "⏳ APM-02 Waiting Window Modified"
+      card_subtitle: "DevOps has ${{ needs.guard.outputs.action_word }} the waiting window."
+      status_text: "⏳ ${{ needs.guard.outputs.action_word }} by ${{ needs.guard.outputs.adjust_val }} minutes (new time: ${{ needs.guard.outputs.adjust_time_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
       extra_fact_title: "Deployment Schedule"
-      extra_fact_value: "Extended by ${{ inputs.extend_minutes }} minutes. APM-02 deployment will now start at ${{ needs.guard.outputs.extend_time_ist }}."
+      extra_fact_value: "APM-02 deployment will now start at ${{ needs.guard.outputs.adjust_time_ist }}."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
     secrets: inherit
