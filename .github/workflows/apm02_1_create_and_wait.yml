@@ -364,9 +364,9 @@ jobs:
     if: failure() && needs.merge-to-apm02.outputs.has_conflicts == 'true'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "⚠️ APM-02 Deployment Blocked — Merge Conflicts"
-      card_subtitle: "Merge conflicts detected between the snapshot and apm-02. Manual resolution is required. State is BLOCKED."
-      status_text: "⚠️ Merge Conflicts Detected"
+      card_title: "APM02 deployment blocked due to merge conflicts."
+      card_subtitle: "A merge conflict occurred while trying to merge the snapshot into tenant/asint-apm-02. The deployment has been blocked."
+      status_text: "APM02 deployment blocked due to merge conflicts."
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
@@ -384,9 +384,9 @@ jobs:
     if: success() && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "🚀 APM-02 Deployment Triggered"
+      card_title: "APM02 deployment triggered."
       card_subtitle: "Snapshot merged into tenant/asint-apm-02. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
-      status_text: "✅ Merged into tenant/asint-apm-02 — SAP CI/CD Started"
+      status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
