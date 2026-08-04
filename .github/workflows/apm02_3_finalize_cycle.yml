@@ -27,8 +27,8 @@ jobs:
       - name: Extract Job Name
         id: extract
         run: |
-          JOB_NAME="${{ github.event.client_payload.job_name }}"
-          echo "Received job_name: [$JOB_NAME]"
+          JOB_NAME="${{ github.event.client_payload.resource_name }}"
+          echo "Received resource_name: [$JOB_NAME]"
           echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
           if echo "$JOB_NAME" | grep -qi "AsInt-AIS-02-mta-fix"; then
             echo "✅ Target job matched!"
@@ -40,7 +40,7 @@ jobs:
 
   finalize:
     needs: guard
-    # if: needs.guard.outputs.is_target_job == 'true'  # TEMPORARILY DISABLED to capture payload
+    if: needs.guard.outputs.is_target_job == 'true'
     runs-on: ubuntu-latest
     outputs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
@@ -163,7 +163,7 @@ jobs:
 
   notify-sap-failure:
     needs: [guard, finalize]
-    if: failure() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.failure_reason == 'sap_cicd'
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'failure' && needs.finalize.outputs.failure_reason == 'sap_cicd'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "❌ APM02 Deployment Failed"
@@ -177,7 +177,7 @@ jobs:
 
   notify-main-merge-conflict:
     needs: [guard, finalize]
-    if: failure() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.merge_failure_reason == 'conflict'
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'failure' && needs.finalize.outputs.merge_failure_reason == 'conflict'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "APM02 Deployment completed, but APM02 deployment cycle is not completed. Next Snapshot from main we can't create until this snapshot merged back into main."
@@ -191,7 +191,7 @@ jobs:
 
   notify-protected-file-conflict:
     needs: [guard, finalize]
-    if: failure() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.merge_failure_reason == 'protected_file'
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'failure' && needs.finalize.outputs.merge_failure_reason == 'protected_file'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
