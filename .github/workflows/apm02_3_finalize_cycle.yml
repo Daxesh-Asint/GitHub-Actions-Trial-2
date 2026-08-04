@@ -10,17 +10,43 @@ permissions:
   actions: write
 
 jobs:
+  # ── Guard: dump payload and filter by job name ──
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      job_name: ${{ steps.extract.outputs.job_name }}
+      is_target_job: ${{ steps.extract.outputs.is_target_job }}
+    steps:
+      - name: Dump Webhook Payload
+        run: |
+          echo "=== Full client_payload ==="
+          echo '${{ toJSON(github.event.client_payload) }}'
+          echo "=== event.action ==="
+          echo '${{ github.event.action }}'
+
+      - name: Extract Job Name
+        id: extract
+        run: |
+          JOB_NAME="${{ github.event.client_payload.job_name }}"
+          echo "Received job_name: [$JOB_NAME]"
+          echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
+          if echo "$JOB_NAME" | grep -qi "AsInt-AIS-02-mta-fix"; then
+            echo "✅ Target job matched!"
+            echo "is_target_job=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Not the target job. Skipping finalize."
+            echo "is_target_job=false" >> $GITHUB_OUTPUT
+          fi
+
   finalize:
-    if: contains(github.event.client_payload.job_name, 'AsInt-AIS-02-mta-fix')
+    needs: guard
+    if: needs.guard.outputs.is_target_job == 'true'
     runs-on: ubuntu-latest
     outputs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
       snapshot: ${{ steps.eval.outputs.snapshot }}
     steps:
-      - name: Dump Webhook Payload
-        run: echo '${{ toJSON(github.event.client_payload) }}'
-
       - name: Check Current State
         env:
           GH_TOKEN: ${{ github.token }}
@@ -122,8 +148,8 @@ jobs:
           echo "main_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
   notify-success:
-    needs: finalize
-    if: success()
+    needs: [guard, finalize]
+    if: success() && needs.guard.outputs.is_target_job == 'true'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ APM-02 Deployment Cycle Complete"
@@ -136,8 +162,8 @@ jobs:
     secrets: inherit
 
   notify-sap-failure:
-    needs: finalize
-    if: failure() && needs.finalize.outputs.failure_reason == 'sap_cicd'
+    needs: [guard, finalize]
+    if: failure() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.failure_reason == 'sap_cicd'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "❌ APM02 Deployment Failed"
@@ -150,8 +176,8 @@ jobs:
     secrets: inherit
 
   notify-main-merge-conflict:
-    needs: finalize
-    if: failure() && needs.finalize.outputs.merge_failure_reason == 'conflict'
+    needs: [guard, finalize]
+    if: failure() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.merge_failure_reason == 'conflict'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "APM02 Deployment completed, but APM02 deployment cycle is not completed. Next Snapshot from main we can't create until this snapshot merged back into main."
@@ -164,8 +190,8 @@ jobs:
     secrets: inherit
 
   notify-protected-file-conflict:
-    needs: finalize
-    if: failure() && needs.finalize.outputs.merge_failure_reason == 'protected_file'
+    needs: [guard, finalize]
+    if: failure() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.merge_failure_reason == 'protected_file'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
