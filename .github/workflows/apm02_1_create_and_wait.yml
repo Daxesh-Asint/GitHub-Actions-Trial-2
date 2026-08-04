@@ -290,7 +290,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --head "${{ needs.create-snapshot.outputs.snapshot_branch }}" --base main --json number --jq '.[0].number')
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: ${{ needs.create-snapshot.outputs.snapshot_branch }}" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
             echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
@@ -310,7 +310,7 @@ jobs:
           if [ -z "$(git diff origin/tenant/asint-apm-02...HEAD)" ]; then
             echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
             
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --head "$SNAPSHOT" --base main --json number --jq '.[0].number')
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
             if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
               gh pr close "$ACTIVE_PR" --repo ${{ github.repository }} -c "No new commits to deploy. Snapshot already synced with APM-02. Closing tracking PR."
               gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Deploying"
@@ -326,9 +326,8 @@ jobs:
 
           PR_NUMBER=$(gh pr list \
             --base tenant/asint-apm-02 \
-            --head "$SNAPSHOT" \
-            --json number \
-            --jq '.[0].number' 2>/dev/null || echo "")
+            --json number,headRefName \
+            --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" 2>/dev/null | head -n 1 || echo "")
 
           if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
             PR_BODY_APM02=$(printf '%s\n' \
@@ -348,9 +347,8 @@ jobs:
 
             PR_NUMBER=$(gh pr list \
               --base tenant/asint-apm-02 \
-              --head "$SNAPSHOT" \
-              --json number \
-              --jq '.[0].number')
+              --json number,headRefName \
+              --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
 
             gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
             echo "✅ PR #$PR_NUMBER created"
