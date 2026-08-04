@@ -40,7 +40,7 @@ jobs:
 
   finalize:
     needs: guard
-    if: needs.guard.outputs.is_target_job == 'true'
+    # if: needs.guard.outputs.is_target_job == 'true'  # TEMPORARILY DISABLED to capture payload
     runs-on: ubuntu-latest
     outputs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
