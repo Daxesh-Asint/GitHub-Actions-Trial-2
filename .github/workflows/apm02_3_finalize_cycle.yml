@@ -46,7 +46,7 @@ jobs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
       snapshot: ${{ steps.eval.outputs.snapshot }}
-      pr_number: ${{ steps.merge.outputs.main_pr_number }}
+      pr_number: ${{ steps.eval.outputs.pr_number }}
     steps:
       - name: Check Current State
         env:
@@ -160,7 +160,7 @@ jobs:
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
-      action_label: "View PR merged into main"
+      action_label: "View PR on GitHub"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -176,6 +176,8 @@ jobs:
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
   notify-main-merge-conflict:
@@ -190,6 +192,8 @@ jobs:
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
   notify-protected-file-conflict:
@@ -204,6 +208,6 @@ jobs:
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Review the PR. DevOps must approve or resolve the changes manually."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.finalize.outputs.snapshot }}"
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
