@@ -418,7 +418,7 @@ jobs:
     if: success() && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "APM02 deployment triggered."
+      card_title: "🚀 APM02 deployment triggered."
       card_subtitle: "Snapshot merged into tenant/asint-apm-02. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
