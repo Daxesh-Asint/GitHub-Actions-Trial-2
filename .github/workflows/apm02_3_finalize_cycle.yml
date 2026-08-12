@@ -111,7 +111,7 @@ jobs:
           git fetch --all
 
           DIFF=$(git diff origin/main...origin/"$SNAPSHOT" --name-only || true)
-          if echo "$DIFF" | grep -qE "(mta\.yaml|xs-security\.json)"; then
+          if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
             echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
             echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
             gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Protected Files): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
