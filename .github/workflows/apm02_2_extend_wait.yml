@@ -1,6 +1,6 @@
 name: "[2] APM-02 Modify Waiting Window (Optional)"
 
-# DevOps triggers this during the waiting window to give developers more (or less) time.
+# An admin triggers this during the waiting window to give developers more (or less) time.
 # This workflow adjusts the requested duration, then notifies the channel.
 
 on:
@@ -102,7 +102,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "⏳ APM-02 Waiting Window Modified"
-      card_subtitle: "DevOps has ${{ needs.guard.outputs.action_word }} the waiting window."
+      card_subtitle: "An admin has ${{ needs.guard.outputs.action_word }} the waiting window."
       status_text: "⏳ ${{ needs.guard.outputs.summary_text }}"
       status_color: "accent"
       snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}

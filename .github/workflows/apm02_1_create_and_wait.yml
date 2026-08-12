@@ -218,12 +218,12 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
-      card_subtitle: "The waiting window is almost over. If you still need more time for cherry-picking, please inform DevOps immediately to extend the window."
+      card_subtitle: "The waiting window is almost over. If you still need more time for cherry-picking, please trigger the 'APM-02 Extend Waiting Window' workflow immediately."
       status_text: "⚠️ Starting in 5 minutes at ${{ needs.wait-main.outputs.current_deploy_time }}"
       status_color: "warning"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Need More Time?"
-      extra_fact_value: "Ask DevOps to trigger the 'APM-02 Extend Waiting Window' workflow now."
+      extra_fact_value: "Trigger the 'APM-02 Extend Waiting Window' workflow now."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit
@@ -410,7 +410,7 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
-      extra_fact_title: "⚠️ Next Step for DevOps"
+      extra_fact_title: "⚠️ Next Step"
       extra_fact_value: "1. Resolve conflicts in the PR below. 2. Merge the PR manually. 3. Ensure SAP CI/CD starts."
       action_label: "View Conflicting PR"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
@@ -442,12 +442,12 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
-      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Take confirmation from DevOps."
+      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Manual confirmation required."
       status_text: "⛔ Deployment Blocked"
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Action Required"
-      extra_fact_value: "Review the snapshot branch. DevOps must approve or resolve the changes manually."
+      extra_fact_value: "Review the snapshot branch. The changes must be approved or resolved manually."
       action_label: "View Snapshot Branch"
       action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
     secrets: inherit

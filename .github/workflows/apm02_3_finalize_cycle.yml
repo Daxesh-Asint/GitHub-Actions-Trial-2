@@ -116,7 +116,7 @@ jobs:
             echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
             echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
             gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Protected Files): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
-            gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Take confirmation from DevOps."
+            gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Manual confirmation required."
             exit 1
           fi
 
@@ -202,12 +202,12 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
-      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Take confirmation from DevOps."
+      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Manual confirmation required."
       status_text: "⛔ Deployment Blocked"
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "Action Required"
-      extra_fact_value: "Review the PR. DevOps must approve or resolve the changes manually."
+      extra_fact_value: "Review the PR. The changes must be approved or resolved manually."
       action_label: "View PR on GitHub"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
