@@ -30,7 +30,7 @@ jobs:
           JOB_NAME="${{ github.event.client_payload.resource_name }}"
           echo "Received resource_name: [$JOB_NAME]"
           echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
-          if echo "$JOB_NAME" | grep -qi "AsInt-AIS-02-Safety-Test-DND"; then
+          if echo "$JOB_NAME" | grep -qi "tenant/asint-ais-02-mta-changes-for-safety"; then
             echo "✅ Target job matched!"
             echo "is_target_job=true" >> $GITHUB_OUTPUT
           else
