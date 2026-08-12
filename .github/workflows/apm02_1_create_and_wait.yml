@@ -42,6 +42,7 @@ jobs:
           ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
           DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
           FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Failed" --json number --jq '.[0].number')
+          BLOCKED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Blocked" --json number --jq '.[0].number')
           
           if [ -n "$ACTIVE_PR" ]; then
             echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR). Complete or close it before starting a new one."
@@ -57,6 +58,11 @@ jobs:
             echo "❌ ERROR: Failed deployment exists (PR #$FAILED_PR). Merge or close it before starting a new one."
             echo "blocked_pr=$FAILED_PR" >> $GITHUB_OUTPUT
             echo "blocked_label=Failed" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$BLOCKED_PR" ]; then
+            echo "❌ ERROR: Blocked deployment exists (PR #$BLOCKED_PR). Resolve the conflicts and merge or close it before starting a new one."
+            echo "blocked_pr=$BLOCKED_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Blocked" >> $GITHUB_OUTPUT
             exit 1
           fi
           echo "✅ State is IDLE. Proceeding."
