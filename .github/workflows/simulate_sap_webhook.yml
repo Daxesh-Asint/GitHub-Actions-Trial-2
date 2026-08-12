@@ -28,5 +28,5 @@ jobs:
             -X POST \
             -f event_type="sap_cicd_finished" \
             -F client_payload[status]="${{ inputs.status }}" \
-            -F client_payload[resource_name]="tenant/asint-ais-02-mta-changes-for-safety"
+            -F client_payload[resource_name]="AsInt-AIS-02-mta-fix"
           echo "✅ Webhook successfully sent!"
