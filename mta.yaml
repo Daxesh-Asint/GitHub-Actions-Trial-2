@@ -1255,4 +1255,3 @@ resources:
 parameters:
   deploy_mode: html5-repo
   enable-parallel-deployments: true
-  dummy
