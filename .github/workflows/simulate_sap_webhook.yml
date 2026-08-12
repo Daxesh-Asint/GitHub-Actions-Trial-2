@@ -27,5 +27,6 @@ jobs:
           gh api repos/${{ github.repository }}/dispatches \
             -X POST \
             -f event_type="sap_cicd_finished" \
-            -F client_payload[status]="${{ inputs.status }}"
+            -F client_payload[status]="${{ inputs.status }}" \
+            -F client_payload[resource_name]="tenant/asint-ais-02-mta-changes-for-safety"
           echo "✅ Webhook successfully sent!"
