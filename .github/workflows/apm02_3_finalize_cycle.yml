@@ -46,6 +46,7 @@ jobs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
       snapshot: ${{ steps.eval.outputs.snapshot }}
+      pr_number: ${{ steps.merge.outputs.main_pr_number }}
     steps:
       - name: Check Current State
         env:
@@ -159,6 +160,8 @@ jobs:
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
+      action_label: "View PR merged into main"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
   notify-sap-failure:
