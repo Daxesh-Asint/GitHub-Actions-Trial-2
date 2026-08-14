@@ -79,9 +79,11 @@ md += `> Auto-updated by GitHub Actions after every deployment cycle.\n\n`;
 md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | 🔀 APM-02 PR | Main PR | Initiated By | Merge Time (IST) | Status | Merged APM-02? | Merged Main? | Completed? |\n`;
 md += `|---|---|---|---|---|---|---|---|---|---|---|\n`;
 
+const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial-2';
+
 for (const r of history) {
-  const apm02Link = r.apm02_pr !== 'N/A' && r.apm02_pr !== 'NO_COMMITS' ? `[#${r.apm02_pr}](../../pull/${r.apm02_pr})` : r.apm02_pr;
-  const mainLink = r.main_pr !== 'N/A' && r.main_pr !== 'NO_COMMITS' ? `[#${r.main_pr}](../../pull/${r.main_pr})` : r.main_pr;
+  const apm02Link = r.apm02_pr !== 'N/A' && r.apm02_pr !== 'NO_COMMITS' ? `[#${r.apm02_pr}](https://github.com/${REPO}/pull/${r.apm02_pr})` : r.apm02_pr;
+  const mainLink = r.main_pr !== 'N/A' && r.main_pr !== 'NO_COMMITS' ? `[#${r.main_pr}](https://github.com/${REPO}/pull/${r.main_pr})` : r.main_pr;
   md += `| ${r.id} | ${r.date} | \`${r.snapshot}\` | ${apm02Link} | ${mainLink} | ${r.initiated_by} | ${r.merge_time} | ${r.status} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} |\n`;
 }
 
