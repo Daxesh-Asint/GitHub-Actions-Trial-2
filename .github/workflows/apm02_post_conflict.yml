@@ -213,6 +213,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+  update-wiki-post-conflict:
+    needs: [merge-to-main]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Post Conflict)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "post-conflict", "snapshot": "${{ inputs.snapshot_branch }}", "pr_number": "${{ needs.merge-to-main.outputs.main_pr_number }}"}'
+
   # ─────────────────────────────────────────────
   # Notify Teams: cycle complete
   # ─────────────────────────────────────────────

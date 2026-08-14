@@ -148,6 +148,37 @@ jobs:
           echo "✅ State reset to IDLE (Cycle Closed)"
           echo "main_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
+  update-wiki-finalize:
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Finalize)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "${{ needs.finalize.result == ''success'' && ''finalize-success'' || ''finalize-fail'' }}", "snapshot": "${{ needs.finalize.outputs.snapshot }}", "pr_number": "${{ needs.finalize.outputs.pr_number }}"}'
+
   notify-success:
     needs: [guard, finalize]
     if: success() && needs.guard.outputs.is_target_job == 'true'
