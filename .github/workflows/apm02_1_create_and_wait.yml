@@ -154,6 +154,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Create)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "create", "snapshot": "${{ steps.create.outputs.snapshot_branch }}", "actor": "${{ github.actor }}", "date": "${{ steps.create.outputs.date_ist }}"}'
+
+
   # ─────────────────────────────────────────────
   # STEP 4 — Notify developers in Teams
   # ─────────────────────────────────────────────
@@ -401,6 +425,40 @@ jobs:
           exit 1
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+  # ─────────────────────────────────────────────
+  # STEP 8.5 — Update Wiki (Merged APM-02)
+  # ─────────────────────────────────────────────
+  update-wiki-apm02:
+    needs: [create-snapshot, merge-to-apm02]
+    if: always() && needs.merge-to-apm02.result != 'skipped' && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Merged APM-02)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "merged-apm02", "snapshot": "${{ needs.create-snapshot.outputs.snapshot_branch }}", "success": ${{ needs.merge-to-apm02.result == ''success'' }}, "pr_number": "${{ needs.merge-to-apm02.outputs.apm02_pr_number }}", "merge_time": "${{ needs.merge-to-apm02.outputs.merge_time_ist }}"}'
 
   # ─────────────────────────────────────────────
   # STEP 9 — Notify conflict if merge to apm-02 failed
