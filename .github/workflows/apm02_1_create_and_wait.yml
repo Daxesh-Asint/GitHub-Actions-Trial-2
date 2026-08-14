@@ -141,7 +141,7 @@ jobs:
             "**Waiting window:** ${{ inputs.waiting_minutes }} minutes (Deployment automatically starts at $DEPLOY_TIME_IST)" \
             "" \
             "> Developers: cherry-pick your changes into this branch before the deployment begins." \
-            "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02\`.")
+            "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02-v2\`.")
 
           gh pr create --repo ${{ github.repository }} \
             --base main \
@@ -319,7 +319,7 @@ jobs:
 
           git fetch --all
 
-          if [ -z "$(git diff origin/tenant/asint-apm-02...HEAD)" ]; then
+          if [ -z "$(git diff origin/tenant/asint-apm-02-v2...HEAD)" ]; then
             echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
             
             ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
@@ -337,7 +337,7 @@ jobs:
           gh label create "auto merge for APM02" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
 
           PR_NUMBER=$(gh pr list \
-            --base tenant/asint-apm-02 \
+            --base tenant/asint-apm-02-v2 \
             --json number,headRefName \
             --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" 2>/dev/null | head -n 1 || echo "")
 
@@ -349,16 +349,16 @@ jobs:
               "**Initiated by:** ${{ github.actor }}" \
               "**Triggered at:** $MERGE_TIME" \
               "" \
-              "This PR merges the snapshot into \`tenant/asint-apm-02\` to trigger SAP CI/CD deployment.")
+              "This PR merges the snapshot into \`tenant/asint-apm-02-v2\` to trigger SAP CI/CD deployment.")
 
             gh pr create \
-              --base tenant/asint-apm-02 \
+              --base tenant/asint-apm-02-v2 \
               --head "$SNAPSHOT" \
-              --title "Merging from $SNAPSHOT into tenant/asint-apm-02" \
+              --title "Merging from $SNAPSHOT into tenant/asint-apm-02-v2" \
               --body "$PR_BODY_APM02"
 
             PR_NUMBER=$(gh pr list \
-              --base tenant/asint-apm-02 \
+              --base tenant/asint-apm-02-v2 \
               --json number,headRefName \
               --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
 
@@ -388,7 +388,7 @@ jobs:
             elif [[ "$STATUS" == "CONFLICTING" ]]; then
               echo "merge_success=false" >> $GITHUB_OUTPUT
               echo "has_conflicts=true" >> $GITHUB_OUTPUT
-              gh pr comment "$PR_NUMBER" --body "⚠️ Auto-merge blocked: merge conflicts detected between \`$SNAPSHOT\` and \`tenant/asint-apm-02\`. Manual resolution required before deployment can proceed."
+              gh pr comment "$PR_NUMBER" --body "⚠️ Auto-merge blocked: merge conflicts detected between \`$SNAPSHOT\` and \`tenant/asint-apm-02-v2\`. Manual resolution required before deployment can proceed."
               echo "❌ PR #$PR_NUMBER has conflicts"
               exit 1
             fi
@@ -411,7 +411,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "APM02 deployment blocked due to merge conflicts."
-      card_subtitle: "A merge conflict occurred while trying to merge the snapshot into tenant/asint-apm-02. The deployment has been blocked."
+      card_subtitle: "A merge conflict occurred while trying to merge the snapshot into tenant/asint-apm-02-v2. The deployment has been blocked."
       status_text: "APM02 deployment blocked due to merge conflicts."
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
@@ -431,7 +431,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "🚀 APM02 deployment triggered."
-      card_subtitle: "Snapshot merged into tenant/asint-apm-02. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      card_subtitle: "Snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
@@ -467,7 +467,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "🏁 APM-02 Deployment Skipped — Already Synced"
-      card_subtitle: "No developers cherry-picked any new changes during the waiting window, and the main branch is already fully synced with tenant/asint-apm-02."
+      card_subtitle: "No developers cherry-picked any new changes during the waiting window, and the main branch is already fully synced with tenant/asint-apm-02-v2."
       status_text: "✅ Snapshot already synced with APM-02"
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
