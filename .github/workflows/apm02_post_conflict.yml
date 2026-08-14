@@ -200,7 +200,7 @@ jobs:
             "" \
             "**Closed at:** $DATE_IST at $TIME_IST" \
             "**Closed by:** ${{ github.actor }}" \
-            "**Status:** ✅ Fully merged into tenant/asint-apm-02 and main (post-conflict resolution)" \
+            "**Status:** ✅ Fully merged into tenant/asint-apm-02-v2 and main (post-conflict resolution)" \
             "" \
             "> No active deployment in progress. An admin may start a new snapshot.")
 
