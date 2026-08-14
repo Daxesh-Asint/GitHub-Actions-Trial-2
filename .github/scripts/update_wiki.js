@@ -32,50 +32,44 @@ const RED_NO = '<span style="color:red;font-weight:bold">No</span>';
 
 let row = history.find(r => r.snapshot === snapshot);
 
+if (!row) {
+  row = {
+    id: history.length > 0 ? Math.max(...history.map(r => r.id)) + 1 : 1,
+    date: payload.date || new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' }),
+    snapshot: snapshot,
+    apm02_pr: 'N/A',
+    main_pr: 'N/A',
+    initiated_by: payload.actor || 'N/A',
+    merge_time: 'N/A',
+    status: '⏳ Waiting',
+    merged_apm02: '-',
+    merged_main: '-',
+    cycle_completed: '-'
+  };
+  history.unshift(row);
+}
+
 if (action === 'create') {
-  if (!row) {
-    row = {
-      id: history.length > 0 ? Math.max(...history.map(r => r.id)) + 1 : 1,
-      date: payload.date || new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' }),
-      snapshot: snapshot,
-      apm02_pr: 'N/A',
-      main_pr: 'N/A',
-      initiated_by: payload.actor || 'N/A',
-      merge_time: 'N/A',
-      status: '⏳ Waiting',
-      merged_apm02: '-',
-      merged_main: '-',
-      cycle_completed: '-'
-    };
-    history.unshift(row);
-  }
+  row.status = '⏳ Waiting';
 } else if (action === 'merged-apm02') {
-  if (row) {
-    if (payload.pr_number) row.apm02_pr = payload.pr_number;
-    if (payload.merge_time) row.merge_time = payload.merge_time;
-    row.merged_apm02 = payload.success ? GREEN_YES : RED_NO;
-    row.status = payload.success ? '🚀 Deploying' : '⚠️ Blocked (APM-02)';
-  }
+  if (payload.pr_number) row.apm02_pr = payload.pr_number;
+  if (payload.merge_time) row.merge_time = payload.merge_time;
+  row.merged_apm02 = payload.success ? GREEN_YES : RED_NO;
+  row.status = payload.success ? '🚀 Deploying' : '⚠️ Blocked (APM-02)';
 } else if (action === 'finalize-success') {
-  if (row) {
-    if (payload.pr_number) row.main_pr = payload.pr_number;
-    row.merged_main = GREEN_YES;
-    row.cycle_completed = GREEN_YES;
-    row.status = '✅ Success';
-  }
+  if (payload.pr_number) row.main_pr = payload.pr_number;
+  row.merged_main = GREEN_YES;
+  row.cycle_completed = GREEN_YES;
+  row.status = '✅ Success';
 } else if (action === 'finalize-fail') {
-  if (row) {
-    if (payload.pr_number) row.main_pr = payload.pr_number;
-    row.merged_main = RED_NO;
-    row.cycle_completed = RED_NO;
-    row.status = '❌ Blocked (Main)';
-  }
+  if (payload.pr_number) row.main_pr = payload.pr_number;
+  row.merged_main = RED_NO;
+  row.cycle_completed = RED_NO;
+  row.status = '❌ Blocked (Main)';
 } else if (action === 'post-conflict') {
-  if (row) {
-    row.merged_main = GREEN_YES;
-    row.cycle_completed = GREEN_YES;
-    row.status = '✅ Success';
-  }
+  row.merged_main = GREEN_YES;
+  row.cycle_completed = GREEN_YES;
+  row.status = '✅ Success';
 }
 
 fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
