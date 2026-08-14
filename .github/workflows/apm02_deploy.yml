@@ -237,7 +237,7 @@ jobs:
           fi
 
           # Ensure label exists
-          gh label create "auto merge for APM02" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
+          gh label create "apm02-deploy" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
 
           # Check for existing PR
           PR_NUMBER=$(gh pr list \
@@ -260,7 +260,7 @@ jobs:
             gh pr create \
               --base tenant/asint-apm-02 \
               --head "$SNAPSHOT" \
-              --title "Merging from $SNAPSHOT into tenant/asint-apm-02" \
+              --title "🚀 APM-02 Deploy: $SNAPSHOT" \
               --body "$PR_BODY_APM02"
 
             PR_NUMBER=$(gh pr list \
@@ -269,7 +269,7 @@ jobs:
               --json number \
               --jq '.[0].number')
 
-            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            gh pr edit "$PR_NUMBER" --add-label "apm02-deploy"
             echo "✅ PR #$PR_NUMBER created"
           else
             echo "ℹ️ Existing PR #$PR_NUMBER found"
@@ -377,16 +377,8 @@ jobs:
 
           git fetch --all
 
-          # Check for new commits first to avoid GraphQL error
-          NEW_COMMITS=$(git rev-list --count origin/main..origin/"$SNAPSHOT")
-          if [ "$NEW_COMMITS" -eq 0 ]; then
-            echo "ℹ️ No commits to sync back to main. Skipping."
-            echo "merge_success=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
           # Ensure label exists
-          gh label create "auto merge for APM02" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
+          gh label create "apm02-to-main" --color "#16a34a" --description "APM-02 snapshot to main PR" 2>/dev/null || true
 
           # Check for existing PR
           PR_NUMBER=$(gh pr list \
@@ -408,7 +400,7 @@ jobs:
             gh pr create \
               --base main \
               --head "$SNAPSHOT" \
-              --title "Merging from $SNAPSHOT into main" \
+              --title "🔁 Sync to Main: $SNAPSHOT" \
               --body "$PR_BODY"
 
             PR_NUMBER=$(gh pr list \
@@ -417,7 +409,7 @@ jobs:
               --json number \
               --jq '.[0].number')
 
-            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            gh pr edit "$PR_NUMBER" --add-label "apm02-to-main"
             echo "✅ PR #$PR_NUMBER created for snapshot → main"
           else
             echo "ℹ️ Existing PR #$PR_NUMBER found"
@@ -462,8 +454,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Run actions/checkout@v4
-        uses: actions/checkout@v4
+      # APM02_ACTIVE_SNAPSHOT repo variable is no longer used
 
       - name: Update GitHub Release tag to closed
         run: |
