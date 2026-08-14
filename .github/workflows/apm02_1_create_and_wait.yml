@@ -405,6 +405,12 @@ jobs:
                 echo "✅ PR #$PR_NUMBER merged into apm-02 successfully"
               else
                 gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step. Please check the workflow logs."
+                
+                ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+                if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+                  gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+                fi
+                
                 echo "merge_success=false" >> $GITHUB_OUTPUT
                 exit 1
               fi
@@ -413,6 +419,12 @@ jobs:
               echo "merge_success=false" >> $GITHUB_OUTPUT
               echo "has_conflicts=true" >> $GITHUB_OUTPUT
               gh pr comment "$PR_NUMBER" --body "⚠️ Auto-merge blocked: merge conflicts detected between \`$SNAPSHOT\` and \`tenant/asint-apm-02-v2\`. Manual resolution required before deployment can proceed."
+              
+              ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+              if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+                gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+              fi
+              
               echo "❌ PR #$PR_NUMBER has conflicts"
               exit 1
             fi
@@ -420,6 +432,12 @@ jobs:
           done
 
           gh pr comment "$PR_NUMBER" --body "Auto-merge timed out waiting for mergeability status. Please check manually."
+          
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+          if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+            gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+          fi
+          
           echo "merge_success=false" >> $GITHUB_OUTPUT
           echo "has_conflicts=false" >> $GITHUB_OUTPUT
           exit 1
