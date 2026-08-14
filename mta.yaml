@@ -7,10 +7,9 @@
 
 #########################################################################################
 
-# mock edit for protected file test
-_schema-version: '3.1'
-ID: github-actions-trial-2
-version: 1.0.0.1
+_schema-version: "3.2"
+ID: asint-ais
+version: 0.0.1
 build-parameters:
   before-all:
     - builder: custom
