@@ -1,0 +1,244 @@
+name: "[3] APM-02 Finalize Cycle (Merge to Main)"
+
+on:
+  repository_dispatch:
+    types: [sap_cicd_finished]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  # ── Guard: dump payload and filter by job name ──
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      job_name: ${{ steps.extract.outputs.job_name }}
+      is_target_job: ${{ steps.extract.outputs.is_target_job }}
+    steps:
+      - name: Dump Webhook Payload
+        run: |
+          echo "=== Full client_payload ==="
+          echo '${{ toJSON(github.event.client_payload) }}'
+          echo "=== event.action ==="
+          echo '${{ github.event.action }}'
+
+      - name: Extract Job Name
+        id: extract
+        run: |
+          JOB_NAME="${{ github.event.client_payload.resource_name }}"
+          echo "Received resource_name: [$JOB_NAME]"
+          echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
+          if echo "$JOB_NAME" | grep -qi "AsInt-AIS-02-mta-fix"; then
+            echo "✅ Target job matched!"
+            echo "is_target_job=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Not the target job. Skipping finalize."
+            echo "is_target_job=false" >> $GITHUB_OUTPUT
+          fi
+
+  finalize:
+    needs: guard
+    if: needs.guard.outputs.is_target_job == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      failure_reason: ${{ steps.eval.outputs.failure_reason }}
+      merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
+      snapshot: ${{ steps.eval.outputs.snapshot }}
+      pr_number: ${{ steps.eval.outputs.pr_number }}
+    steps:
+      - name: Check Current State
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+          
+          if [ -z "$DEPLOYING_PR" ]; then
+            echo "❌ ERROR: No active deployment found (No PR with 'APM-02 Deploying' label). State is IDLE."
+            exit 1
+          fi
+          echo "✅ State is DEPLOYING. Proceeding."
+
+      - name: Evaluate SAP CI/CD Payload and Get Snapshot
+        id: eval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATUS="${{ github.event.client_payload.status }}"
+          
+          # Extract the snapshot branch name securely from our Tracking PR!
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number,headRefName --jq '.[0]')
+          SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
+          PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "snapshot=$SNAPSHOT" >> $GITHUB_OUTPUT
+          
+          echo "SAP CI/CD Status: $STATUS"
+          echo "Snapshot Branch: $SNAPSHOT"
+          
+          if [ "$STATUS" != "INFO" ] && [ "$STATUS" != "SUCCESS" ]; then
+            echo "❌ SAP CI/CD Deployment Failed."
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "failure_reason=sap_cicd" >> $GITHUB_OUTPUT
+          else
+            echo "✅ SAP CI/CD Deployment Succeeded."
+            echo "success=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set State to FAILED if SAP CI/CD failed
+        if: steps.eval.outputs.success == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr edit "${{ steps.eval.outputs.pr_number }}" --repo ${{ github.repository }} --title "🔴 APM-02 Failed: ${{ steps.eval.outputs.snapshot }}" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+          echo "✅ State set to FAILED"
+          exit 1 # Stop workflow here
+
+      - uses: actions/checkout@v4
+        if: steps.eval.outputs.success == 'true'
+        with:
+          ref: ${{ steps.eval.outputs.snapshot }}
+          fetch-depth: 0
+
+      - name: Merge snapshot into main
+        if: steps.eval.outputs.success == 'true'
+        id: merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SNAPSHOT="${{ steps.eval.outputs.snapshot }}"
+          PR_NUMBER="${{ steps.eval.outputs.pr_number }}"
+          git fetch --all
+
+          DIFF=$(git diff origin/main...origin/"$SNAPSHOT" --name-only || true)
+          if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
+            echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
+            echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Protected Files): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+            gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Manual confirmation required."
+            exit 1
+          fi
+
+          if [ -z "$(git diff origin/main...origin/"$SNAPSHOT")" ]; then
+            echo "ℹ️ No new commits to sync back to main. Closing PR."
+            gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
+          else
+            for i in {1..10}; do
+              STATUS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
+              if [[ "$STATUS" == "MERGEABLE" ]]; then
+                gh pr ready "$PR_NUMBER" --repo ${{ github.repository }} 2>/dev/null || true
+                if gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge; then
+                  echo "✅ PR #$PR_NUMBER merged into main successfully"
+                else
+                  gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "Auto-merge into main failed."
+                  exit 1
+                fi
+                break
+              elif [[ "$STATUS" == "CONFLICTING" ]]; then
+                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+                gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
+                echo "failure_reason=conflict" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              sleep 10
+            done
+          fi
+          
+          echo "✅ State reset to IDLE (Cycle Closed)"
+          echo "main_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+  update-wiki-finalize:
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Finalize)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "${{ needs.finalize.result == ''success'' && ''finalize-success'' || ''finalize-fail'' }}", "snapshot": "${{ needs.finalize.outputs.snapshot }}", "pr_number": "${{ needs.finalize.outputs.pr_number }}"}'
+
+  notify-success:
+    needs: [guard, finalize]
+    if: success() && needs.guard.outputs.is_target_job == 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "✅ APM-02 Deployment Cycle Complete"
+      card_subtitle: "APM02 deployed successfully. Now merging snapshot back into main."
+      status_text: "✅ Deployment & Merge Complete"
+      status_color: "good"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      extra_fact_title: "Cycle State"
+      extra_fact_value: "Reset to IDLE. Ready for next deployment."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
+    secrets: inherit
+
+  notify-sap-failure:
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'failure' && needs.finalize.outputs.failure_reason == 'sap_cicd'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "❌ APM02 Deployment Failed"
+      card_subtitle: "APM02 deployment failed due to SAP CI/CD Pipeline failed. we can not merge this snapshot into main."
+      status_text: "❌ Action Required"
+      status_color: "attention"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      extra_fact_title: "State Locked"
+      extra_fact_value: "New snapshots cannot be created until this is resolved."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
+    secrets: inherit
+
+  notify-main-merge-conflict:
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'failure' && needs.finalize.outputs.merge_failure_reason == 'conflict'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "APM02 Deployment completed, but APM02 deployment cycle is not completed. Next Snapshot from main we can't create until this snapshot merged back into main."
+      card_subtitle: "APM02 deployment completed, got merge conflict while merging snapshot back into main."
+      status_text: "⚠️ Manual Resolution Required"
+      status_color: "attention"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      extra_fact_title: "State Locked"
+      extra_fact_value: "New snapshots cannot be created until this is resolved."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
+    secrets: inherit
+
+  notify-protected-file-conflict:
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'failure' && needs.finalize.outputs.merge_failure_reason == 'protected_file'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
+      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Manual confirmation required."
+      status_text: "⛔ Deployment Blocked"
+      status_color: "attention"
+      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Review the PR. The changes must be approved or resolved manually."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
+    secrets: inherit

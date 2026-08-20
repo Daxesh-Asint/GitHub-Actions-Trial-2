@@ -1,0 +1,32 @@
+name: "[Test] Simulate SAP Webhook"
+
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: "SAP CI/CD Status to Simulate"
+        required: true
+        type: choice
+        options:
+          - SUCCESS
+          - ERROR
+        default: SUCCESS
+
+permissions:
+  contents: write
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sap_cicd_finished webhook
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Simulating SAP CI/CD Webhook with status: ${{ inputs.status }}"
+          gh api repos/${{ github.repository }}/dispatches \
+            -X POST \
+            -f event_type="sap_cicd_finished" \
+            -F client_payload[status]="${{ inputs.status }}" \
+            -F client_payload[resource_name]="AsInt-AIS-02-mta-fix"
+          echo "✅ Webhook successfully sent!"
