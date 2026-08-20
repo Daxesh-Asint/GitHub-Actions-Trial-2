@@ -42,16 +42,16 @@ jobs:
           PR_LIST_RESP=$(gh pr list \
             --base ${{ inputs.base }} \
             --head ${{ inputs.compare }} \
-            --label "auto-merge" \
+            --label "auto merge for AIS02" \
             --json number)
           PR_NUMBER=$(echo "$PR_LIST_RESP" | jq -r '.[0].number')
           if [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
             echo "pr_exists=true" >> $GITHUB_ENV
             echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
-            echo "Existing auto-merge PR found: '$PR_NUMBER'"
+            echo "Existing auto merge PR found: '$PR_NUMBER'"
           else
             echo "pr_exists=false" >> $GITHUB_ENV
-            echo "No existing auto-merge PR, will check for new commits"
+            echo "No existing auto merge PR, will check for new commits"
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -77,13 +77,13 @@ jobs:
         if: env.pr_exists == 'false' && env.new_commits == 'true'
         run: |
           # Ensure label exists, create if missing
-          gh label create "auto-merge" --color "#0075ca" --description "Automated merge PR" 2>/dev/null || true
+          gh label create "auto merge for AIS02" --color "#0075ca" --description "Automated merge PR" 2>/dev/null || true
 
           # Create PR without label to avoid race condition
           gh pr create \
             --base ${{ inputs.base }} \
             --head ${{ inputs.compare }} \
-            --title "Merge ${{ inputs.compare }} into ${{ inputs.base }}" \
+            --title "Merging from ${{ inputs.compare }} into ${{ inputs.base }}" \
             --body "Auto-generated PR to merge changes from \`${{ inputs.compare }}\` to \`${{ inputs.base }}\`."
 
           # Fetch PR number
@@ -94,11 +94,27 @@ jobs:
             --jq '.[0].number')
 
           # Add label separately after PR exists
-          gh pr edit "$PR_NUMBER" --add-label "auto-merge"
+          gh pr edit "$PR_NUMBER" --add-label "auto merge for AIS02"
 
           echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
           echo "pr_created=true" >> $GITHUB_ENV
           echo "New PR created: '$PR_NUMBER'"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Check for Protected Files
+        id: check-protected
+        if: env.pr_exists == 'true' || env.pr_created == 'true'
+        run: |
+          PR_NUMBER="${{ env.pr_number }}"
+          echo "Checking for protected files in PR #$PR_NUMBER..."
+          CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')
+          if echo "$CHANGED_FILES" | grep -E '(^|/)mta\.yaml$|(^|/)xs-security\.json$'; then
+            echo "protected_files_modified=true" >> $GITHUB_ENV
+            gh pr comment "$PR_NUMBER" --body "⚠️ **Auto-merge blocked:** Protected files (\`mta.yaml\` or \`xs-security.json\`) were modified in this Pull Request. These files should not be overwritten in \`${{ inputs.base }}\`. Please revert these changes in the \`${{ inputs.compare }}\` branch before proceeding."
+            echo "Protected files modified! Aborting merge."
+            exit 1
+          fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -158,6 +174,24 @@ jobs:
           TARGET="${{ inputs.base }}"
           DEPLOY_NAME="${{ inputs.deployment_name }}"
 
+          # Fetch list of unique authors and commit count
+          COMMIT_COUNT="0"
+          MERGE_COMMIT_ID="N/A"
+          if [ -n "$PR_NUMBER" ]; then
+            AUTHORS=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --paginate --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | if length > 3 then (.[0:3] + ["and \(length - 3) others"]) else . end | join(", ")' 2>/dev/null)
+            COMMIT_COUNT=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/commits --paginate --jq 'length' 2>/dev/null)
+            
+            # Fetch the resulting merge commit ID (shortened to 7 characters)
+            if [ "${{ job.status }}" = "success" ]; then
+              MERGE_COMMIT_ID=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null | cut -c 1-7)
+              [ -z "$MERGE_COMMIT_ID" ] && MERGE_COMMIT_ID="N/A"
+            fi
+          fi
+          
+          if [ -z "$AUTHORS" ]; then
+            AUTHORS="${{ github.actor }}"
+          fi
+
           # Check if at least one webhook URL is set
           if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
             echo "No TEAMS_WEBHOOK_URL_AIS02 secrets are set, skipping notification."
@@ -190,11 +224,25 @@ jobs:
               fi
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="View PR on GitHub"
-              PR_FACT_VAL="PR #$PR_NUMBER"
+              if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+                PR_FACT_VAL="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+              else
+                PR_FACT_VAL="PR #$PR_NUMBER"
+              fi
             fi
           else
-            # Check if the failure is due to merge conflicts
-            if [ "${{ env.has_conflicts }}" = "true" ]; then
+            # Check the specific reason for failure
+            if [ "${{ env.protected_files_modified }}" = "true" ]; then
+              MERGE_STATUS="🚫 Protected Files Modified"
+              MERGE_COLOR="attention"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="🚫 $DEPLOY_NAME Deployment Blocked — Protected Files"
+                CARD_SUBTITLE="mta.yaml or xs-security.json were modified. Please revert these changes before merging."
+              else
+                CARD_TITLE="🚫 Auto-Merge Blocked — Protected Files"
+                CARD_SUBTITLE="mta.yaml or xs-security.json were modified. Please revert these changes."
+              fi
+            elif [ "${{ env.has_conflicts }}" = "true" ]; then
               MERGE_STATUS="⚠️ Merge Conflicts Detected"
               MERGE_COLOR="attention"
               if [ -n "$DEPLOY_NAME" ]; then
@@ -218,7 +266,11 @@ jobs:
             if [ -n "$PR_NUMBER" ]; then
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="View PR on GitHub"
-              PR_FACT_VAL="PR #$PR_NUMBER"
+              if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+                PR_FACT_VAL="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+              else
+                PR_FACT_VAL="PR #$PR_NUMBER"
+              fi
             else
               PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               PR_LABEL="View Run on GitHub"
@@ -235,6 +287,8 @@ jobs:
             --arg pr "$PR_FACT_VAL" \
             --arg source "$SOURCE" \
             --arg target "$TARGET" \
+            --arg merge_commit "$MERGE_COMMIT_ID" \
+            --arg authors "$AUTHORS" \
             --arg pr_url "$PR_URL" \
             --arg pr_label "$PR_LABEL" \
             --arg subtitle "$CARD_SUBTITLE" \
@@ -285,9 +339,11 @@ jobs:
                         type: "FactSet",
                         facts: [
                           { title: "Repository", value: $repo },
+                          { title: "Changes By", value: $authors },
                           { title: "Pull Request", value: $pr },
                           { title: "Source Branch", value: $source },
-                          { title: "Target Branch", value: $target }
+                          { title: "Target Branch", value: $target },
+                          { title: "CI/CD Commit ID", value: $merge_commit }
                         ]
                       }
                     ]
@@ -297,6 +353,11 @@ jobs:
                       type: "Action.OpenUrl",
                       title: $pr_label,
                       url: $pr_url
+                    },
+                    {
+                      type: "Action.OpenUrl",
+                      title: "Track AIS-02 Deployment Status in SAP CI/CD Dashboard",
+                      url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
                     }
                   ]
                 }
