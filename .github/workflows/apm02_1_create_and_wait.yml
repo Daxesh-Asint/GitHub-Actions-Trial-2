@@ -1,0 +1,578 @@
+name: "[1] APM-02 Snapshot Deployment"
+
+on:
+  repository_dispatch:
+    types: [trigger_apm02_deployment]
+  workflow_dispatch:
+    inputs:
+      waiting_minutes:
+        description: "Waiting window for developers to cherry-pick (minutes)"
+        required: true
+        default: "30"
+        type: choice
+        options:
+          - "2"
+          - "10"
+          - "15"
+          - "20"
+          - "25"
+          - "30"
+          - "35"
+          - "40"
+          - "45"
+          - "50"
+          - "55"
+          - "60"
+          - "180"
+
+jobs:
+  # ─────────────────────────────────────────────
+  # STEP 1 — Guard: block if active snapshot exists
+  # ─────────────────────────────────────────────
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      blocked_pr: ${{ steps.check.outputs.blocked_pr }}
+      blocked_label: ${{ steps.check.outputs.blocked_label }}
+    steps:
+      - name: Check for active snapshot
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+          FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Failed" --json number --jq '.[0].number')
+          BLOCKED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Blocked" --json number --jq '.[0].number')
+          AUTO_MERGE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "auto merge for APM02" --json number --jq '.[0].number')
+          
+          if [ -n "$ACTIVE_PR" ]; then
+            echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR). Complete or close it before starting a new one."
+            echo "blocked_pr=$ACTIVE_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Active" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$DEPLOYING_PR" ]; then
+            echo "❌ ERROR: Active deployment exists (PR #$DEPLOYING_PR). Complete or close it before starting a new one."
+            echo "blocked_pr=$DEPLOYING_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Deploying" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$FAILED_PR" ]; then
+            echo "❌ ERROR: Failed deployment exists (PR #$FAILED_PR). Merge or close it before starting a new one."
+            echo "blocked_pr=$FAILED_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Failed" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$BLOCKED_PR" ]; then
+            echo "❌ ERROR: Blocked deployment exists (PR #$BLOCKED_PR). Resolve the conflicts and merge or close it before starting a new one."
+            echo "blocked_pr=$BLOCKED_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Blocked" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ -n "$AUTO_MERGE_PR" ]; then
+            echo "❌ ERROR: A previous snapshot is currently blocked from merging into APM-02 (PR #$AUTO_MERGE_PR). Resolve the conflicts and merge or close it before starting a new one."
+            echo "blocked_pr=$AUTO_MERGE_PR" >> $GITHUB_OUTPUT
+            echo "blocked_label=Blocked (Conflicts)" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ State is IDLE. Proceeding."
+
+  # (Removed set-active step because create-snapshot will create the release tag)
+
+  # ─────────────────────────────────────────────
+  # STEP 3 — Create snapshot branch from main
+  # ─────────────────────────────────────────────
+  create-snapshot:
+    needs: guard
+    runs-on: ubuntu-latest
+    outputs:
+      snapshot_branch: ${{ steps.create.outputs.snapshot_branch }}
+      date_ist: ${{ steps.create.outputs.date_ist }}
+      time_ist: ${{ steps.create.outputs.time_ist }}
+      deploy_time_ist: ${{ steps.create.outputs.deploy_time_ist }}
+      waiting_minutes: ${{ steps.create.outputs.waiting_minutes }}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create snapshot branch
+        id: create
+        run: |
+          # Determine wait time: from manual input, or payload, or default to 180
+          WAIT_TIME="${{ github.event.inputs.waiting_minutes || github.event.client_payload.waiting_minutes || '180' }}"
+          
+          SNAPSHOT_NAME="snapshot/main-$(TZ='Asia/Kolkata' date +'%y%m%d-%H%M')"
+          DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
+          TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
+          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%I:%M %p IST')
+
+          echo "snapshot_branch=$SNAPSHOT_NAME" >> $GITHUB_OUTPUT
+          echo "date_ist=$DATE_IST" >> $GITHUB_OUTPUT
+          echo "time_ist=$TIME_IST" >> $GITHUB_OUTPUT
+          echo "deploy_time_ist=$DEPLOY_TIME_IST" >> $GITHUB_OUTPUT
+          echo "waiting_minutes=$WAIT_TIME" >> $GITHUB_OUTPUT
+
+          git checkout -b "$SNAPSHOT_NAME"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: initiate APM-02 snapshot tracking"
+          
+          git push origin "$SNAPSHOT_NAME"
+          echo "✅ Snapshot branch '$SNAPSHOT_NAME' created from main"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Create Tracking Pull Request
+        run: |
+          SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
+          DATE_IST="${{ steps.create.outputs.date_ist }}"
+          TIME_IST="${{ steps.create.outputs.time_ist }}"
+          DEPLOY_TIME_IST="${{ steps.create.outputs.deploy_time_ist }}"
+          INITIATED_BY="${{ github.actor }}"
+
+          gh label create "APM-02 Active" --color "#0E8A16" --description "APM-02 Snapshot is active and accepting cherry-picks" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Deploying" --color "#1D76DB" --description "APM-02 is deploying to SAP CI/CD" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Failed" --color "#B60205" --description "APM-02 deployment failed" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Blocked" --color "#D93F0B" --description "APM-02 blocked by conflicts" --repo ${{ github.repository }} 2>/dev/null || true
+
+          PR_BODY=$(printf '%s\n' \
+            "**Active Snapshot:** \`$SNAPSHOT\`" \
+            "" \
+            "**Started:** $DATE_IST at $TIME_IST" \
+            "**Initiated by:** $INITIATED_BY" \
+            "**Waiting window:** ${{ steps.create.outputs.waiting_minutes }} minutes (Deployment automatically starts at $DEPLOY_TIME_IST)" \
+            "" \
+            "> Developers: cherry-pick your changes into this branch before the deployment begins." \
+            "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02-v2\`.")
+
+          gh pr create --repo ${{ github.repository }} \
+            --base main \
+            --head "$SNAPSHOT" \
+            --title "🟢 APM-02 Active Snapshot: $SNAPSHOT" \
+            --body "$PR_BODY" \
+            --draft \
+            --label "APM-02 Active"
+          echo "✅ Tracking PR created and labeled"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Create)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "create", "snapshot": "${{ steps.create.outputs.snapshot_branch }}", "actor": "${{ github.actor }}", "date": "${{ steps.create.outputs.date_ist }}"}'
+
+
+  # ─────────────────────────────────────────────
+  # STEP 4 — Notify developers in Teams
+  # ─────────────────────────────────────────────
+  notify-developers:
+    needs: create-snapshot
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🌿 New Snapshot Branch Created For APM02 Deployment"
+      card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
+      status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }} minutes until ${{ needs.create-snapshot.outputs.deploy_time_ist }})"
+      status_color: "accent"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      extra_fact_title: "Deployment Schedule"
+      extra_fact_value: "The waiting window closes in ${{ needs.create-snapshot.outputs.waiting_minutes }} minutes. APM-02 deployment will start automatically at ${{ needs.create-snapshot.outputs.deploy_time_ist }}."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+    secrets: inherit
+
+  # ─────────────────────────────────────────────
+  # STEP 5 — Wait (waiting_minutes minus 5)
+  # ─────────────────────────────────────────────
+  wait-main:
+    needs: [create-snapshot, notify-developers]
+    runs-on: ubuntu-latest
+    outputs:
+      current_deploy_time: ${{ steps.wait.outputs.current_deploy_time }}
+      is_immediate: ${{ steps.wait.outputs.is_immediate }}
+    steps:
+      - name: Wait for developers to cherry-pick
+        id: wait
+        run: |
+          echo "⏳ Waiting for developers to cherry-pick. Polling Tracking PR for target time..."
+          
+          while true; do
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
+            TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
+            
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            NOW_TS=$(TZ='Asia/Kolkata' date +%s)
+            
+            DIFF=$((TARGET_TS - NOW_TS))
+            
+            if [ "$DIFF" -le 300 ]; then
+              if [ "$DIFF" -le 0 ]; then
+                echo "is_immediate=true" >> $GITHUB_OUTPUT
+                echo "✅ Target time reached immediately (Force started)."
+              else
+                echo "is_immediate=false" >> $GITHUB_OUTPUT
+                echo "✅ Less than 5 minutes remaining. Main wait complete."
+              fi
+              echo "current_deploy_time=$TARGET_TIME_IST" >> $GITHUB_OUTPUT
+              break
+            fi
+            
+            echo "⏳ $DIFF seconds remaining until deployment. Sleeping for 30s..."
+            sleep 30
+          done
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # ─────────────────────────────────────────────
+  # STEP 6 — Send 5-minute reminder
+  # ─────────────────────────────────────────────
+  notify-reminder:
+    needs: [create-snapshot, wait-main]
+    if: needs.wait-main.outputs.is_immediate != 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "⏰ APM-02 Deployment Starting in 5 Minutes"
+      card_subtitle: "The waiting window is almost over. If you still need more time for cherry-picking, please trigger the 'APM-02 Extend Waiting Window' workflow immediately."
+      status_text: "⚠️ Starting in 5 minutes at ${{ needs.wait-main.outputs.current_deploy_time }}"
+      status_color: "warning"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      extra_fact_title: "Need More Time?"
+      extra_fact_value: "Trigger the 'APM-02 Extend Waiting Window' workflow now."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+    secrets: inherit
+
+  # ─────────────────────────────────────────────
+  # STEP 7 — Wait final 5 minutes
+  # ─────────────────────────────────────────────
+  wait-final:
+    needs: [create-snapshot, wait-main]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait final 5 minutes
+        run: |
+          echo "⏳ Final wait started. Polling Tracking PR for target time..."
+          
+          while true; do
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
+            TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
+            
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            NOW_TS=$(TZ='Asia/Kolkata' date +%s)
+            
+            if [ "$NOW_TS" -ge "$TARGET_TS" ]; then
+              echo "✅ Final wait complete. Target time reached. Proceeding to deployment."
+              break
+            fi
+            
+            DIFF=$((TARGET_TS - NOW_TS))
+            echo "⏳ Final wait: $DIFF seconds remaining. Sleeping for 15s..."
+            sleep 15
+          done
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # ─────────────────────────────────────────────
+  # STEP 8 — Merge snapshot → apm-02
+  # ─────────────────────────────────────────────
+  merge-to-apm02:
+    needs: [create-snapshot, wait-final]
+    runs-on: ubuntu-latest
+    outputs:
+      apm02_pr_number: ${{ steps.merge.outputs.apm02_pr_number }}
+      merge_success: ${{ steps.merge.outputs.merge_success }}
+      has_conflicts: ${{ steps.merge.outputs.has_conflicts }}
+      merge_time_ist: ${{ steps.merge.outputs.merge_time_ist }}
+      has_protected_changes: ${{ steps.check_protected.outputs.has_protected_changes }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+          fetch-depth: 0
+
+      - name: Check for Protected Files
+        id: check_protected
+        run: |
+          git fetch --all
+          DIFF=$(git diff origin/main...HEAD --name-only)
+          if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
+            echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
+            echo "has_protected_changes=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Set State to DEPLOYING (Update Tracking PR)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
+          if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: ${{ needs.create-snapshot.outputs.snapshot_branch }}" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
+            echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
+          else
+            echo "⚠️ Could not find open PR to update state."
+          fi
+
+      - name: Merge snapshot into apm-02
+        id: merge
+        run: |
+          SNAPSHOT="${{ needs.create-snapshot.outputs.snapshot_branch }}"
+          MERGE_TIME=$(TZ='Asia/Kolkata' date +'%H:%M IST')
+          echo "merge_time_ist=$MERGE_TIME" >> $GITHUB_OUTPUT
+
+          git fetch --all
+
+          if [ -z "$(git diff origin/tenant/asint-apm-02-v2...HEAD)" ]; then
+            echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
+            
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+            if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+              gh pr close "$ACTIVE_PR" --repo ${{ github.repository }} -c "No new commits to deploy. Snapshot already synced with APM-02. Closing tracking PR."
+              gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Deploying"
+            fi
+            
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "apm02_pr_number=NO_COMMITS" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          gh label create "auto merge for APM02" --color "#e11d48" --description "APM-02 deployment PR" 2>/dev/null || true
+
+          PR_NUMBER=$(gh pr list \
+            --base tenant/asint-apm-02-v2 \
+            --json number,headRefName \
+            --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" 2>/dev/null | head -n 1 || echo "")
+
+          if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            PR_BODY_APM02=$(printf '%s\n' \
+              "Auto-generated deployment PR." \
+              "" \
+              "**Snapshot:** \`$SNAPSHOT\`" \
+              "**Initiated by:** ${{ github.actor }}" \
+              "**Triggered at:** $MERGE_TIME" \
+              "" \
+              "This PR merges the snapshot into \`tenant/asint-apm-02-v2\` to trigger SAP CI/CD deployment.")
+
+            gh pr create \
+              --base tenant/asint-apm-02-v2 \
+              --head "$SNAPSHOT" \
+              --title "Merging from $SNAPSHOT into tenant/asint-apm-02-v2" \
+              --body "$PR_BODY_APM02"
+
+            PR_NUMBER=$(gh pr list \
+              --base tenant/asint-apm-02-v2 \
+              --json number,headRefName \
+              --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+
+            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            echo "✅ PR #$PR_NUMBER created"
+          else
+            echo "ℹ️ Existing PR #$PR_NUMBER found"
+          fi
+
+          echo "apm02_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+          for i in {1..10}; do
+            STATUS=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+            echo "Attempt $i: '$STATUS'"
+            if [[ "$STATUS" == "MERGEABLE" ]]; then
+              echo "merge_success=true" >> $GITHUB_OUTPUT
+              echo "has_conflicts=false" >> $GITHUB_OUTPUT
+
+              if gh pr merge "$PR_NUMBER" --merge; then
+                echo "✅ PR #$PR_NUMBER merged into apm-02 successfully"
+              else
+                gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step. Please check the workflow logs."
+                
+                ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+                if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+                  gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+                fi
+                
+                echo "merge_success=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              exit 0
+            elif [[ "$STATUS" == "CONFLICTING" ]]; then
+              echo "merge_success=false" >> $GITHUB_OUTPUT
+              echo "has_conflicts=true" >> $GITHUB_OUTPUT
+              gh pr comment "$PR_NUMBER" --body "⚠️ Auto-merge blocked: merge conflicts detected between \`$SNAPSHOT\` and \`tenant/asint-apm-02-v2\`. Manual resolution required before deployment can proceed."
+              
+              ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+              if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+                gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+              fi
+              
+              echo "❌ PR #$PR_NUMBER has conflicts"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          gh pr comment "$PR_NUMBER" --body "Auto-merge timed out waiting for mergeability status. Please check manually."
+          
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+          if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+            gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+          fi
+          
+          echo "merge_success=false" >> $GITHUB_OUTPUT
+          echo "has_conflicts=false" >> $GITHUB_OUTPUT
+          exit 1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # ─────────────────────────────────────────────
+  # STEP 8.5 — Update Wiki (Merged APM-02)
+  # ─────────────────────────────────────────────
+  update-wiki-apm02:
+    needs: [create-snapshot, merge-to-apm02]
+    if: always() && needs.merge-to-apm02.result != 'skipped' && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update Wiki (Merged APM-02)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "merged-apm02", "snapshot": "${{ needs.create-snapshot.outputs.snapshot_branch }}", "success": ${{ needs.merge-to-apm02.result == ''success'' }}, "pr_number": "${{ needs.merge-to-apm02.outputs.apm02_pr_number }}", "merge_time": "${{ needs.merge-to-apm02.outputs.merge_time_ist }}"}'
+
+  # ─────────────────────────────────────────────
+  # STEP 9 — Notify conflict if merge to apm-02 failed
+  # ─────────────────────────────────────────────
+  notify-conflict:
+    needs: [create-snapshot, merge-to-apm02]
+    if: failure() && needs.merge-to-apm02.outputs.has_conflicts == 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "APM02 deployment blocked due to merge conflicts."
+      card_subtitle: "A merge conflict occurred while trying to merge the snapshot into tenant/asint-apm-02-v2. The deployment has been blocked."
+      status_text: "APM02 deployment blocked due to merge conflicts."
+      status_color: "attention"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      extra_fact_title: "⚠️ Next Step"
+      extra_fact_value: "1. Resolve conflicts in the PR below. 2. Merge the PR manually. 3. Ensure SAP CI/CD starts."
+      action_label: "View Conflicting PR"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+    secrets: inherit
+
+  # ─────────────────────────────────────────────
+  # STEP 10 — Notify apm-02 merge success + SAP CI/CD started
+  # ─────────────────────────────────────────────
+  notify-apm02-merged:
+    needs: [create-snapshot, merge-to-apm02]
+    if: success() && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🚀 APM02 deployment triggered."
+      card_subtitle: "Snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
+      status_color: "good"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      extra_fact_title: "⚠️ Snapshot Closed"
+      extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes. A new snapshot branch can be created after the current APM-02 cycle is complete (i.e., when this snapshot is successfully merged into main)."
+      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+    secrets: inherit
+
+  notify-protected-file-violation:
+    needs: [create-snapshot, merge-to-apm02]
+    if: always() && needs.merge-to-apm02.result == 'failure' && needs.merge-to-apm02.outputs.has_protected_changes == 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "❌ APM-02 Deployment Blocked: Protected File Changed"
+      card_subtitle: "Protected file (mta.yaml or xs-security.json) changed. Cannot proceed further. Manual confirmation required."
+      status_text: "⛔ Deployment Blocked"
+      status_color: "attention"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Review the snapshot branch. The changes must be approved or resolved manually."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+    secrets: inherit
+
+  # ─────────────────────────────────────────────
+  # STEP 11 — Notify already synced (No Deployment)
+  # ─────────────────────────────────────────────
+  notify-already-synced:
+    needs: [create-snapshot, merge-to-apm02]
+    if: success() && needs.merge-to-apm02.outputs.apm02_pr_number == 'NO_COMMITS'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🏁 APM-02 Deployment Skipped — Already Synced"
+      card_subtitle: "No developers cherry-picked any new changes during the waiting window, and the main branch is already fully synced with tenant/asint-apm-02-v2."
+      status_text: "✅ Snapshot already synced with APM-02"
+      status_color: "good"
+      snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: "N/A"
+      extra_fact_title: "Cycle Complete"
+      extra_fact_value: "There are no new commits to deploy. SAP CI/CD will not be triggered. The tracking PR has been closed and the cycle is complete."
+      action_label: "View Snapshot Branch"
+      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+    secrets: inherit
+
+  notify-blocked:
+    needs: guard
+    if: failure() && needs.guard.outputs.blocked_pr != ''
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "🚫 APM-02 Deployment Blocked"
+      card_subtitle: "Cannot create a new snapshot because an old snapshot is still pending."
+      status_text: "🚫 Blocked by PR #${{ needs.guard.outputs.blocked_pr }} (${{ needs.guard.outputs.blocked_label }})"
+      status_color: "attention"
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Please merge or close PR #${{ needs.guard.outputs.blocked_pr }} before starting a new deployment."
+      action_label: "View Blocking PR"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.guard.outputs.blocked_pr }}"
+    secrets: inherit
