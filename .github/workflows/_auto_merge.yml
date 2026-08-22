@@ -109,7 +109,7 @@ jobs:
           PR_NUMBER="${{ env.pr_number }}"
           echo "Checking for protected files in PR #$PR_NUMBER..."
           CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')
-          if echo "$CHANGED_FILES" | grep -E '^mta\.yaml$|^xs-security\.json$'; then
+          if echo "$CHANGED_FILES" | grep -E '(^|/)mta\.yaml$|(^|/)xs-security\.json$'; then
             echo "protected_files_modified=true" >> $GITHUB_ENV
             gh pr comment "$PR_NUMBER" --body "⚠️ **Auto-merge blocked:** Protected files (\`mta.yaml\` or \`xs-security.json\`) were modified in this Pull Request. These files should not be overwritten in \`${{ inputs.base }}\`. Please revert these changes in the \`${{ inputs.compare }}\` branch before proceeding."
             echo "Protected files modified! Aborting merge."
