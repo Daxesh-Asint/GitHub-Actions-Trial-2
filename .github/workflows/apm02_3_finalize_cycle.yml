@@ -123,6 +123,8 @@ jobs:
           if [ -z "$(git diff origin/main...origin/"$SNAPSHOT")" ]; then
             echo "ℹ️ No new commits to sync back to main. Closing PR."
             gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
+            gh label create "APM-02 Deployed" --color "#0E8A16" --description "APM-02 deployment completed successfully" --repo ${{ github.repository }} 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ APM-02 Deployed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --remove-label "APM-02 Blocked" --add-label "APM-02 Deployed"
           else
             for i in {1..10}; do
               STATUS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
@@ -130,6 +132,8 @@ jobs:
                 gh pr ready "$PR_NUMBER" --repo ${{ github.repository }} 2>/dev/null || true
                 if gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge; then
                   echo "✅ PR #$PR_NUMBER merged into main successfully"
+                  gh label create "APM-02 Deployed" --color "#0E8A16" --description "APM-02 deployment completed successfully" --repo ${{ github.repository }} 2>/dev/null || true
+                  gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ APM-02 Deployed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --remove-label "APM-02 Blocked" --add-label "APM-02 Deployed"
                 else
                   gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "Auto-merge into main failed."
                   exit 1
