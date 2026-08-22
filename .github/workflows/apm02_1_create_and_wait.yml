@@ -140,6 +140,7 @@ jobs:
           gh label create "APM-02 Deploying" --color "#1D76DB" --description "APM-02 is deploying to SAP CI/CD" --repo ${{ github.repository }} 2>/dev/null || true
           gh label create "APM-02 Failed" --color "#B60205" --description "APM-02 deployment failed" --repo ${{ github.repository }} 2>/dev/null || true
           gh label create "APM-02 Blocked" --color "#D93F0B" --description "APM-02 blocked by conflicts" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "APM-02 Blocked (Conflicts Resolved)" --color "#0E8A16" --description "APM-02 conflicts resolved, pending auto-merge" --repo ${{ github.repository }} 2>/dev/null || true
 
           PR_BODY=$(printf '%s\n' \
             "**Active Snapshot:** \`$SNAPSHOT\`" \

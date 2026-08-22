@@ -1,0 +1,96 @@
+name: "[4] APM-02 Conflict Monitor"
+
+on:
+  pull_request:
+    types: [synchronize, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  auto-merge-resolved:
+    if: github.event.action == 'synchronize' && github.event.pull_request.base.ref == 'main' && contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Mergeability Check
+        run: sleep 10 # Give GitHub time to compute mergeability
+
+      - name: Check Mergeability and Auto-Merge
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Wait up to 30 seconds for mergeable state to be determined
+          for i in {1..6}; do
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable -q .mergeable)
+            if [ "$MERGEABLE" == "UNKNOWN" ]; then
+              echo "Mergeable state is UNKNOWN. Waiting..."
+              sleep 5
+            else
+              break
+            fi
+          done
+
+          echo "Final mergeable state: $MERGEABLE"
+          
+          if [ "$MERGEABLE" == "MERGEABLE" ]; then
+            echo "✅ Conflicts have been resolved! PR is now mergeable."
+            
+            # Update labels
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
+              --title "🟢 APM-02 Blocked (Conflicts Resolved): Merging to main" \
+              --remove-label "APM-02 Blocked" \
+              --add-label "APM-02 Blocked (Conflicts Resolved)"
+              
+            echo "Attempting to auto-merge..."
+            gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge --admin
+            echo "✅ PR successfully merged."
+          else
+            echo "⚠️ PR is still not mergeable. Conflicts remain or checks are failing."
+          fi
+
+  notify-and-update-wiki:
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Wiki (Post-Conflict)
+        run: |
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+        env:
+          WIKI_PAYLOAD: '{"action": "post-conflict", "snapshot": "${{ github.event.pull_request.head.ref }}"}'
+
+      - name: Notify Success
+        uses: ./.github/workflows/_apm02_notify.yml
+        with:
+          card_title: "✅ APM-02 Deployment Cycle Complete (Conflicts Resolved)"
+          card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into main."
+          status_text: "✅ Deployment & Merge Complete"
+          status_color: "good"
+          snapshot_branch: ${{ github.event.pull_request.head.ref }}
+          extra_fact_title: "Cycle State"
+          extra_fact_value: "Reset to IDLE. Ready for next deployment."
+          action_label: "View PR on GitHub"
+          action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+        secrets: inherit
