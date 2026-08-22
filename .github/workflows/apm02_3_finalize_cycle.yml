@@ -52,10 +52,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --json number,labels --jq '.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked")) | .number' | head -n 1)
           
           if [ -z "$DEPLOYING_PR" ]; then
-            echo "❌ ERROR: No active deployment found (No PR with 'APM-02 Deploying' label). State is IDLE."
+            echo "❌ ERROR: No active deployment found (No PR with 'APM-02 Deploying' or 'APM-02 Blocked' label). State is IDLE."
             exit 1
           fi
           echo "✅ State is DEPLOYING. Proceeding."
@@ -68,7 +68,7 @@ jobs:
           STATUS="${{ github.event.client_payload.status }}"
           
           # Extract the snapshot branch name securely from our Tracking PR!
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number,headRefName --jq '.[0]')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --json number,headRefName,labels --jq '[.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked"))][0]')
           SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
           PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
@@ -91,7 +91,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr edit "${{ steps.eval.outputs.pr_number }}" --repo ${{ github.repository }} --title "🔴 APM-02 Failed: ${{ steps.eval.outputs.snapshot }}" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+          gh pr edit "${{ steps.eval.outputs.pr_number }}" --repo ${{ github.repository }} --title "🔴 APM-02 Failed: Merging from ${{ steps.eval.outputs.snapshot }} to main" --remove-label "APM-02 Deploying" --remove-label "APM-02 Blocked" --add-label "APM-02 Failed"
           echo "✅ State set to FAILED"
           exit 1 # Stop workflow here
 
@@ -115,7 +115,7 @@ jobs:
           if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
             echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
             echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
-            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Protected Files): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Protected Files): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
             gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Manual confirmation required."
             exit 1
           fi
@@ -136,7 +136,7 @@ jobs:
                 fi
                 break
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
-                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 APM-02 Blocked (Conflicts): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
                 gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
                 echo "failure_reason=conflict" >> $GITHUB_OUTPUT
                 exit 1

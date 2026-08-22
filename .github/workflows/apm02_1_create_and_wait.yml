@@ -154,7 +154,7 @@ jobs:
           gh pr create --repo ${{ github.repository }} \
             --base main \
             --head "$SNAPSHOT" \
-            --title "🟢 APM-02 Active Snapshot: $SNAPSHOT" \
+            --title "🟢 APM-02 Active Snapshot: Merging from $SNAPSHOT to main" \
             --body "$PR_BODY" \
             --draft \
             --label "APM-02 Active"
@@ -336,7 +336,7 @@ jobs:
         run: |
           ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: ${{ needs.create-snapshot.outputs.snapshot_branch }}" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
+            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: Merging from ${{ needs.create-snapshot.outputs.snapshot_branch }} to main" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
             echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
           else
             echo "⚠️ Could not find open PR to update state."
@@ -416,7 +416,7 @@ jobs:
                 
                 ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
                 if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-                  gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+                  gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
                 fi
                 
                 echo "merge_success=false" >> $GITHUB_OUTPUT
@@ -430,7 +430,7 @@ jobs:
               
               ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
               if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-                gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Blocked (Conflicts): $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+                gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Blocked (Conflicts): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
               fi
               
               echo "❌ PR #$PR_NUMBER has conflicts"
@@ -443,7 +443,7 @@ jobs:
           
           ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-            gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: $SNAPSHOT" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
+            gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
           fi
           
           echo "merge_success=false" >> $GITHUB_OUTPUT
