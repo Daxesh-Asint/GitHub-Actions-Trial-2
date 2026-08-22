@@ -77,6 +77,13 @@ jobs:
           echo "SAP CI/CD Status: $STATUS"
           echo "Snapshot Branch: $SNAPSHOT"
           
+          # Check if the deployment PR into APM-02 is still open (meaning it hasn't been merged)
+          APM02_PR=$(gh pr list --repo ${{ github.repository }} --base tenant/asint-apm-02-v2 --head "$SNAPSHOT" --state open --json number --jq '.[0].number')
+          if [ -n "$APM02_PR" ] && [ "$APM02_PR" != "null" ]; then
+            echo "❌ ERROR: Snapshot $SNAPSHOT has not been merged into APM-02 yet (PR #$APM02_PR is still open). The SAP CI/CD success signal is invalid or premature. Refusing to merge into main."
+            exit 1 # Exit with error, preventing any further steps (keeps the PR in Blocked state)
+          fi
+          
           if [ "$STATUS" != "INFO" ] && [ "$STATUS" != "SUCCESS" ]; then
             echo "❌ SAP CI/CD Deployment Failed."
             echo "success=false" >> $GITHUB_OUTPUT

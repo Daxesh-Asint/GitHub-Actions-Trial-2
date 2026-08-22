@@ -459,6 +459,8 @@ jobs:
     needs: [create-snapshot, merge-to-apm02]
     if: always() && needs.merge-to-apm02.result != 'skipped' && needs.merge-to-apm02.outputs.apm02_pr_number != 'NO_COMMITS'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
