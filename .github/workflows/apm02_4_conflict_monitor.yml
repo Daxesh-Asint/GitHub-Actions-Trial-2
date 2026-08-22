@@ -44,6 +44,9 @@ jobs:
               --remove-label "APM-02 Blocked" \
               --add-label "APM-02 Blocked (Conflicts Resolved)"
               
+            echo "Marking PR as ready (in case it is a draft)..."
+            gh pr ready "$PR_NUMBER" --repo ${{ github.repository }} 2>/dev/null || true
+              
             echo "Attempting to auto-merge..."
             gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge --admin
             echo "✅ PR successfully merged."
