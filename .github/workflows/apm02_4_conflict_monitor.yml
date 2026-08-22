@@ -81,16 +81,18 @@ jobs:
         env:
           WIKI_PAYLOAD: '{"action": "post-conflict", "snapshot": "${{ github.event.pull_request.head.ref }}"}'
 
-      - name: Notify Success
-        uses: ./.github/workflows/_apm02_notify.yml
-        with:
-          card_title: "✅ APM-02 Deployment Cycle Complete (Conflicts Resolved)"
-          card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into main."
-          status_text: "✅ Deployment & Merge Complete"
-          status_color: "good"
-          snapshot_branch: ${{ github.event.pull_request.head.ref }}
-          extra_fact_title: "Cycle State"
-          extra_fact_value: "Reset to IDLE. Ready for next deployment."
-          action_label: "View PR on GitHub"
-          action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
-        secrets: inherit
+  notify-success:
+    needs: notify-and-update-wiki
+    if: always() && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)'))
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "✅ APM-02 Deployment Cycle Complete (Conflicts Resolved)"
+      card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into main."
+      status_text: "✅ Deployment & Merge Complete"
+      status_color: "good"
+      snapshot_branch: ${{ github.event.pull_request.head.ref }}
+      extra_fact_title: "Cycle State"
+      extra_fact_value: "Reset to IDLE. Ready for next deployment."
+      action_label: "View PR on GitHub"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+    secrets: inherit
