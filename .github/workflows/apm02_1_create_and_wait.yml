@@ -431,7 +431,7 @@ jobs:
               
               ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
               if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-                gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Blocked (Conflicts): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Blocked"
+                gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Pre-Deploy Blocked (Conflicts): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Pre-Deploy Blocked"
               fi
               
               echo "❌ PR #$PR_NUMBER has conflicts"
