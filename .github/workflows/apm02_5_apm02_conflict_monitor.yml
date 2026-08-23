@@ -86,7 +86,7 @@ jobs:
       - name: Update Wiki (Merged APM-02)
         run: |
           MERGE_TIME=$(TZ='Asia/Kolkata' date +'%H:%M IST')
-          echo "WIKI_PAYLOAD={\"action\": \"merged-apm02\", \"snapshot\": \"${{ github.event.pull_request.head.ref }}\", \"success\": true, \"pr_number\": \"${{ github.event.pull_request.number }}\", \"merge_time\": \"$MERGE_TIME\"}" >> $GITHUB_ENV
+          export WIKI_PAYLOAD="{\"action\": \"merged-apm02\", \"snapshot\": \"${{ github.event.pull_request.head.ref }}\", \"success\": true, \"pr_number\": \"${{ github.event.pull_request.number }}\", \"merge_time\": \"$MERGE_TIME\"}"
           
           if [ -d "wiki" ]; then
             node .github/scripts/update_wiki.js || echo "Wiki update failed"
