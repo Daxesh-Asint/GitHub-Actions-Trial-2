@@ -65,7 +65,7 @@ jobs:
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} \
               --title "🟡 APM-02 Deploying: Merging from $SNAPSHOT to main" \
-              --remove-label "APM-02 Blocked" \
+              --remove-label "APM-02 Pre-Deploy Blocked" \
               --add-label "APM-02 Deploying"
             echo "✅ Main PR updated to APM-02 Deploying."
           else
