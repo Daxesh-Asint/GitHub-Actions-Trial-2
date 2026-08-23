@@ -63,10 +63,8 @@ jobs:
         run: |
           ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
-            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} \
-              --title "🟡 APM-02 Deploying: Merging from $SNAPSHOT to main" \
-              --remove-label "APM-02 Pre-Deploy Blocked" \
-              --add-label "APM-02 Deploying"
+            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🟡 APM-02 Deploying: Merging from $SNAPSHOT to main" --add-label "APM-02 Deploying"
+            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Pre-Deploy Blocked" 2>/dev/null || true
             echo "✅ Main PR updated to APM-02 Deploying."
           else
             echo "⚠️ No open Main PR found for snapshot $SNAPSHOT."
