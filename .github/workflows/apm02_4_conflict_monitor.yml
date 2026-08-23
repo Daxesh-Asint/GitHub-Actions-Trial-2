@@ -55,7 +55,11 @@ jobs:
           fi
 
   notify-and-update-wiki:
-    if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)'))
+    needs: auto-merge-resolved
+    if: always() && (
+          (needs.auto-merge-resolved.result == 'success' && github.event.action == 'synchronize') || 
+          (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)')))
+        )
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -85,8 +89,11 @@ jobs:
           WIKI_PAYLOAD: '{"action": "post-conflict", "snapshot": "${{ github.event.pull_request.head.ref }}"}'
 
   notify-success:
-    needs: notify-and-update-wiki
-    if: always() && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)'))
+    needs: [auto-merge-resolved, notify-and-update-wiki]
+    if: always() && (
+          (needs.auto-merge-resolved.result == 'success' && github.event.action == 'synchronize') || 
+          (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)')))
+        )
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ APM-02 Deployment Cycle Complete (Conflicts Resolved)"
