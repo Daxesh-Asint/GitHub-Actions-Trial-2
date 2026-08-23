@@ -1,0 +1,117 @@
+name: "[5] APM-02 Pre-Deploy Conflict Monitor"
+
+on:
+  pull_request:
+    types: [synchronize, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  auto-merge-apm02:
+    if: github.event.action == 'synchronize' && github.event.pull_request.base.ref == 'tenant/asint-apm-02-v2' && contains(github.event.pull_request.labels.*.name, 'auto merge for APM02')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Mergeability Check
+        run: sleep 10 # Give GitHub time to compute mergeability
+
+      - name: Check Mergeability and Auto-Merge
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Wait up to 30 seconds for mergeable state to be determined
+          for i in {1..6}; do
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable -q .mergeable)
+            if [ "$MERGEABLE" == "UNKNOWN" ]; then
+              echo "Mergeable state is UNKNOWN. Waiting..."
+              sleep 5
+            else
+              break
+            fi
+          done
+
+          echo "Final mergeable state: $MERGEABLE"
+          
+          if [ "$MERGEABLE" == "MERGEABLE" ]; then
+            echo "✅ Conflicts have been resolved! PR is now mergeable."
+            
+            echo "Attempting to auto-merge..."
+            gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge --admin
+            echo "✅ PR successfully merged."
+          else
+            echo "⚠️ PR is still not mergeable. Conflicts remain or checks are failing."
+          fi
+
+  post-merge-actions:
+    needs: auto-merge-apm02
+    if: always() && (
+          (needs.auto-merge-apm02.result == 'success' && github.event.action == 'synchronize') || 
+          (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'tenant/asint-apm-02-v2' && contains(github.event.pull_request.labels.*.name, 'auto merge for APM02'))
+        )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update Main PR Status
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SNAPSHOT: ${{ github.event.pull_request.head.ref }}
+        run: |
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+          if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
+            gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} \
+              --title "🟡 APM-02 Deploying: Merging from $SNAPSHOT to main" \
+              --remove-label "APM-02 Blocked" \
+              --add-label "APM-02 Deploying"
+            echo "✅ Main PR updated to APM-02 Deploying."
+          else
+            echo "⚠️ No open Main PR found for snapshot $SNAPSHOT."
+          fi
+
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Wiki (Merged APM-02)
+        run: |
+          MERGE_TIME=$(TZ='Asia/Kolkata' date +'%H:%M IST')
+          echo "WIKI_PAYLOAD={\"action\": \"merged-apm02\", \"snapshot\": \"${{ github.event.pull_request.head.ref }}\", \"success\": true, \"pr_number\": \"${{ github.event.pull_request.number }}\", \"merge_time\": \"$MERGE_TIME\"}" >> $GITHUB_ENV
+          
+          if [ -d "wiki" ]; then
+            node .github/scripts/update_wiki.js || echo "Wiki update failed"
+          else
+            echo "Wiki repo not found, skipping."
+          fi
+
+  notify-apm02-merged:
+    needs: [auto-merge-apm02, post-merge-actions]
+    if: always() && (
+          (needs.auto-merge-apm02.result == 'success' && github.event.action == 'synchronize') || 
+          (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'tenant/asint-apm-02-v2' && contains(github.event.pull_request.labels.*.name, 'auto merge for APM02'))
+        )
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      card_title: "✅ Merge Conflicts Resolved and automation process resumed."
+      card_subtitle: "Merge conflicts were resolved and snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
+      status_color: "good"
+      snapshot_branch: ${{ github.event.pull_request.head.ref }}
+      pr_number: ${{ github.event.pull_request.number }}
+      extra_fact_title: "⚠️ Snapshot Closed"
+      extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes."
+      action_label: "Review PR #${{ github.event.pull_request.number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+    secrets: inherit
