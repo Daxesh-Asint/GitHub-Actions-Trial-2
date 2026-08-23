@@ -88,7 +88,17 @@ for (const r of history) {
   // Format date to take exactly 2 lines by splitting after the comma and preventing wraps elsewhere
   const dateStr = r.date.replace(', ', ',<br>').replace(/ /g, '&nbsp;');
   
-  md += `| ${r.id} | ${dateStr} | \`${r.snapshot}\` | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${r.status} |\n`;
+  // Format status to keep emoji and first word on the same line, and the rest on a new line
+  const statusParts = r.status.split(' ');
+  let statusStr = statusParts[0];
+  if (statusParts.length > 1) {
+    statusStr += '&nbsp;' + statusParts[1];
+  }
+  if (statusParts.length > 2) {
+    statusStr += '<br>' + statusParts.slice(2).join(' ');
+  }
+  
+  md += `| ${r.id} | ${dateStr} | \`${r.snapshot}\` | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${statusStr} |\n`;
 }
 
 fs.writeFileSync(mdFile, md);
