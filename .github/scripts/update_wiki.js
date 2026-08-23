@@ -76,7 +76,7 @@ fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
 
 let md = `# APM-02 Deployment History\n\n`;
 md += `> Auto-updated by GitHub Actions after every deployment cycle.\n\n`;
-md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | 🔀 APM-02 PR | Main PR | snapshot merged into APM-02? | snapshot merged into main? | Completed? | Status |\n`;
+md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | APM02<br>PR | Main PR | snapshot merged into APM-02? | snapshot merged into main? | Completed? | Status |\n`;
 md += `|---|---|---|---|---|---|---|---|---|\n`;
 
 const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial-2';
@@ -85,7 +85,20 @@ for (const r of history) {
   const apm02Link = r.apm02_pr !== 'N/A' && r.apm02_pr !== 'NO_COMMITS' ? `[#${r.apm02_pr}](https://github.com/${REPO}/pull/${r.apm02_pr})` : r.apm02_pr;
   const mainLink = r.main_pr !== 'N/A' && r.main_pr !== 'NO_COMMITS' ? `[#${r.main_pr}](https://github.com/${REPO}/pull/${r.main_pr})` : r.main_pr;
   
-  md += `| ${r.id} | <nobr>${r.date}</nobr> | <nobr>\`${r.snapshot}\`</nobr> | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${r.status} |\n`;
+  // Format date to take exactly 2 lines by splitting after the comma and preventing wraps elsewhere
+  const dateStr = r.date.replace(', ', ',<br>').replace(/ /g, '&nbsp;');
+  
+  // Format status to keep emoji and first word on the same line, and the rest on a new line
+  const statusParts = r.status.split(' ');
+  let statusStr = statusParts[0];
+  if (statusParts.length > 1) {
+    statusStr += '&nbsp;' + statusParts[1];
+  }
+  if (statusParts.length > 2) {
+    statusStr += '<br>' + statusParts.slice(2).join(' ');
+  }
+  
+  md += `| ${r.id} | ${dateStr} | \`${r.snapshot}\` | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${statusStr} |\n`;
 }
 
 fs.writeFileSync(mdFile, md);
