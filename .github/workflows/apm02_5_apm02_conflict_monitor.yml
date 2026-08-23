@@ -17,6 +17,27 @@ jobs:
       - name: Wait for Mergeability Check
         run: sleep 10 # Give GitHub time to compute mergeability
 
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Revert Protected Files
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          DIFF=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD --name-only)
+          if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
+            echo "⚠️ Protected files changed. Automatically reverting to match base branch..."
+            git checkout origin/${{ github.event.pull_request.base.ref }} -- mta.yaml xs-security.json || true
+            if [ -n "$(git status --porcelain)" ]; then
+              git config --global user.name 'github-actions[bot]'
+              git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+              git commit -m "chore: auto-revert protected files (mta.yaml, xs-security.json)"
+              git push origin ${{ github.event.pull_request.head.ref }}
+            fi
+          fi
+
       - name: Check Mergeability and Auto-Merge
         env:
           GITHUB_TOKEN: ${{ github.token }}
