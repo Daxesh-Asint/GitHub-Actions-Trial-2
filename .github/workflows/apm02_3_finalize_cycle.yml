@@ -200,6 +200,7 @@ jobs:
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      pr_number: ${{ needs.finalize.outputs.pr_number }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
       action_label: "View PR on GitHub"
@@ -216,6 +217,7 @@ jobs:
       status_text: "❌ Action Required"
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      pr_number: ${{ needs.finalize.outputs.pr_number }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
       action_label: "View PR on GitHub"
@@ -232,6 +234,7 @@ jobs:
       status_text: "⚠️ Manual Resolution Required"
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      pr_number: ${{ needs.finalize.outputs.pr_number }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
       action_label: "View PR on GitHub"
@@ -248,6 +251,7 @@ jobs:
       status_text: "⛔ Deployment Blocked"
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      pr_number: ${{ needs.finalize.outputs.pr_number }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Review the PR. The changes must be approved or resolved manually."
       action_label: "View PR on GitHub"
