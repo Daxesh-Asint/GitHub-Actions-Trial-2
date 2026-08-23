@@ -76,7 +76,7 @@ fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
 
 let md = `# APM-02 Deployment History\n\n`;
 md += `> Auto-updated by GitHub Actions after every deployment cycle.\n\n`;
-md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | APM-02<br>PR | Main PR | snapshot merged into APM-02? | snapshot merged into main? | Completed? | Status |\n`;
+md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | APM02<br>PR | Main PR | snapshot merged into APM-02? | snapshot merged into main? | Completed? | Status |\n`;
 md += `|---|---|---|---|---|---|---|---|---|\n`;
 
 const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial-2';
