@@ -320,15 +320,21 @@ jobs:
           ref: ${{ needs.create-snapshot.outputs.snapshot_branch }}
           fetch-depth: 0
 
-      - name: Check for Protected Files
+      - name: Check and Revert Protected Files
         id: check_protected
         run: |
           git fetch --all
           DIFF=$(git diff origin/main...HEAD --name-only)
           if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
-            echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
+            echo "⚠️ Protected files changed. Automatically reverting to match main..."
+            git checkout origin/main -- mta.yaml xs-security.json || true
+            if [ -n "$(git status --porcelain)" ]; then
+              git config --global user.name 'github-actions[bot]'
+              git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+              git commit -m "chore: auto-revert protected files (mta.yaml, xs-security.json)"
+              git push origin HEAD
+            fi
             echo "has_protected_changes=true" >> $GITHUB_OUTPUT
-            exit 1
           fi
 
       - name: Set State to DEPLOYING (Update Tracking PR)
