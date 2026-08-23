@@ -40,7 +40,7 @@ jobs:
             
             # Update labels
             gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
-              --title "🟢 APM-02 Blocked (Conflicts Resolved): Merging to main" \
+              --title "🟢 APM-02 Blocked (Conflicts Resolved): Merging from ${{ github.event.pull_request.head.ref }} to main" \
               --remove-label "APM-02 Blocked" \
               --add-label "APM-02 Blocked (Conflicts Resolved)"
               
