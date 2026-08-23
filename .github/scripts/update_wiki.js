@@ -84,7 +84,12 @@ const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial
 for (const r of history) {
   const apm02Link = r.apm02_pr !== 'N/A' && r.apm02_pr !== 'NO_COMMITS' ? `[#${r.apm02_pr}](https://github.com/${REPO}/pull/${r.apm02_pr})` : r.apm02_pr;
   const mainLink = r.main_pr !== 'N/A' && r.main_pr !== 'NO_COMMITS' ? `[#${r.main_pr}](https://github.com/${REPO}/pull/${r.main_pr})` : r.main_pr;
-  md += `| ${r.id} | <nobr>${r.date}</nobr> | <nobr>\`${r.snapshot}\`</nobr> | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${r.status} |\n`;
+  
+  // Format date and snapshot with non-breaking characters to prevent wrapping
+  const dateStr = r.date.replace(/ /g, '&nbsp;');
+  const snapshotStr = r.snapshot.replace(/-/g, '&#8209;');
+  
+  md += `| ${r.id} | ${dateStr} | \`${snapshotStr}\` | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${r.status} |\n`;
 }
 
 fs.writeFileSync(mdFile, md);
