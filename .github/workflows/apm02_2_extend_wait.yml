@@ -1,4 +1,4 @@
-name: "Deploy APM-02: 2. Extend Wait Window"
+name: "APM-02: 2. Extend Wait Window"
 
 # An admin triggers this during the waiting window to give developers more (or less) time.
 # This workflow adjusts the requested duration, then notifies the channel.

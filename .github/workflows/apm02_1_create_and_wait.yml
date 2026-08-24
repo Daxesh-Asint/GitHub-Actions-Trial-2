@@ -1,4 +1,4 @@
-name: "Deploy APM-02: 1. Start Snapshot & Wait"
+name: "APM-02: 1. Start Snapshot & Wait"
 
 on:
   repository_dispatch:

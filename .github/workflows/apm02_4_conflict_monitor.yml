@@ -1,4 +1,4 @@
-name: "Deploy APM-02: Guard - Main PR Conflicts"
+name: "APM-02: Guard - Main PR Conflicts"
 
 on:
   pull_request:
