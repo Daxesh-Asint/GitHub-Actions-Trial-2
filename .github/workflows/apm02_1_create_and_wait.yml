@@ -90,6 +90,7 @@ jobs:
       time_ist: ${{ steps.create.outputs.time_ist }}
       deploy_time_ist: ${{ steps.create.outputs.deploy_time_ist }}
       waiting_minutes: ${{ steps.create.outputs.waiting_minutes }}
+      tracking_pr_url: ${{ steps.create-tracking-pr.outputs.tracking_pr_url }}
     permissions:
       contents: write
       pull-requests: write
@@ -152,14 +153,15 @@ jobs:
             "> Developers: cherry-pick your changes into this branch before the deployment begins." \
             "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02-v2\`.")
 
-          gh pr create --repo ${{ github.repository }} \
+          PR_URL=$(gh pr create --repo ${{ github.repository }} \
             --base main \
             --head "$SNAPSHOT" \
             --title "🟢 APM-02 Active Snapshot: Merging from $SNAPSHOT to main" \
             --body "$PR_BODY" \
             --draft \
-            --label "APM-02 Active"
+            --label "APM-02 Active")
           echo "✅ Tracking PR created and labeled"
+          echo "tracking_pr_url=$PR_URL" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -542,8 +544,8 @@ jobs:
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Review the snapshot branch. The changes must be approved or resolved manually."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+      action_label: "Review PR"
+      action_url: "${{ needs.create-snapshot.outputs.tracking_pr_url }}"
     secrets: inherit
 
   # ─────────────────────────────────────────────
