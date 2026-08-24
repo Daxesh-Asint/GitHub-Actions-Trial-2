@@ -328,9 +328,8 @@ jobs:
           git fetch --all
           DIFF=$(git diff origin/main...HEAD --name-only)
           if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
-            echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
+            echo "⚠️ WARNING: Protected file changed (mta.yaml or xs-security.json)."
             echo "has_protected_changes=true" >> $GITHUB_OUTPUT
-            exit 1
           fi
 
       - name: Set State to DEPLOYING (Update Tracking PR)
@@ -397,13 +396,22 @@ jobs:
               --json number,headRefName \
               --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
 
-            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            if [ "${{ steps.check_protected.outputs.has_protected_changes }}" == "true" ]; then
+              gh pr comment "$PR_NUMBER" --body "⚠️ Manual review required: Protected files (mta.yaml or xs-security.json) have been modified in this snapshot. Please review the changes carefully before manually merging."
+            else
+              gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            fi
             echo "✅ PR #$PR_NUMBER created"
           else
             echo "ℹ️ Existing PR #$PR_NUMBER found"
           fi
 
           echo "apm02_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+          if [ "${{ steps.check_protected.outputs.has_protected_changes }}" == "true" ]; then
+            echo "❌ Protected files were changed. Exiting to block deployment for manual review."
+            exit 1
+          fi
 
           for i in {1..10}; do
             STATUS=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
