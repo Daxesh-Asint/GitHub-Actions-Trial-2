@@ -1,4 +1,4 @@
-name: "[3] APM-02 Finalize Cycle (Merge to Main)"
+name: "Deploy APM-02: 3. Finalize & Sync to Main"
 
 on:
   repository_dispatch:
