@@ -551,9 +551,10 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Action Required"
-      extra_fact_value: "Review the snapshot branch. The changes must be approved or resolved manually."
-      action_label: "Review PR"
-      action_url: "${{ needs.create-snapshot.outputs.tracking_pr_url }}"
+      extra_fact_value: "Review the APM-02 PR. The changes must be approved and merged manually."
+      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
     secrets: inherit
 
   # ─────────────────────────────────────────────
