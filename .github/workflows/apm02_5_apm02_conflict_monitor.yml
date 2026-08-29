@@ -1,4 +1,4 @@
-name: "[5] APM-02 Pre-Deploy Conflict Monitor"
+name: "APM-02: Guard - Pre-Deploy Conflicts"
 
 on:
   pull_request:
