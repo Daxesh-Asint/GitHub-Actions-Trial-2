@@ -52,7 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --json number,labels --jq '.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked")) | .number' | head -n 1)
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,labels --jq '.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked")) | .number' | head -n 1)
           
           if [ -z "$DEPLOYING_PR" ]; then
             echo "❌ ERROR: No active deployment found (No PR with 'APM-02 Deploying' or 'APM-02 Blocked' label). State is IDLE."
@@ -68,7 +68,7 @@ jobs:
           STATUS="${{ github.event.client_payload.status }}"
           
           # Extract the snapshot branch name securely from our Tracking PR!
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --json number,headRefName,labels --jq '[.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked"))][0]')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels --jq '[.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked"))][0]')
           SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
           PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT

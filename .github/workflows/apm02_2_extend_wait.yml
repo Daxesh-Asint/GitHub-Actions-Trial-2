@@ -44,7 +44,7 @@ jobs:
       - name: Check active snapshot and update PR
         id: check
         run: |
-          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number,headRefName --jq '.[0]')
+          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number,headRefName --jq '.[0]')
           
           if [ -n "$ACTIVE_PR_JSON" ] && [ "$ACTIVE_PR_JSON" != "null" ]; then
             ACTIVE=$(echo "$ACTIVE_PR_JSON" | jq -r '.headRefName')
