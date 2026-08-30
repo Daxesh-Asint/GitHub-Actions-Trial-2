@@ -25,6 +25,10 @@ on:
           - "60"
           - "180"
 
+concurrency:
+  group: apm02-deployment
+  cancel-in-progress: true
+
 jobs:
   # ─────────────────────────────────────────────
   # STEP 1 — Guard: block if active snapshot exists
@@ -42,11 +46,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
-          FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Failed" --json number --jq '.[0].number')
-          BLOCKED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Blocked" --json number --jq '.[0].number')
-          AUTO_MERGE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "auto merge for APM02" --json number --jq '.[0].number')
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number --jq '.[0].number')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Deploying" --json number --jq '.[0].number')
+          FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Failed" --json number --jq '.[0].number')
+          BLOCKED_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Blocked" --json number --jq '.[0].number')
+          AUTO_MERGE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "auto merge for APM02" --json number --jq '.[0].number')
           
           if [ -n "$ACTIVE_PR" ]; then
             echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR). Complete or close it before starting a new one."
@@ -223,7 +227,7 @@ jobs:
           echo "⏳ Waiting for developers to cherry-pick. Polling Tracking PR for target time..."
           
           while true; do
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number --jq '.[0].number')
             TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
             
@@ -281,7 +285,7 @@ jobs:
           echo "⏳ Final wait started. Polling Tracking PR for target time..."
           
           while true; do
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number --jq '.[0].number')
             TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
             
@@ -336,7 +340,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: Merging from ${{ needs.create-snapshot.outputs.snapshot_branch }} to main" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
             echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
@@ -356,7 +360,7 @@ jobs:
           if [ -z "$(git diff origin/tenant/asint-apm-02-v2...HEAD)" ]; then
             echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
             
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
             if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
               gh pr close "$ACTIVE_PR" --repo ${{ github.repository }} -c "No new commits to deploy. Snapshot already synced with APM-02. Closing tracking PR."
               gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Deploying"
@@ -425,7 +429,7 @@ jobs:
               else
                 gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step. Please check the workflow logs."
                 
-                ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+                ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
                 if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
                   gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
                 fi
@@ -439,7 +443,7 @@ jobs:
               echo "has_conflicts=true" >> $GITHUB_OUTPUT
               gh pr comment "$PR_NUMBER" --body "⚠️ Auto-merge blocked: merge conflicts detected between \`$SNAPSHOT\` and \`tenant/asint-apm-02-v2\`. Manual resolution required before deployment can proceed."
               
-              ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+              ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
               if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
                 gh label create "APM-02 Pre-Deploy Blocked" --color "#D93F0B" --description "APM-02 blocked by pre-deploy conflicts" 2>/dev/null || true
                 gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Pre-Deploy Blocked (Conflicts): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Pre-Deploy Blocked"
@@ -453,7 +457,7 @@ jobs:
 
           gh pr comment "$PR_NUMBER" --body "Auto-merge timed out waiting for mergeability status. Please check manually."
           
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
           fi
