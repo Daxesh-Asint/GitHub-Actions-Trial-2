@@ -114,7 +114,7 @@ jobs:
           SNAPSHOT_NAME="snapshot/main-$(TZ='Asia/Kolkata' date +'%y%m%d-%H%M')"
           DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
           TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
-          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%I:%M %p IST')
+          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%b %d, %Y %I:%M %p IST')
 
           echo "snapshot_branch=$SNAPSHOT_NAME" >> $GITHUB_OUTPUT
           echo "date_ist=$DATE_IST" >> $GITHUB_OUTPUT
@@ -231,7 +231,7 @@ jobs:
             TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
             
-            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s 2>/dev/null || TZ='Asia/Kolkata' date -d "today $TIME_STR" +%s)
             NOW_TS=$(TZ='Asia/Kolkata' date +%s)
             
             DIFF=$((TARGET_TS - NOW_TS))
@@ -289,7 +289,7 @@ jobs:
             TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
             
-            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s 2>/dev/null || TZ='Asia/Kolkata' date -d "today $TIME_STR" +%s)
             NOW_TS=$(TZ='Asia/Kolkata' date +%s)
             
             if [ "$NOW_TS" -ge "$TARGET_TS" ]; then
