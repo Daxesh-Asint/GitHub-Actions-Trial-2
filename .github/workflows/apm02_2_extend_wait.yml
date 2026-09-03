@@ -59,11 +59,11 @@ jobs:
             ADJUST_MINUTES="${{ github.event.inputs.adjust_minutes || github.event.client_payload.adjust_minutes || '10' }}"
             
             if [ "$DEPLOY_NOW" == "true" ]; then
-              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
+              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date +'%b %d, %Y %I:%M %p IST')
               ACTION_WORD="Force-Started"
               SUMMARY_TEXT="Force-Started (new time: $EXTEND_TIME_IST)"
             else
-              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${ADJUST_MINUTES} minutes" +'%I:%M %p IST')
+              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${ADJUST_MINUTES} minutes" +'%b %d, %Y %I:%M %p IST')
               ADJUST_VAL="$ADJUST_MINUTES"
               if [[ "$ADJUST_VAL" == -* ]]; then
                 ACTION_WORD="Decreased"
