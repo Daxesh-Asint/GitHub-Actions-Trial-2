@@ -25,10 +25,6 @@ on:
           - "60"
           - "180"
 
-concurrency:
-  group: apm02-deployment
-  cancel-in-progress: true
-
 jobs:
   # ─────────────────────────────────────────────
   # STEP 1 — Guard: block if active snapshot exists
