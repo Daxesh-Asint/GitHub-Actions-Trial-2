@@ -3,12 +3,16 @@ const https = require('https');
 // =========================================================================
 // 🔧 REPOSITORY & AUTHENTICATION CONFIGURATION
 // =========================================================================
-// Set these environment variables in your GCP Cloud Function / Cloud Run settings:
-// - GITHUB_PAT:  Personal Access Token with 'repo' and 'workflow' permissions
-// - GITHUB_REPO: Repository in format 'owner/repo' (defaults to POC repo)
-// - BOT_NAME:    Fallback bot name if Teams payload lacks mention entity (defaults to 'Jarvis')
+// You can toggle between POC and Production by commenting/uncommenting below,
+// or by setting the GITHUB_REPO and GITHUB_PAT environment variables in GCP.
+
+// 🧪 1. POC REPOSITORY (Currently Active for testing):
 const GITHUB_REPO = process.env.GITHUB_REPO || 'Daxesh-Asint/GitHub-Actions-Trial-2';
-const GITHUB_PAT  = process.env.GITHUB_PAT || '';
+const GITHUB_PAT  = process.env.GITHUB_PAT  || '';
+
+// 🏢 2. FINAL COMPANY REPOSITORY (Commented out for now - uncomment when switching to production):
+// const GITHUB_REPO = process.env.GITHUB_REPO || 'StillSomehowSane/asint_ais';
+// const GITHUB_PAT  = process.env.GITHUB_PAT  || 'YOUR_COMPANY_GITHUB_PAT_HERE';
 
 // =========================================================================
 // 🔒 ANTI-SPAM DEBOUNCE LOCKS
