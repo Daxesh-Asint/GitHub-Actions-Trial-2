@@ -109,7 +109,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ Merge Conflicts Resolved and automation process resumed."
-      card_subtitle: "Merge conflicts were resolved and snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      card_subtitle: "Merge conflicts were resolved and snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 55-60 minutes."
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ github.event.pull_request.head.ref }}

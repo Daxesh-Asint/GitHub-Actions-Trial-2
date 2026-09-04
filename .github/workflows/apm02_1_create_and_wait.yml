@@ -536,7 +536,7 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "🚀 APM02 deployment triggered."
-      card_subtitle: "Snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      card_subtitle: "Snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 55-60 minutes."
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
