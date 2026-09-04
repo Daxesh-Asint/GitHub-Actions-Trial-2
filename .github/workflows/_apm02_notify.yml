@@ -144,7 +144,8 @@ jobs:
                             type: "TextBlock",
                             text: $status,
                             weight: "Bolder",
-                            color: $color
+                            color: $color,
+                            wrap: true
                           }]
                         }]
                       },
