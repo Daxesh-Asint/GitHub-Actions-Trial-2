@@ -99,6 +99,7 @@ jobs:
       deploy_time_short_ist: ${{ steps.create.outputs.deploy_time_short_ist }}
       waiting_minutes: ${{ steps.create.outputs.waiting_minutes }}
       tracking_pr_url: ${{ steps.create-tracking-pr.outputs.tracking_pr_url }}
+      pr_number: ${{ steps.create-tracking-pr.outputs.pr_number }}
     permissions:
       contents: write
       pull-requests: write
@@ -140,6 +141,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Create Tracking Pull Request
+        id: create-tracking-pr
         run: |
           SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
           DATE_IST="${{ steps.create.outputs.date_ist }}"
@@ -170,8 +172,10 @@ jobs:
             --body "$PR_BODY" \
             --draft \
             --label "APM-02 Active")
-          echo "✅ Tracking PR created and labeled"
+          PR_NUM=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "✅ Tracking PR created and labeled: #$PR_NUM"
           echo "tracking_pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -211,10 +215,11 @@ jobs:
       status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }}m until ${{ needs.create-snapshot.outputs.deploy_time_short_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
       extra_fact_title: "Deployment Schedule"
       extra_fact_value: "The waiting window closes in ${{ needs.create-snapshot.outputs.waiting_minutes }} minutes. APM-02 deployment will start automatically at ${{ needs.create-snapshot.outputs.deploy_time_ist }}."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+      show_snapshot_branch: true
+      show_sap_dashboard: false
     secrets: inherit
 
   # ─────────────────────────────────────────────
@@ -273,10 +278,11 @@ jobs:
       status_text: "⚠️ Starting in 5 minutes at ${{ needs.wait-main.outputs.current_deploy_time }}"
       status_color: "warning"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
       extra_fact_title: "Need More Time?"
       extra_fact_value: "Trigger the 'APM-02 Extend Waiting Window' workflow now."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+      show_snapshot_branch: true
+      show_sap_dashboard: false
     secrets: inherit
 
   # ─────────────────────────────────────────────
@@ -322,6 +328,7 @@ jobs:
       has_conflicts: ${{ steps.merge.outputs.has_conflicts }}
       merge_time_ist: ${{ steps.merge.outputs.merge_time_ist }}
       has_protected_changes: ${{ steps.check_protected.outputs.has_protected_changes }}
+      tracking_pr_number: ${{ steps.set-deploying.outputs.tracking_pr_number }}
     permissions:
       contents: write
       pull-requests: write
@@ -343,6 +350,7 @@ jobs:
           fi
 
       - name: Set State to DEPLOYING (Update Tracking PR)
+        id: set-deploying
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -350,6 +358,7 @@ jobs:
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: Merging from ${{ needs.create-snapshot.outputs.snapshot_branch }} to main" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
             echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
+            echo "tracking_pr_number=$ACTIVE_PR" >> $GITHUB_OUTPUT
           else
             echo "⚠️ Could not find open PR to update state."
           fi
@@ -523,7 +532,8 @@ jobs:
       status_text: "APM02 deployment blocked due to merge conflicts."
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      pr_number: ${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Next Step"
       extra_fact_value: "1. Resolve conflicts in the PR below. 2. Merge the PR manually. 3. Ensure SAP CI/CD starts."
       action_label: "View Conflicting PR"
@@ -543,12 +553,12 @@ jobs:
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
+      pr_number: ${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}
       tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes. A new snapshot branch can be created after the current APM-02 cycle is complete (i.e., when this snapshot is successfully merged into main)."
-      action_label: "Review Tracking PR #${{ needs.create-snapshot.outputs.pr_number }}"
-      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.create-snapshot.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}"
     secrets: inherit
 
   notify-protected-file-violation:
@@ -563,8 +573,9 @@ jobs:
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Review the APM-02 PR. The changes must be approved and merged manually."
-      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
-      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      pr_number: ${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      action_label: "Review APM-02 PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
     secrets: inherit
 

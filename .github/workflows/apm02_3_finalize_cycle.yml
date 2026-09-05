@@ -209,7 +209,7 @@ jobs:
       tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
-      action_label: "Review Tracking PR #${{ needs.finalize.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -227,7 +227,7 @@ jobs:
       tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
-      action_label: "Review Tracking PR #${{ needs.finalize.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -245,7 +245,7 @@ jobs:
       tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
-      action_label: "Review Tracking PR #${{ needs.finalize.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -263,6 +263,6 @@ jobs:
       tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Review the PR. The changes must be approved or resolved manually."
-      action_label: "Review Tracking PR #${{ needs.finalize.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
