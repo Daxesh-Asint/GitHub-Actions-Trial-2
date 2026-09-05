@@ -99,6 +99,7 @@ jobs:
       status_message: ${{ steps.deploy.outputs.status_message }}
       has_conflicts: ${{ steps.deploy.outputs.has_conflicts }}
       has_protected_changes: ${{ steps.deploy.outputs.has_protected_changes }}
+      tenant_pr_number: ${{ steps.deploy.outputs.tenant_pr_number }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -181,6 +182,7 @@ jobs:
               sleep 5
             done
 
+            echo "tenant_pr_number=$TENANT_PR" >> $GITHUB_OUTPUT
             STATUS_MSG="Build fix ($NEW_COMMITS commit(s)) merged into APM-02. SAP CI/CD restarted."
 
           else
@@ -192,6 +194,9 @@ jobs:
             git commit --allow-empty -m "chore(trigger): re-trigger SAP CI/CD deployment on APM-02"
             git push origin tenant/asint-apm-02-v2
             echo "✅ Trigger commit pushed to tenant/asint-apm-02-v2"
+
+            LAST_TENANT_PR=$(gh pr list --repo ${{ github.repository }} --base tenant/asint-apm-02-v2 --head "$SNAPSHOT" --state all --json number --jq '.[0].number')
+            echo "tenant_pr_number=$LAST_TENANT_PR" >> $GITHUB_OUTPUT
 
             STATUS_MSG="Transient retry triggered (no code changes). SAP CI/CD restarted."
           fi
@@ -225,6 +230,7 @@ jobs:
       status_color: "good"
       snapshot_branch: ${{ needs.guard.outputs.snapshot_branch }}
       pr_number: ${{ needs.guard.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.execute-recovery.outputs.tenant_pr_number }}
       extra_fact_title: "Recovery Status"
       extra_fact_value: "Pipeline restarted. Snapshot will automatically merge to main upon successful completion."
       action_label: "Review Tracking PR #${{ needs.guard.outputs.pr_number }}"
@@ -242,6 +248,7 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.guard.outputs.snapshot_branch }}
       pr_number: ${{ needs.guard.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.execute-recovery.outputs.tenant_pr_number }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Resolve conflicts with tenant/asint-apm-02-v2 to resume deployment."
       action_label: "View PR #${{ needs.guard.outputs.pr_number }}"
