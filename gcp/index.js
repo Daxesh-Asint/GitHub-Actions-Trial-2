@@ -189,12 +189,13 @@ exports.deployBot = (req, res) => {
         );
       }
 
+      // Re-trigger is strictly blocked in IDLE stage
       if (!activePr) {
         return sendBotResponse(
           res,
-          `There is no failed APM-02 deployment to re-trigger.\n\nTo start a new deployment cycle, use:\n` +
-          `* \`@${botName} deploy apm-02\` (default 5-min wait)\n` +
-          `* \`@${botName} deploy apm-02 wait 10m\``,
+          `Cannot re-trigger: No failed deployment detected.\n\n` +
+          `* \`@${botName} re-trigger\` **only works when the tracking PR has the \`APM-02 Failed\` label** (for transient/timeout CI/CD failures).\n` +
+          `* Since the system is currently **IDLE**, please start a new snapshot deployment using \`@${botName} share snapshot\` instead.`,
           `🟢 System is currently IDLE`
         );
       }
@@ -208,6 +209,17 @@ exports.deployBot = (req, res) => {
         );
       }
 
+      // Re-trigger only works when label is APM-02 Failed
+      if (!labels.includes('APM-02 Failed')) {
+        return sendBotResponse(
+          res,
+          `Cannot re-trigger: Tracking PR is in state \`${labels.join(', ')}\`.\n\n` +
+          `* \`@${botName} re-trigger\` **only works when the tracking PR has the \`APM-02 Failed\` label**.\n` +
+          `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})`,
+          `⚠️ Re-trigger Not Allowed`
+        );
+      }
+
       triggerWorkflowDispatch('retrigger_apm02_deployment', null, (dispatchErr, statusCode) => {
         if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
           return sendBotResponse(
@@ -217,7 +229,7 @@ exports.deployBot = (req, res) => {
         }
         sendBotResponse(
           res,
-          `Restarting SAP CI/CD pipeline without code changes (transient retry).\n\n` +
+          `Restarting SAP CI/CD pipeline without code changes (transient/timeout retry).\n\n` +
           `📢 *Status card will appear in this channel once the build begins.*`,
           `🔁 On it! Re-triggering APM-02 deployment...`
         );
@@ -241,12 +253,34 @@ exports.deployBot = (req, res) => {
         );
       }
 
+      // Re-deploy fix is strictly blocked in IDLE stage
       if (!activePr) {
         return sendBotResponse(
           res,
-          `No active APM-02 deployment is in progress.\n\nTo start a new deployment cycle, use:\n` +
-          `* \`@${botName} deploy apm-02\``,
+          `Cannot re-deploy fix: No failed deployment detected.\n\n` +
+          `* \`@${botName} deployment fix pushed, re-deploy\` **only works when the tracking PR has the \`APM-02 Failed\` label** and a build fix was pushed to the snapshot branch.\n` +
+          `* Since the system is currently **IDLE**, please start a new snapshot deployment using \`@${botName} share snapshot\` instead.`,
           `🟢 System is currently IDLE`
+        );
+      }
+
+      const labels = (activePr.labels || []).map((l) => l.name);
+      if (labels.includes('APM-02 Deploying')) {
+        return sendBotResponse(
+          res,
+          `SAP CI/CD is currently building and deploying APM-02. Please wait for the current build to finish.`,
+          `🔵 Deployment is already in progress!`
+        );
+      }
+
+      // Only works when label is APM-02 Failed
+      if (!labels.includes('APM-02 Failed')) {
+        return sendBotResponse(
+          res,
+          `Cannot re-deploy fix: Tracking PR is in state \`${labels.join(', ')}\`.\n\n` +
+          `* \`@${botName} deployment fix pushed, re-deploy\` **only works when the tracking PR has the \`APM-02 Failed\` label**.\n` +
+          `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})`,
+          `⚠️ Re-deploy Fix Not Allowed`
         );
       }
 
