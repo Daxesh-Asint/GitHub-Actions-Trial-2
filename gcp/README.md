@@ -30,6 +30,7 @@ Set the following in the **Runtime, build, connections and security settings** -
 | `GITHUB_PAT` | **(Required)** GitHub Personal Access Token with `repo` and `workflow` scopes | `github_pat_...` |
 | `GITHUB_REPO` | Target GitHub repository (`owner/repo`) | `Daxesh-Asint/GitHub-Actions-Trial-2` *(or `StillSomehowSane/asint_ais`)* |
 | `BOT_NAME` | *(Optional)* Fallback bot name if not extracted from Teams mention | `Jarvis` |
+| `TEAMS_WEBHOOK_URL` | *(Recommended)* Channel Incoming Webhook URL to post responses directly into the main channel feed (prevents collapsed "1 reply" thread) | `https://asint.webhook.office.com/webhookb2/...` |
 
 ---
 
