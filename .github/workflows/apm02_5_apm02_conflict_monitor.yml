@@ -1,4 +1,4 @@
-name: "[5] APM-02 Pre-Deploy Conflict Monitor"
+name: "APM-02: Guard - Pre-Deploy Conflicts"
 
 on:
   pull_request:
@@ -22,21 +22,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-
-      - name: Revert Protected Files
-        run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          DIFF=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD --name-only)
-          if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
-            echo "⚠️ Protected files changed. Automatically reverting to match base branch..."
-            git checkout origin/${{ github.event.pull_request.base.ref }} -- mta.yaml xs-security.json || true
-            if [ -n "$(git status --porcelain)" ]; then
-              git config --global user.name 'github-actions[bot]'
-              git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-              git commit -m "chore: auto-revert protected files (mta.yaml, xs-security.json)"
-              git push origin ${{ github.event.pull_request.head.ref }}
-            fi
-          fi
 
       - name: Check Mergeability and Auto-Merge
         env:
@@ -73,20 +58,24 @@ jobs:
           (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'tenant/asint-apm-02-v2' && contains(github.event.pull_request.labels.*.name, 'auto merge for APM02'))
         )
     runs-on: ubuntu-latest
+    outputs:
+      main_pr_number: ${{ steps.update_pr.outputs.main_pr_number }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Update Main PR Status
+        id: update_pr
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SNAPSHOT: ${{ github.event.pull_request.head.ref }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🟡 APM-02 Deploying: Merging from $SNAPSHOT to main" --add-label "APM-02 Deploying"
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Pre-Deploy Blocked" 2>/dev/null || true
             echo "✅ Main PR updated to APM-02 Deploying."
+            echo "main_pr_number=$ACTIVE_PR" >> $GITHUB_OUTPUT
           else
             echo "⚠️ No open Main PR found for snapshot $SNAPSHOT."
           fi
@@ -124,13 +113,14 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ Merge Conflicts Resolved and automation process resumed."
-      card_subtitle: "Merge conflicts were resolved and snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      card_subtitle: "Merge conflicts were resolved and snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 55-60 minutes."
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ github.event.pull_request.head.ref }}
-      pr_number: ${{ github.event.pull_request.number }}
+      pr_number: ${{ needs.post-merge-actions.outputs.main_pr_number }}
+      tenant_pr_number: ${{ github.event.pull_request.number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes."
-      action_label: "Review PR #${{ github.event.pull_request.number }}"
-      action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+      action_label: "Review main PR #${{ needs.post-merge-actions.outputs.main_pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.post-merge-actions.outputs.main_pr_number }}"
     secrets: inherit

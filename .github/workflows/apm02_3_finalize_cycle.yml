@@ -1,4 +1,4 @@
-name: "[3] APM-02 Finalize Cycle (Merge to Main)"
+name: "APM-02: 3. Finalize & Sync to Main"
 
 on:
   repository_dispatch:
@@ -30,7 +30,7 @@ jobs:
           JOB_NAME="${{ github.event.client_payload.resource_name }}"
           echo "Received resource_name: [$JOB_NAME]"
           echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
-          if echo "$JOB_NAME" | grep -qi "AsInt-AIS-02-mta-fix"; then
+          if echo "$JOB_NAME" | grep -qi "AsInt-APM-02"; then
             echo "✅ Target job matched!"
             echo "is_target_job=true" >> $GITHUB_OUTPUT
           else
@@ -47,12 +47,13 @@ jobs:
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
       snapshot: ${{ steps.eval.outputs.snapshot }}
       pr_number: ${{ steps.eval.outputs.pr_number }}
+      tenant_pr_number: ${{ steps.eval.outputs.tenant_pr_number }}
     steps:
       - name: Check Current State
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --json number,labels --jq '.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked")) | .number' | head -n 1)
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,labels --jq '.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked")) | .number' | head -n 1)
           
           if [ -z "$DEPLOYING_PR" ]; then
             echo "❌ ERROR: No active deployment found (No PR with 'APM-02 Deploying' or 'APM-02 Blocked' label). State is IDLE."
@@ -68,7 +69,7 @@ jobs:
           STATUS="${{ github.event.client_payload.status }}"
           
           # Extract the snapshot branch name securely from our Tracking PR!
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --json number,headRefName,labels --jq '[.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked"))][0]')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels --jq '[.[] | select(.labels[].name | test("APM-02 Deploying|APM-02 Blocked"))][0]')
           SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
           PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
@@ -83,6 +84,10 @@ jobs:
             echo "❌ ERROR: Snapshot $SNAPSHOT has not been merged into APM-02 yet (PR #$APM02_PR is still open). The SAP CI/CD success signal is invalid or premature. Refusing to merge into main."
             exit 1 # Exit with error, preventing any further steps (keeps the PR in Blocked state)
           fi
+          
+          # Query the merged APM-02 PR number for notifications
+          APM02_TENANT_PR=$(gh pr list --repo ${{ github.repository }} --base tenant/asint-apm-02-v2 --head "$SNAPSHOT" --state all --json number --jq '.[0].number')
+          echo "tenant_pr_number=$APM02_TENANT_PR" >> $GITHUB_OUTPUT
           
           if [ "$STATUS" != "INFO" ] && [ "$STATUS" != "SUCCESS" ]; then
             echo "❌ SAP CI/CD Deployment Failed."
@@ -201,9 +206,10 @@ jobs:
       status_color: "good"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       pr_number: ${{ needs.finalize.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
-      action_label: "View PR on GitHub"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -218,9 +224,10 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       pr_number: ${{ needs.finalize.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
-      action_label: "View PR on GitHub"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -235,9 +242,10 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       pr_number: ${{ needs.finalize.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "State Locked"
       extra_fact_value: "New snapshots cannot be created until this is resolved."
-      action_label: "View PR on GitHub"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
 
@@ -252,8 +260,9 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
       pr_number: ${{ needs.finalize.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Review the PR. The changes must be approved or resolved manually."
-      action_label: "View PR on GitHub"
+      action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit

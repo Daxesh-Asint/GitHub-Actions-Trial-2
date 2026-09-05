@@ -1,4 +1,4 @@
-name: "[1] APM-02 Snapshot Deployment"
+name: "APM-02: 1. Start Snapshot & Wait"
 
 on:
   repository_dispatch:
@@ -8,22 +8,29 @@ on:
       waiting_minutes:
         description: "Waiting window for developers to cherry-pick (minutes)"
         required: true
-        default: "30"
+        default: "50"
         type: choice
         options:
           - "2"
           - "10"
-          - "15"
           - "20"
-          - "25"
           - "30"
-          - "35"
           - "40"
-          - "45"
           - "50"
-          - "55"
           - "60"
+          - "70"
+          - "80"
+          - "90"
+          - "100"
+          - "110"
+          - "120"
+          - "130"
+          - "140"
+          - "150"
+          - "160"
+          - "170"
           - "180"
+          - "190"
 
 jobs:
   # ─────────────────────────────────────────────
@@ -42,11 +49,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Deploying" --json number --jq '.[0].number')
-          FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Failed" --json number --jq '.[0].number')
-          BLOCKED_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Blocked" --json number --jq '.[0].number')
-          AUTO_MERGE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "auto merge for APM02" --json number --jq '.[0].number')
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number --jq '.[0].number')
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Deploying" --json number --jq '.[0].number')
+          FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Failed" --json number --jq '.[0].number')
+          BLOCKED_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Blocked" --json number --jq '.[0].number')
+          AUTO_MERGE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "auto merge for APM02" --json number --jq '.[0].number')
           
           if [ -n "$ACTIVE_PR" ]; then
             echo "❌ ERROR: Active deployment exists (PR #$ACTIVE_PR). Complete or close it before starting a new one."
@@ -89,7 +96,10 @@ jobs:
       date_ist: ${{ steps.create.outputs.date_ist }}
       time_ist: ${{ steps.create.outputs.time_ist }}
       deploy_time_ist: ${{ steps.create.outputs.deploy_time_ist }}
+      deploy_time_short_ist: ${{ steps.create.outputs.deploy_time_short_ist }}
       waiting_minutes: ${{ steps.create.outputs.waiting_minutes }}
+      tracking_pr_url: ${{ steps.create-tracking-pr.outputs.tracking_pr_url }}
+      pr_number: ${{ steps.create-tracking-pr.outputs.pr_number }}
     permissions:
       contents: write
       pull-requests: write
@@ -109,12 +119,14 @@ jobs:
           SNAPSHOT_NAME="snapshot/main-$(TZ='Asia/Kolkata' date +'%y%m%d-%H%M')"
           DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
           TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
-          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%I:%M %p IST')
+          DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%b %d, %Y %I:%M %p IST')
+          DEPLOY_TIME_SHORT_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%I:%M %p IST')
 
           echo "snapshot_branch=$SNAPSHOT_NAME" >> $GITHUB_OUTPUT
           echo "date_ist=$DATE_IST" >> $GITHUB_OUTPUT
           echo "time_ist=$TIME_IST" >> $GITHUB_OUTPUT
           echo "deploy_time_ist=$DEPLOY_TIME_IST" >> $GITHUB_OUTPUT
+          echo "deploy_time_short_ist=$DEPLOY_TIME_SHORT_IST" >> $GITHUB_OUTPUT
           echo "waiting_minutes=$WAIT_TIME" >> $GITHUB_OUTPUT
 
           git checkout -b "$SNAPSHOT_NAME"
@@ -129,6 +141,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Create Tracking Pull Request
+        id: create-tracking-pr
         run: |
           SNAPSHOT="${{ steps.create.outputs.snapshot_branch }}"
           DATE_IST="${{ steps.create.outputs.date_ist }}"
@@ -152,14 +165,17 @@ jobs:
             "> Developers: cherry-pick your changes into this branch before the deployment begins." \
             "> Do NOT commit directly to \`main\` or \`tenant/asint-apm-02-v2\`.")
 
-          gh pr create --repo ${{ github.repository }} \
+          PR_URL=$(gh pr create --repo ${{ github.repository }} \
             --base main \
             --head "$SNAPSHOT" \
             --title "🟢 APM-02 Active Snapshot: Merging from $SNAPSHOT to main" \
             --body "$PR_BODY" \
             --draft \
-            --label "APM-02 Active"
-          echo "✅ Tracking PR created and labeled"
+            --label "APM-02 Active")
+          PR_NUM=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "✅ Tracking PR created and labeled: #$PR_NUM"
+          echo "tracking_pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -196,7 +212,7 @@ jobs:
     with:
       card_title: "🌿 New Snapshot Branch Created For APM02 Deployment"
       card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
-      status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }} minutes until ${{ needs.create-snapshot.outputs.deploy_time_ist }})"
+      status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }}m until ${{ needs.create-snapshot.outputs.deploy_time_short_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Deployment Schedule"
@@ -221,11 +237,11 @@ jobs:
           echo "⏳ Waiting for developers to cherry-pick. Polling Tracking PR for target time..."
           
           while true; do
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number --jq '.[0].number')
             TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
             
-            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s 2>/dev/null || TZ='Asia/Kolkata' date -d "today $TIME_STR" +%s)
             NOW_TS=$(TZ='Asia/Kolkata' date +%s)
             
             DIFF=$((TARGET_TS - NOW_TS))
@@ -279,11 +295,11 @@ jobs:
           echo "⏳ Final wait started. Polling Tracking PR for target time..."
           
           while true; do
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number --jq '.[0].number')
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number --jq '.[0].number')
             TARGET_TIME_IST=$(gh pr view "$ACTIVE_PR" --repo ${{ github.repository }} --json body --jq '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$TARGET_TIME_IST" | sed 's/ IST//')
             
-            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s)
+            TARGET_TS=$(TZ='Asia/Kolkata' date -d "$TIME_STR" +%s 2>/dev/null || TZ='Asia/Kolkata' date -d "today $TIME_STR" +%s)
             NOW_TS=$(TZ='Asia/Kolkata' date +%s)
             
             if [ "$NOW_TS" -ge "$TARGET_TS" ]; then
@@ -310,6 +326,7 @@ jobs:
       has_conflicts: ${{ steps.merge.outputs.has_conflicts }}
       merge_time_ist: ${{ steps.merge.outputs.merge_time_ist }}
       has_protected_changes: ${{ steps.check_protected.outputs.has_protected_changes }}
+      tracking_pr_number: ${{ steps.set-deploying.outputs.tracking_pr_number }}
     permissions:
       contents: write
       pull-requests: write
@@ -320,31 +337,26 @@ jobs:
           ref: ${{ needs.create-snapshot.outputs.snapshot_branch }}
           fetch-depth: 0
 
-      - name: Check and Revert Protected Files
+      - name: Check for Protected Files
         id: check_protected
         run: |
           git fetch --all
           DIFF=$(git diff origin/main...HEAD --name-only)
           if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
-            echo "⚠️ Protected files changed. Automatically reverting to match main..."
-            git checkout origin/main -- mta.yaml xs-security.json || true
-            if [ -n "$(git status --porcelain)" ]; then
-              git config --global user.name 'github-actions[bot]'
-              git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-              git commit -m "chore: auto-revert protected files (mta.yaml, xs-security.json)"
-              git push origin HEAD
-            fi
+            echo "⚠️ WARNING: Protected file changed (mta.yaml or xs-security.json)."
             echo "has_protected_changes=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Set State to DEPLOYING (Update Tracking PR)
+        id: set-deploying
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"${{ needs.create-snapshot.outputs.snapshot_branch }}\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🔵 APM-02 Deploying: Merging from ${{ needs.create-snapshot.outputs.snapshot_branch }} to main" --remove-label "APM-02 Active" --add-label "APM-02 Deploying"
             echo "✅ State updated to DEPLOYING on PR #$ACTIVE_PR"
+            echo "tracking_pr_number=$ACTIVE_PR" >> $GITHUB_OUTPUT
           else
             echo "⚠️ Could not find open PR to update state."
           fi
@@ -361,7 +373,7 @@ jobs:
           if [ -z "$(git diff origin/tenant/asint-apm-02-v2...HEAD)" ]; then
             echo "ℹ️ No new code changes to merge. The apm-02 branch already contains all changes from the snapshot."
             
-            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+            ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
             if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
               gh pr close "$ACTIVE_PR" --repo ${{ github.repository }} -c "No new commits to deploy. Snapshot already synced with APM-02. Closing tracking PR."
               gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Deploying"
@@ -401,13 +413,22 @@ jobs:
               --json number,headRefName \
               --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
 
-            gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            if [ "${{ steps.check_protected.outputs.has_protected_changes }}" == "true" ]; then
+              gh pr comment "$PR_NUMBER" --body "⚠️ Manual review required: Protected files (mta.yaml or xs-security.json) have been modified in this snapshot. Please review the changes carefully before manually merging."
+            else
+              gh pr edit "$PR_NUMBER" --add-label "auto merge for APM02"
+            fi
             echo "✅ PR #$PR_NUMBER created"
           else
             echo "ℹ️ Existing PR #$PR_NUMBER found"
           fi
 
           echo "apm02_pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+          if [ "${{ steps.check_protected.outputs.has_protected_changes }}" == "true" ]; then
+            echo "❌ Protected files were changed. Exiting to block deployment for manual review."
+            exit 1
+          fi
 
           for i in {1..10}; do
             STATUS=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
@@ -421,7 +442,7 @@ jobs:
               else
                 gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step. Please check the workflow logs."
                 
-                ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+                ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
                 if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
                   gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
                 fi
@@ -435,7 +456,7 @@ jobs:
               echo "has_conflicts=true" >> $GITHUB_OUTPUT
               gh pr comment "$PR_NUMBER" --body "⚠️ Auto-merge blocked: merge conflicts detected between \`$SNAPSHOT\` and \`tenant/asint-apm-02-v2\`. Manual resolution required before deployment can proceed."
               
-              ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+              ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
               if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
                 gh label create "APM-02 Pre-Deploy Blocked" --color "#D93F0B" --description "APM-02 blocked by pre-deploy conflicts" 2>/dev/null || true
                 gh pr edit "$ACTIVE_PR" --title "🟠 APM-02 Pre-Deploy Blocked (Conflicts): Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Pre-Deploy Blocked"
@@ -449,7 +470,7 @@ jobs:
 
           gh pr comment "$PR_NUMBER" --body "Auto-merge timed out waiting for mergeability status. Please check manually."
           
-          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
+          ACTIVE_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --base main --json number,headRefName --jq ".[] | select(.headRefName == \"$SNAPSHOT\") | .number" | head -n 1)
           if [ -n "$ACTIVE_PR" ] && [ "$ACTIVE_PR" != "null" ]; then
             gh pr edit "$ACTIVE_PR" --title "🔴 APM-02 Failed: Merging from $SNAPSHOT to main" --remove-label "APM-02 Deploying" --add-label "APM-02 Failed"
           fi
@@ -509,7 +530,8 @@ jobs:
       status_text: "APM02 deployment blocked due to merge conflicts."
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      pr_number: ${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Next Step"
       extra_fact_value: "1. Resolve conflicts in the PR below. 2. Merge the PR manually. 3. Ensure SAP CI/CD starts."
       action_label: "View Conflicting PR"
@@ -525,15 +547,16 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "🚀 APM02 deployment triggered."
-      card_subtitle: "Snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 35-40 minutes."
+      card_subtitle: "Snapshot merged into tenant/asint-apm-02-v2. SAP CI/CD deployment has started automatically. Deployment takes approximately 55-60 minutes."
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      pr_number: ${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes. A new snapshot branch can be created after the current APM-02 cycle is complete (i.e., when this snapshot is successfully merged into main)."
-      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
-      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      action_label: "Review main PR #${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}"
     secrets: inherit
 
   notify-protected-file-violation:
@@ -547,9 +570,11 @@ jobs:
       status_color: "attention"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Action Required"
-      extra_fact_value: "Review the snapshot branch. The changes must be approved or resolved manually."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+      extra_fact_value: "Review the APM-02 PR. The changes must be approved and merged manually."
+      pr_number: ${{ needs.merge-to-apm02.outputs.tracking_pr_number || needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      action_label: "Review APM-02 PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
     secrets: inherit
 
   # ─────────────────────────────────────────────

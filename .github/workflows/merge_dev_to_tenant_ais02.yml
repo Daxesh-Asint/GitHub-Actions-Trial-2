@@ -1,23 +1,12 @@
 name: AsInt Bot [Dev -> AIS-02]
 
 on:
-
-  schedule:
-    # Catchup run — picks up any changes merged into dev after 9 PM IST
-    # Runs at 6:30 AM IST (01:00 UTC) every weekday Mon-Fri
-    - cron: '0 1 * * 1-5'
-
-  # schedule:
-  #   # 11:00 AM IST = 05:30 UTC
-  #   - cron: '30 5 * * 1-5'
-  #   # 2:00 PM IST = 08:30 UTC
-  #   - cron: '30 8 * * 1-5'
-  #   # 5:00 PM IST = 11:30 UTC
-  #   - cron: '30 11 * * 1-5'
-
   push:
     branches:
       - dev
+
+  repository_dispatch:
+    types: [trigger_ais02_deployment]
 
   workflow_dispatch:
 

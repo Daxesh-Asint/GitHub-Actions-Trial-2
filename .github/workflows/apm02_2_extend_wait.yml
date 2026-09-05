@@ -1,9 +1,11 @@
-name: "[2] APM-02 Modify Waiting Window (Optional)"
+name: "APM-02: 2. Extend Wait Window"
 
 # An admin triggers this during the waiting window to give developers more (or less) time.
 # This workflow adjusts the requested duration, then notifies the channel.
 
 on:
+  repository_dispatch:
+    types: [adjust_apm02_wait]
   workflow_dispatch:
     inputs:
       deploy_now:
@@ -44,7 +46,7 @@ jobs:
       - name: Check active snapshot and update PR
         id: check
         run: |
-          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --label "APM-02 Active" --json number,headRefName --jq '.[0]')
+          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number,headRefName --jq '.[0]')
           
           if [ -n "$ACTIVE_PR_JSON" ] && [ "$ACTIVE_PR_JSON" != "null" ]; then
             ACTIVE=$(echo "$ACTIVE_PR_JSON" | jq -r '.headRefName')
@@ -53,13 +55,16 @@ jobs:
             CURRENT_TARGET=$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json body -q '.body' | grep -oP 'starts at \K.*?(?=\))')
             TIME_STR=$(echo "$CURRENT_TARGET" | sed 's/ IST//')
             
-            if [ "${{ inputs.deploy_now }}" == "true" ]; then
-              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
+            DEPLOY_NOW="${{ github.event.inputs.deploy_now || github.event.client_payload.deploy_now }}"
+            ADJUST_MINUTES="${{ github.event.inputs.adjust_minutes || github.event.client_payload.adjust_minutes || '10' }}"
+            
+            if [ "$DEPLOY_NOW" == "true" ]; then
+              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date +'%b %d, %Y %I:%M %p IST')
               ACTION_WORD="Force-Started"
               SUMMARY_TEXT="Force-Started (new time: $EXTEND_TIME_IST)"
             else
-              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${{ inputs.adjust_minutes }} minutes" +'%I:%M %p IST')
-              ADJUST_VAL="${{ inputs.adjust_minutes }}"
+              EXTEND_TIME_IST=$(TZ='Asia/Kolkata' date -d "$TIME_STR + ${ADJUST_MINUTES} minutes" +'%b %d, %Y %I:%M %p IST')
+              ADJUST_VAL="$ADJUST_MINUTES"
               if [[ "$ADJUST_VAL" == -* ]]; then
                 ACTION_WORD="Decreased"
                 CLEAN_VAL="${ADJUST_VAL#-}"
