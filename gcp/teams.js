@@ -114,8 +114,8 @@ function sendBotResponse(res, messageText, cardTitle) {
         });
       }
       // Successfully broadcasted to main feed!
-      // Return 200 without body so Teams does not create a collapsed thread reply.
-      return res.status(200).end();
+      // Return HTTP 204 No Content so MS Teams creates ZERO replies in the thread!
+      return res.status(204).end();
     });
   } else {
     // Fallback if TEAMS_WEBHOOK_URL is not set yet in GCP environment variables
