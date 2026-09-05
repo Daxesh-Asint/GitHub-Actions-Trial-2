@@ -51,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send MS Teams Adaptive Card
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
         run: |
           REPO="${{ github.repository }}"
           TITLE="${{ inputs.card_title }}"
@@ -64,17 +66,38 @@ jobs:
           EXTRA_FACT_VALUE="${{ inputs.extra_fact_value }}"
           ACTION_LABEL="${{ inputs.action_label }}"
 
+          # Auto-discover PR numbers if not passed
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ] || [ "$PR_NUMBER" = "N/A" ]; then
+            if [ -n "$SNAPSHOT" ]; then
+              DISCOVERED_PR=$(gh pr list --repo "$REPO" -s all --base main -H "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
+              if [ -n "$DISCOVERED_PR" ] && [ "$DISCOVERED_PR" != "null" ]; then
+                PR_NUMBER="$DISCOVERED_PR"
+              fi
+            fi
+          fi
+
+          if [ -z "$TENANT_PR_NUMBER" ] || [ "$TENANT_PR_NUMBER" = "null" ]; then
+            if [ -n "$SNAPSHOT" ]; then
+              DISCOVERED_TENANT_PR=$(gh pr list --repo "$REPO" -s all --base tenant/asint-apm-02-v2 -H "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
+              if [ -n "$DISCOVERED_TENANT_PR" ] && [ "$DISCOVERED_TENANT_PR" != "null" ]; then
+                TENANT_PR_NUMBER="$DISCOVERED_TENANT_PR"
+              fi
+            fi
+          fi
+
           # Build action URL
-          if [ -n "${{ inputs.action_url }}" ]; then
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ] && [[ "$ACTION_LABEL" =~ Review.*PR ]]; then
+            ACTION_URL="https://github.com/$REPO/pull/$PR_NUMBER"
+          elif [ -n "${{ inputs.action_url }}" ] && [[ ! "${{ inputs.action_url }}" =~ /pull/?$ ]]; then
             ACTION_URL="${{ inputs.action_url }}"
-          elif [ -n "$PR_NUMBER" ]; then
+          elif [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ]; then
             ACTION_URL="https://github.com/$REPO/pull/$PR_NUMBER"
           else
             ACTION_URL="https://github.com/$REPO/actions/runs/${{ github.run_id }}"
           fi
 
           # Build PR fact values
-          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ]; then
             TRACKING_PR_FACT="PR #$PR_NUMBER"
           else
             TRACKING_PR_FACT="N/A"
@@ -86,6 +109,13 @@ jobs:
           else
             TENANT_PR_FACT=""
             TENANT_PR_URL=""
+          fi
+
+          # Determine Main PR Button Title
+          if [ -n "$TRACKING_PR_FACT" ] && [ "$TRACKING_PR_FACT" != "N/A" ]; then
+            MAIN_PR_BTN="Review main $TRACKING_PR_FACT"
+          else
+            MAIN_PR_BTN=""
           fi
 
           # Build facts array
@@ -101,10 +131,10 @@ jobs:
               { title: "Snapshot Branch",  value: $snapshot }
             ] +
             (if $tenant_pr != "" then [
-              { title: "Tracking PR (to main)",   value: $tracking_pr },
-              { title: "APM-02 PR (to tenant)",   value: $tenant_pr }
+              { title: "Main PR",          value: $tracking_pr },
+              { title: "APM-02 PR",        value: $tenant_pr }
             ] else [
-              { title: "Pull Request",     value: $tracking_pr }
+              { title: "Main PR",          value: $tracking_pr }
             ] end) +
             (if ($eft != "" and $efv != "") then [
               { title: $eft,               value: $efv }
@@ -114,15 +144,24 @@ jobs:
           ACTIONS=$(jq -n \
             --arg action_label "$ACTION_LABEL" \
             --arg action_url "$ACTION_URL" \
+            --arg main_btn "$MAIN_PR_BTN" \
             --arg tenant_pr "$TENANT_PR_FACT" \
             --arg tenant_url "$TENANT_PR_URL" \
-            '[
-              {
-                type: "Action.OpenUrl",
-                title: $action_label,
-                url: $action_url
-              }
-            ] +
+            '(
+              if $main_btn != "" then [
+                {
+                  type: "Action.OpenUrl",
+                  title: $main_btn,
+                  url: $action_url
+                }
+              ] elif ($action_label != "" and ($action_label | test("Review.*PR") | not)) then [
+                {
+                  type: "Action.OpenUrl",
+                  title: $action_label,
+                  url: $action_url
+                }
+              ] else [] end
+            ) +
             (if $tenant_pr != "" then [
               {
                 type: "Action.OpenUrl",
