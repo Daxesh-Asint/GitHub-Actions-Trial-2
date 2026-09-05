@@ -115,12 +115,17 @@ function getBlockedExplanation(activePr, botName) {
   // 2️⃣ When Previous Deployment Failed
   if (labelNames.some((l) => /APM-02 Failed/i.test(l))) {
     return (
-      `### 🚫 APM-02 Deployment Blocked!\n\n` +
-      `**🔴 Previous Deployment Failed!**\n\n` +
-      `The previous SAP CI/CD deployment failed or auto-merge could not finish. The snapshot was **not merged into \`main\`**.\n\n` +
-      `* **Blocking PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
+      `### 🚫 APM-02 Deployment in Failed State!\n\n` +
+      `**🔴 Previous SAP CI/CD Deployment Failed!**\n\n` +
+      `The previous deployment did not complete successfully. Snapshot was **not merged into \`main\`**.\n\n` +
+      `* **Failed Tracking PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
       `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
-      `* **Action Required:** Please review the failed PR, investigate CI/CD logs, and resolve or close the PR before starting a new cycle.`
+      `💡 **How to Recover (Choose an option):**\n\n` +
+      `1. **If timeout / flaky CI/CD (No code changes):**\n` +
+      `   Type \`@${botName} re-trigger\` to restart the pipeline.\n\n` +
+      `2. **If code fix is needed:**\n` +
+      `   Push fix commit to \`${snapshotBranch}\` *(auto-deploys)*, or type \`@${botName} deployment fix pushed, re-deploy\`\n\n` +
+      `📢 *You can retry as many times as needed until deployment succeeds!*`
     );
   }
 
@@ -316,7 +321,62 @@ exports.deployBot = (req, res) => {
     );
 
   // -----------------------------------------------------------------------
-  // COMMAND 5: status (PRIMARY)
+  // COMMAND 5: re-trigger (PRIMARY) / retrigger (Scenario 1: No code changes)
+  // -----------------------------------------------------------------------
+  } else if (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
+    callGitHubAPI(
+      `/repos/${GITHUB_REPO}/dispatches`,
+      'POST',
+      { event_type: 'retrigger_apm02_deployment' },
+      (err, statusCode) => {
+        if (err || (statusCode !== 204 && statusCode !== 200)) {
+          return res.status(200).json({
+            type: 'message',
+            text: `❌ **Failed to re-trigger deployment.** GitHub status: ${statusCode || err.message}`
+          });
+        }
+        res.status(200).json({
+          type: 'message',
+          text:
+            `🔁 **On it! Re-triggering APM-02 deployment...**\n\n` +
+            `Restarting SAP CI/CD pipeline without code changes (transient retry).\n\n` +
+            `📢 *Status card will appear in this channel once the build begins.*`
+        });
+      }
+    );
+
+  // -----------------------------------------------------------------------
+  // COMMAND 6: deployment fix pushed, re-deploy (PRIMARY) (Scenarios 2 & 3)
+  // -----------------------------------------------------------------------
+  } else if (
+    cleanText.includes('deployment fix pushed') ||
+    cleanText.includes('fix pushed') ||
+    cleanText.includes('re-deploy fix') ||
+    cleanText.includes('redeploy fix')
+  ) {
+    callGitHubAPI(
+      `/repos/${GITHUB_REPO}/dispatches`,
+      'POST',
+      { event_type: 'redeploy_apm02_fix' },
+      (err, statusCode) => {
+        if (err || (statusCode !== 204 && statusCode !== 200)) {
+          return res.status(200).json({
+            type: 'message',
+            text: `❌ **Failed to re-deploy fix.** GitHub status: ${statusCode || err.message}`
+          });
+        }
+        res.status(200).json({
+          type: 'message',
+          text:
+            `🛠️ **Deployment fix detected! Re-deploying to APM-02...**\n\n` +
+            `Merging latest snapshot commits into APM-02 tenant branch and initiating SAP CI/CD build.\n\n` +
+            `📢 *Status card will appear in this channel shortly.*`
+        });
+      }
+    );
+
+  // -----------------------------------------------------------------------
+  // COMMAND 7: status (PRIMARY)
   // -----------------------------------------------------------------------
   } else if (cleanText.includes('status')) {
     getActiveDeploymentPR((err, activePr) => {
@@ -346,7 +406,7 @@ exports.deployBot = (req, res) => {
     });
 
   // -----------------------------------------------------------------------
-  // COMMAND 6: help (PRIMARY)
+  // COMMAND 8: help (PRIMARY)
   // -----------------------------------------------------------------------
   } else {
     res.status(200).json({
@@ -361,6 +421,10 @@ exports.deployBot = (req, res) => {
         `  Add extra minutes to the current countdown\n\n` +
         `* **\`@${botName} reduce 5m\`**\n\n` +
         `  Subtract minutes from the current countdown\n\n` +
+        `* **\`@${botName} re-trigger\`**\n\n` +
+        `  Restart SAP CI/CD deployment without code changes (transient timeout/glitch retry)\n\n` +
+        `* **\`@${botName} deployment fix pushed, re-deploy\`**\n\n` +
+        `  Re-merge snapshot to APM-02 and trigger SAP CI/CD after pushing a build fix\n\n` +
         `* **\`@${botName} status\`**\n\n` +
         `  Check real-time APM-02 deployment status\n\n` +
         `* **\`@${botName} help\`**\n\n` +
