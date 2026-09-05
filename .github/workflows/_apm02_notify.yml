@@ -25,6 +25,10 @@ on:
         required: false
         type: string
         default: ""
+      tenant_pr_number:
+        required: false
+        type: string
+        default: ""
       extra_fact_title:
         required: false
         type: string
@@ -55,6 +59,7 @@ jobs:
           COLOR="${{ inputs.status_color }}"
           SNAPSHOT="${{ inputs.snapshot_branch }}"
           PR_NUMBER="${{ inputs.pr_number }}"
+          TENANT_PR_NUMBER="${{ inputs.tenant_pr_number }}"
           EXTRA_FACT_TITLE="${{ inputs.extra_fact_title }}"
           EXTRA_FACT_VALUE="${{ inputs.extra_fact_value }}"
           ACTION_LABEL="${{ inputs.action_label }}"
@@ -68,47 +73,78 @@ jobs:
             ACTION_URL="https://github.com/$REPO/actions/runs/${{ github.run_id }}"
           fi
 
-          # Build PR fact value
-          if [ -n "$PR_NUMBER" ]; then
-            PR_FACT="PR #$PR_NUMBER"
+          # Build PR fact values
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+            TRACKING_PR_FACT="PR #$PR_NUMBER"
           else
-            PR_FACT="N/A"
+            TRACKING_PR_FACT="N/A"
           fi
 
-          # Build facts array — conditionally include extra fact
-          if [ -n "$EXTRA_FACT_TITLE" ] && [ -n "$EXTRA_FACT_VALUE" ]; then
-            FACTS=$(jq -n \
-              --arg repo "$REPO" \
-              --arg snapshot "$SNAPSHOT" \
-              --arg pr "$PR_FACT" \
-              --arg eft "$EXTRA_FACT_TITLE" \
-              --arg efv "$EXTRA_FACT_VALUE" \
-              '[
-                { title: "Repository",       value: $repo },
-                { title: "Snapshot Branch",  value: $snapshot },
-                { title: "Pull Request",     value: $pr },
-                { title: $eft,               value: $efv }
-              ]')
+          if [ -n "$TENANT_PR_NUMBER" ] && [ "$TENANT_PR_NUMBER" != "null" ]; then
+            TENANT_PR_FACT="PR #$TENANT_PR_NUMBER"
+            TENANT_PR_URL="https://github.com/$REPO/pull/$TENANT_PR_NUMBER"
           else
-            FACTS=$(jq -n \
-              --arg repo "$REPO" \
-              --arg snapshot "$SNAPSHOT" \
-              --arg pr "$PR_FACT" \
-              '[
-                { title: "Repository",       value: $repo },
-                { title: "Snapshot Branch",  value: $snapshot },
-                { title: "Pull Request",     value: $pr }
-              ]')
+            TENANT_PR_FACT=""
+            TENANT_PR_URL=""
           fi
+
+          # Build facts array
+          FACTS=$(jq -n \
+            --arg repo "$REPO" \
+            --arg snapshot "$SNAPSHOT" \
+            --arg tracking_pr "$TRACKING_PR_FACT" \
+            --arg tenant_pr "$TENANT_PR_FACT" \
+            --arg eft "$EXTRA_FACT_TITLE" \
+            --arg efv "$EXTRA_FACT_VALUE" \
+            '[
+              { title: "Repository",       value: $repo },
+              { title: "Snapshot Branch",  value: $snapshot }
+            ] +
+            (if $tenant_pr != "" then [
+              { title: "Tracking PR (to main)",   value: $tracking_pr },
+              { title: "APM-02 PR (to tenant)",   value: $tenant_pr }
+            ] else [
+              { title: "Pull Request",     value: $tracking_pr }
+            ] end) +
+            (if ($eft != "" and $efv != "") then [
+              { title: $eft,               value: $efv }
+            ] else [] end)')
+
+          # Build action buttons
+          ACTIONS=$(jq -n \
+            --arg action_label "$ACTION_LABEL" \
+            --arg action_url "$ACTION_URL" \
+            --arg tenant_pr "$TENANT_PR_FACT" \
+            --arg tenant_url "$TENANT_PR_URL" \
+            '[
+              {
+                type: "Action.OpenUrl",
+                title: $action_label,
+                url: $action_url
+              }
+            ] +
+            (if $tenant_pr != "" then [
+              {
+                type: "Action.OpenUrl",
+                title: ("Review APM-02 " + $tenant_pr),
+                url: $tenant_url
+              }
+            ] else [] end) +
+            [
+              {
+                type: "Action.OpenUrl",
+                title: "Track APM-02 Deployment Status in SAP CI/CD Dashboard",
+                url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-APM-02/TwoColumnsBeginExpanded"
+              }
+            ]')
 
           PAYLOAD=$(jq -n \
             --arg title "$TITLE" \
             --arg subtitle "$SUBTITLE" \
             --arg status "$STATUS" \
             --arg color "$COLOR" \
-            --arg action_url "$ACTION_URL" \
-            --arg action_label "$ACTION_LABEL" \
             --argjson facts "$FACTS" \
+            --argjson actions "$ACTIONS" \
             '{
               type: "message",
               attachments: [{
@@ -155,16 +191,7 @@ jobs:
                       }
                     ]
                   ),
-                  actions: [{
-                    type: "Action.OpenUrl",
-                    title: $action_label,
-                    url: $action_url
-                  },
-                  {
-                    type: "Action.OpenUrl",
-                    title: "Track APM-02 Deployment Status in SAP CI/CD Dashboard",
-                    url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-APM-02/TwoColumnsBeginExpanded"
-                  }]
+                  actions: $actions
                 }
               }]
             }')

@@ -543,11 +543,12 @@ jobs:
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes. A new snapshot branch can be created after the current APM-02 cycle is complete (i.e., when this snapshot is successfully merged into main)."
-      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
-      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      action_label: "Review Tracking PR #${{ needs.create-snapshot.outputs.pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.create-snapshot.outputs.pr_number }}"
     secrets: inherit
 
   notify-protected-file-violation:

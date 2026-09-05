@@ -324,26 +324,52 @@ exports.deployBot = (req, res) => {
   // COMMAND 5: re-trigger (PRIMARY) / retrigger (Scenario 1: No code changes)
   // -----------------------------------------------------------------------
   } else if (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
-    callGitHubAPI(
-      `/repos/${GITHUB_REPO}/dispatches`,
-      'POST',
-      { event_type: 'retrigger_apm02_deployment' },
-      (err, statusCode) => {
-        if (err || (statusCode !== 204 && statusCode !== 200)) {
-          return res.status(200).json({
-            type: 'message',
-            text: `❌ **Failed to re-trigger deployment.** GitHub status: ${statusCode || err.message}`
-          });
-        }
-        res.status(200).json({
+    getActiveDeploymentPR((err, activePr) => {
+      if (err) {
+        return res.status(200).json({
           type: 'message',
-          text:
-            `🔁 **On it! Re-triggering APM-02 deployment...**\n\n` +
-            `Restarting SAP CI/CD pipeline without code changes (transient retry).\n\n` +
-            `📢 *Status card will appear in this channel once the build begins.*`
+          text: `⚠️ **Error checking deployment status:** ${err.message}. Please check GitHub directly.`
         });
       }
-    );
+
+      if (!activePr) {
+        return res.status(200).json({
+          type: 'message',
+          text: `🟢 **System is currently IDLE.**\n\nThere is no failed APM-02 deployment to re-trigger.\n\nTo start a new deployment cycle, use:\n` +
+                `* \`@${botName} deploy apm-02\` (default 5-min wait)\n` +
+                `* \`@${botName} deploy apm-02 wait 10m\``
+        });
+      }
+
+      const labels = (activePr.labels || []).map((l) => l.name);
+      if (labels.includes('APM-02 Deploying')) {
+        return res.status(200).json({
+          type: 'message',
+          text: `🔵 **Deployment is already in progress!**\n\nSAP CI/CD is currently building and deploying APM-02. Please wait for the pipeline to finish before attempting a retry.`
+        });
+      }
+
+      callGitHubAPI(
+        `/repos/${GITHUB_REPO}/dispatches`,
+        'POST',
+        { event_type: 'retrigger_apm02_deployment' },
+        (dispatchErr, statusCode) => {
+          if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
+            return res.status(200).json({
+              type: 'message',
+              text: `❌ **Failed to re-trigger deployment.** GitHub status: ${statusCode || dispatchErr.message}`
+            });
+          }
+          res.status(200).json({
+            type: 'message',
+            text:
+              `🔁 **On it! Re-triggering APM-02 deployment...**\n\n` +
+              `Restarting SAP CI/CD pipeline without code changes (transient retry).\n\n` +
+              `📢 *Status card will appear in this channel once the build begins.*`
+          });
+        }
+      );
+    });
 
   // -----------------------------------------------------------------------
   // COMMAND 6: deployment fix pushed, re-deploy (PRIMARY) (Scenarios 2 & 3)
@@ -354,26 +380,43 @@ exports.deployBot = (req, res) => {
     cleanText.includes('re-deploy fix') ||
     cleanText.includes('redeploy fix')
   ) {
-    callGitHubAPI(
-      `/repos/${GITHUB_REPO}/dispatches`,
-      'POST',
-      { event_type: 'redeploy_apm02_fix' },
-      (err, statusCode) => {
-        if (err || (statusCode !== 204 && statusCode !== 200)) {
-          return res.status(200).json({
-            type: 'message',
-            text: `❌ **Failed to re-deploy fix.** GitHub status: ${statusCode || err.message}`
-          });
-        }
-        res.status(200).json({
+    getActiveDeploymentPR((err, activePr) => {
+      if (err) {
+        return res.status(200).json({
           type: 'message',
-          text:
-            `🛠️ **Deployment fix detected! Re-deploying to APM-02...**\n\n` +
-            `Merging latest snapshot commits into APM-02 tenant branch and initiating SAP CI/CD build.\n\n` +
-            `📢 *Status card will appear in this channel shortly.*`
+          text: `⚠️ **Error checking deployment status:** ${err.message}. Please check GitHub directly.`
         });
       }
-    );
+
+      if (!activePr) {
+        return res.status(200).json({
+          type: 'message',
+          text: `🟢 **System is currently IDLE.**\n\nNo active APM-02 deployment is in progress.\n\nTo start a new deployment cycle, use:\n` +
+                `* \`@${botName} deploy apm-02\``
+        });
+      }
+
+      callGitHubAPI(
+        `/repos/${GITHUB_REPO}/dispatches`,
+        'POST',
+        { event_type: 'redeploy_apm02_fix' },
+        (dispatchErr, statusCode) => {
+          if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
+            return res.status(200).json({
+              type: 'message',
+              text: `❌ **Failed to re-deploy fix.** GitHub status: ${statusCode || dispatchErr.message}`
+            });
+          }
+          res.status(200).json({
+            type: 'message',
+            text:
+              `🛠️ **Deployment fix detected! Re-deploying to APM-02...**\n\n` +
+              `Merging latest snapshot commits into APM-02 tenant branch and initiating SAP CI/CD build.\n\n` +
+              `📢 *Status card will appear in this channel shortly.*`
+          });
+        }
+      );
+    });
 
   // -----------------------------------------------------------------------
   // COMMAND 7: status (PRIMARY)
