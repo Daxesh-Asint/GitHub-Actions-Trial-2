@@ -107,8 +107,9 @@ jobs:
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
       snapshot_branch: ${{ github.event.pull_request.head.ref }}
+      pr_number: ${{ github.event.pull_request.number }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Ready for next deployment."
-      action_label: "View PR on GitHub"
+      action_label: "Review main PR #${{ github.event.pull_request.number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
     secrets: inherit
