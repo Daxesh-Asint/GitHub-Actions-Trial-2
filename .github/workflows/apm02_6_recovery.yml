@@ -233,7 +233,7 @@ jobs:
       tenant_pr_number: ${{ needs.execute-recovery.outputs.tenant_pr_number }}
       extra_fact_title: "Recovery Status"
       extra_fact_value: "Pipeline restarted. Snapshot will automatically merge to main upon successful completion."
-      action_label: "Review Tracking PR #${{ needs.guard.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.guard.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.guard.outputs.pr_number }}"
     secrets: inherit
 
@@ -251,6 +251,6 @@ jobs:
       tenant_pr_number: ${{ needs.execute-recovery.outputs.tenant_pr_number }}
       extra_fact_title: "Action Required"
       extra_fact_value: "Resolve conflicts with tenant/asint-apm-02-v2 to resume deployment."
-      action_label: "View PR #${{ needs.guard.outputs.pr_number }}"
+      action_label: "Review main PR #${{ needs.guard.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.guard.outputs.pr_number }}"
     secrets: inherit

@@ -58,11 +58,14 @@ jobs:
           (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'tenant/asint-apm-02-v2' && contains(github.event.pull_request.labels.*.name, 'auto merge for APM02'))
         )
     runs-on: ubuntu-latest
+    outputs:
+      main_pr_number: ${{ steps.update_pr.outputs.main_pr_number }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Update Main PR Status
+        id: update_pr
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SNAPSHOT: ${{ github.event.pull_request.head.ref }}
@@ -72,6 +75,7 @@ jobs:
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --title "🟡 APM-02 Deploying: Merging from $SNAPSHOT to main" --add-label "APM-02 Deploying"
             gh pr edit "$ACTIVE_PR" --repo ${{ github.repository }} --remove-label "APM-02 Pre-Deploy Blocked" 2>/dev/null || true
             echo "✅ Main PR updated to APM-02 Deploying."
+            echo "main_pr_number=$ACTIVE_PR" >> $GITHUB_OUTPUT
           else
             echo "⚠️ No open Main PR found for snapshot $SNAPSHOT."
           fi
@@ -113,9 +117,10 @@ jobs:
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ github.event.pull_request.head.ref }}
-      pr_number: ${{ github.event.pull_request.number }}
+      pr_number: ${{ needs.post-merge-actions.outputs.main_pr_number }}
+      tenant_pr_number: ${{ github.event.pull_request.number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes."
-      action_label: "Review PR #${{ github.event.pull_request.number }}"
-      action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+      action_label: "Review main PR #${{ needs.post-merge-actions.outputs.main_pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.post-merge-actions.outputs.main_pr_number }}"
     secrets: inherit
