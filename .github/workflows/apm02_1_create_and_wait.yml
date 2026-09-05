@@ -96,6 +96,7 @@ jobs:
       date_ist: ${{ steps.create.outputs.date_ist }}
       time_ist: ${{ steps.create.outputs.time_ist }}
       deploy_time_ist: ${{ steps.create.outputs.deploy_time_ist }}
+      deploy_time_short_ist: ${{ steps.create.outputs.deploy_time_short_ist }}
       waiting_minutes: ${{ steps.create.outputs.waiting_minutes }}
       tracking_pr_url: ${{ steps.create-tracking-pr.outputs.tracking_pr_url }}
     permissions:
@@ -118,11 +119,13 @@ jobs:
           DATE_IST=$(TZ='Asia/Kolkata' date +'%a, %b %d %Y')
           TIME_IST=$(TZ='Asia/Kolkata' date +'%I:%M %p IST')
           DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%b %d, %Y %I:%M %p IST')
+          DEPLOY_TIME_SHORT_IST=$(TZ='Asia/Kolkata' date -d "+${WAIT_TIME} minutes" +'%I:%M %p IST')
 
           echo "snapshot_branch=$SNAPSHOT_NAME" >> $GITHUB_OUTPUT
           echo "date_ist=$DATE_IST" >> $GITHUB_OUTPUT
           echo "time_ist=$TIME_IST" >> $GITHUB_OUTPUT
           echo "deploy_time_ist=$DEPLOY_TIME_IST" >> $GITHUB_OUTPUT
+          echo "deploy_time_short_ist=$DEPLOY_TIME_SHORT_IST" >> $GITHUB_OUTPUT
           echo "waiting_minutes=$WAIT_TIME" >> $GITHUB_OUTPUT
 
           git checkout -b "$SNAPSHOT_NAME"
@@ -205,7 +208,7 @@ jobs:
     with:
       card_title: "🌿 New Snapshot Branch Created For APM02 Deployment"
       card_subtitle: "A new deployment snapshot has been created from main. Please cherry-pick your required changes into this snapshot branch before the deployment begins."
-      status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }} minutes until ${{ needs.create-snapshot.outputs.deploy_time_ist }})"
+      status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }}m until ${{ needs.create-snapshot.outputs.deploy_time_short_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
       extra_fact_title: "Deployment Schedule"
@@ -540,11 +543,12 @@ jobs:
       status_text: "Snapshot successfully merged into apm-02 branch. - SAP CI/CD Triggered."
       status_color: "good"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
-      pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
+      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.merge-to-apm02.outputs.apm02_pr_number }}
       extra_fact_title: "⚠️ Snapshot Closed"
       extra_fact_value: "This snapshot is now closed for cherry-picks. The final merge to main will happen automatically via a webhook when SAP CI/CD finishes. A new snapshot branch can be created after the current APM-02 cycle is complete (i.e., when this snapshot is successfully merged into main)."
-      action_label: "Review PR #${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
-      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.merge-to-apm02.outputs.apm02_pr_number }}"
+      action_label: "Review Tracking PR #${{ needs.create-snapshot.outputs.pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.create-snapshot.outputs.pr_number }}"
     secrets: inherit
 
   notify-protected-file-violation:
