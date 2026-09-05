@@ -42,6 +42,7 @@ jobs:
       adjust_time_ist: ${{ steps.check.outputs.adjust_time_ist }}
       action_word: ${{ steps.check.outputs.action_word }}
       summary_text: ${{ steps.check.outputs.summary_text }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
     steps:
       - name: Check active snapshot and update PR
         id: check
@@ -90,6 +91,7 @@ jobs:
             echo "adjust_time_ist=$EXTEND_TIME_IST" >> $GITHUB_OUTPUT
             echo "action_word=$ACTION_WORD" >> $GITHUB_OUTPUT
             echo "summary_text=$SUMMARY_TEXT" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
             echo "✅ Active snapshot '$ACTIVE' found (PR #$PR_NUM). Time extended to $EXTEND_TIME_IST."
           else
             echo "active_snapshot=" >> $GITHUB_OUTPUT
@@ -111,8 +113,9 @@ jobs:
       status_text: "⏳ ${{ needs.guard.outputs.summary_text }}"
       status_color: "accent"
       snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
+      pr_number: ${{ needs.guard.outputs.pr_number }}
       extra_fact_title: "Deployment Schedule"
       extra_fact_value: "APM-02 deployment will now start at ${{ needs.guard.outputs.adjust_time_ist }}."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.guard.outputs.active_snapshot }}"
+      show_snapshot_branch: true
+      show_sap_dashboard: false
     secrets: inherit

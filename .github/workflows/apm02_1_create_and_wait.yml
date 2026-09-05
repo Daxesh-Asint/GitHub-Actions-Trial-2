@@ -215,10 +215,11 @@ jobs:
       status_text: "⏳ Waiting for Cherry-picks (${{ needs.create-snapshot.outputs.waiting_minutes }}m until ${{ needs.create-snapshot.outputs.deploy_time_short_ist }})"
       status_color: "accent"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
       extra_fact_title: "Deployment Schedule"
       extra_fact_value: "The waiting window closes in ${{ needs.create-snapshot.outputs.waiting_minutes }} minutes. APM-02 deployment will start automatically at ${{ needs.create-snapshot.outputs.deploy_time_ist }}."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+      show_snapshot_branch: true
+      show_sap_dashboard: false
     secrets: inherit
 
   # ─────────────────────────────────────────────
@@ -277,10 +278,11 @@ jobs:
       status_text: "⚠️ Starting in 5 minutes at ${{ needs.wait-main.outputs.current_deploy_time }}"
       status_color: "warning"
       snapshot_branch: ${{ needs.create-snapshot.outputs.snapshot_branch }}
+      pr_number: ${{ needs.create-snapshot.outputs.pr_number }}
       extra_fact_title: "Need More Time?"
       extra_fact_value: "Trigger the 'APM-02 Extend Waiting Window' workflow now."
-      action_label: "View Snapshot Branch"
-      action_url: "https://github.com/${{ github.repository }}/tree/${{ needs.create-snapshot.outputs.snapshot_branch }}"
+      show_snapshot_branch: true
+      show_sap_dashboard: false
     secrets: inherit
 
   # ─────────────────────────────────────────────
