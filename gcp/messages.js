@@ -32,7 +32,7 @@ function getBlockedExplanation(activePr, botName) {
         `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
         `💡 **How to Recover (Choose an option):**\n\n` +
         `1. **If timeout / flaky CI/CD (No code changes):**\n` +
-        `   Type \`@${botName} re-trigger\` to restart the pipeline.\n\n` +
+        `   Type \`@${botName} re-trigger\` to restart the pipeline. *(Only works when label is APM-02 Failed)*\n\n` +
         `2. **If code fix is needed:**\n` +
         `   Push fix commit to \`${snapshotBranch}\` *(auto-deploys)*, or type \`@${botName} deployment fix pushed, re-deploy\`\n\n` +
         `📢 *You can retry as many times as needed until deployment succeeds!*`
@@ -65,28 +65,30 @@ function getBlockedExplanation(activePr, botName) {
 }
 
 /**
- * Generates formatted Help guide
+ * Generates formatted Help guide with detailed rules for each command
  */
 function getHelpMessage(botName) {
   return {
     title: `⚡ ${botName} - APM-02 Deployment Commands`,
     body:
-      `* **\`@${botName} share snapshot 60m\`**\n\n` +
-      `  Start snapshot deployment with custom (e.g. 30m, 45m) or default (60m) window\n\n` +
+      `* **\`@${botName} share snapshot\`** *(or custom e.g. \`@${botName} share snapshot 85m\`)*\n\n` +
+      `  Starts snapshot deployment with default **60m** window, or specify any custom wait time as per your choice (e.g. \`85m\`, \`45m\`, \`30m\`).\n\n` +
       `* **\`@${botName} deploy now\`**\n\n` +
-      `  Skip remaining wait time and deploy immediately to APM-02\n\n` +
-      `* **\`@${botName} extend 10m\`**\n\n` +
-      `  Add extra minutes to the current countdown\n\n` +
-      `* **\`@${botName} reduce 5m\`**\n\n` +
-      `  Subtract minutes from the current countdown\n\n` +
+      `  Bypasses the remaining wait countdown and immediately deploys snapshot to APM-02.\n\n` +
+      `* **\`@${botName} extend\`** *(or custom e.g. \`@${botName} extend 15m\`)*\n\n` +
+      `  Adds extra minutes to the countdown (default: **+10m**, or specify your choice like \`15m\`, \`20m\`).\n\n` +
+      `* **\`@${botName} reduce\`** *(or custom e.g. \`@${botName} reduce 5m\`)*\n\n` +
+      `  Subtracts minutes from the countdown (default: **-10m**, or specify your choice like \`5m\`, \`20m\`).\n\n` +
       `* **\`@${botName} re-trigger\`**\n\n` +
-      `  Restart SAP CI/CD deployment without code changes (transient timeout/glitch retry)\n\n` +
+      `  Restarts SAP CI/CD pipeline without code changes.\n` +
+      `  ⚠️ **Note:** Only works when tracking PR has the **\`APM-02 Failed\`** label (for timeout/flaky CI issues). In the **IDLE** stage, this will NOT work.\n\n` +
       `* **\`@${botName} deployment fix pushed, re-deploy\`**\n\n` +
-      `  Re-merge snapshot to APM-02 and trigger SAP CI/CD after pushing a build fix\n\n` +
+      `  Re-merges snapshot into APM-02 and triggers build after pushing a code fix to the snapshot branch.\n` +
+      `  ⚠️ **Note:** Only works when tracking PR has the **\`APM-02 Failed\`** label. In the **IDLE** stage, this will NOT work.\n\n` +
       `* **\`@${botName} status\`**\n\n` +
-      `  Check real-time APM-02 deployment status\n\n` +
+      `  Check real-time APM-02 deployment status & active tracking PR.\n\n` +
       `* **\`@${botName} help\`**\n\n` +
-      `  Display this command guide`
+      `  Display this command reference guide.`
   };
 }
 
@@ -97,7 +99,7 @@ function getStatusMessage(activePr) {
   if (!activePr) {
     return {
       title: '🟢 System Status: IDLE',
-      body: 'No APM-02 deployment is currently active. You can start a new snapshot anytime.'
+      body: 'No APM-02 deployment is currently active. You can start a new snapshot anytime using `@Jarvis share snapshot`.'
     };
   }
 

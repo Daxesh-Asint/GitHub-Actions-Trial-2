@@ -56,13 +56,15 @@ In the GCP Cloud Run / Cloud Functions inline source editor:
 
 ---
 
-## 🚀 Supported Commands
+## 🚀 Supported Commands & Suggestions Reference
 
-* **`@Jarvis share snapshot [minutes]`** — Initiate snapshot deployment (default: 60m).
-* **`@Jarvis deploy now`** — Bypass remaining waiting countdown and deploy immediately.
-* **`@Jarvis extend [minutes]`** — Add minutes to the countdown window.
-* **`@Jarvis reduce [minutes]`** — Decrease minutes from countdown window.
-* **`@Jarvis re-trigger`** — Restart SAP CI/CD deployment without code changes (transient timeout/glitch retry).
-* **`@Jarvis deployment fix pushed, re-deploy`** — Re-merge snapshot to APM-02 and trigger SAP CI/CD after pushing a build fix.
-* **`@Jarvis status`** — Query real-time deployment status and active tracking PR.
-* **`@Jarvis help`** — Display command reference guide.
+| Command | Short Suggestion Text | Description & Behavior Rules |
+| :--- | :--- | :--- |
+| **`share snapshot`** *(or e.g. `share snapshot 85m`)* | Start snapshot deployment (default: 60m, or specify wait time like 85m) | Initiates snapshot deployment. Defaults to a **60-minute** countdown window. If you want an explicit wait time as per your choice, specify it (e.g., `share snapshot 85m`, `share snapshot 30m`). |
+| **`deploy now`** | Deploy snapshot to APM-02 immediately | Bypasses the remaining wait countdown and triggers immediate merge and SAP CI/CD build to APM-02. |
+| **`extend`** *(or e.g. `extend 15m`)* | Add minutes to waiting window (default: +10m, or specify like 15m) | Adds extra minutes to the countdown window (default: **+10 minutes**, or custom like `extend 15m`, `extend 30m`). |
+| **`reduce`** *(or e.g. `reduce 5m`)* | Subtract minutes from waiting window (default: -10m, or specify like 5m) | Subtracts minutes from the countdown window (default: **-10 minutes**, or custom like `reduce 5m`, `reduce 20m`). |
+| **`re-trigger`** | Restart pipeline without code changes (only when APM-02 Failed) | Restarts the SAP CI/CD pipeline without code changes for transient timeout/flaky failures. **Strictly only works when tracking PR has label `APM-02 Failed`**. In IDLE stage or active stages, it will not work. |
+| **`deployment fix pushed, re-deploy`** | Re-deploy to APM-02 after pushing fix to snapshot branch (only when APM-02 Failed) | Merges the latest snapshot commits into APM-02 and triggers a new build after fixing code in the snapshot branch. **Strictly only works when tracking PR has label `APM-02 Failed`**. In IDLE stage, it will not work. |
+| **`status`** | Query real-time APM-02 deployment status | Displays current deployment state, tracking PR link, snapshot branch, and initiator. |
+| **`help`** | View list of bot commands & guide | Displays full command usage guide and rules. |
