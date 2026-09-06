@@ -86,78 +86,66 @@ function _broadcastCard(urls, cardBodyElements, version, callback) {
 function buildHelpCard(botName) {
   const commands = [
     {
-      emoji: '🚀',
       name: 'share snapshot',
       syntax: '@' + botName + ' share snapshot',
       alt:    '@' + botName + ' share snapshot 85m',
       desc: [
         'Starts snapshot deployment with default 60m cherry-pick window.',
-        'Optionally pass a custom wait time — e.g. 85m, 45m, 30m.'
+        'Optionally specify a custom wait time — e.g. 85m, 45m, 30m.'
       ],
       color: 'Accent'
     },
     {
-      emoji: '⚡',
       name: 'deploy now',
       syntax: '@' + botName + ' deploy now',
       desc: [
-        'Bypasses the remaining wait countdown and immediately deploys',
-        'the snapshot into APM-02.'
+        'Bypasses the remaining wait countdown and immediately deploys the snapshot into APM-02.'
       ],
       color: 'Good'
     },
     {
-      emoji: '⏰',
       name: 'extend',
       syntax: '@' + botName + ' extend',
       alt:    '@' + botName + ' extend 15m',
       desc: [
-        'Adds extra minutes to the countdown (default: +10m).',
-        'Or pass a custom value — e.g. 15m, 20m.'
+        'Adds extra minutes to the countdown window (default: +10m, or specify like 15m, 20m).'
       ],
       color: 'Accent'
     },
     {
-      emoji: '✂️',
       name: 'reduce',
       syntax: '@' + botName + ' reduce',
       alt:    '@' + botName + ' reduce 5m',
       desc: [
-        'Subtracts minutes from the countdown (default: -10m).',
-        'Or pass a custom value — e.g. 5m, 20m.'
+        'Subtracts minutes from the countdown window (default: -10m, or specify like 5m, 20m).'
       ],
       color: 'Warning'
     },
     {
-      emoji: '🔄',
       name: 're-trigger',
       syntax: '@' + botName + ' re-trigger',
       desc: [
-        'Restarts the SAP CI/CD pipeline without any code changes.',
-        '⚠️  Only works when the tracking PR has the APM-02 Failed label.',
-        '    Does NOT work in IDLE state.'
+        'Restarts the SAP CI/CD pipeline without code changes.',
+        'Note: Only works when the tracking PR has the APM-02 Failed label (not in IDLE state).'
       ],
       color: 'Attention'
     },
     {
-      emoji: '🛠️',
       name: 'deployment fix pushed, re-deploy',
       syntax: '@' + botName + ' deployment fix pushed, re-deploy',
       desc: [
-        'Re-merges the snapshot and triggers a new build after you push a fix.',
-        '⚠️  Only works when the tracking PR has the APM-02 Failed label.'
+        'Re-merges the snapshot and triggers a new build after pushing a fix.',
+        'Note: Only works when the tracking PR has the APM-02 Failed label.'
       ],
       color: 'Attention'
     },
     {
-      emoji: '📊',
       name: 'status',
       syntax: '@' + botName + ' status',
-      desc: ['Shows real-time APM-02 deployment state and the active tracking PR.'],
+      desc: ['Shows real-time APM-02 deployment state and active tracking PR.'],
       color: 'Good'
     },
     {
-      emoji: '❓',
       name: 'help',
       syntax: '@' + botName + ' help',
       desc: ['Displays this command reference guide.'],
@@ -167,47 +155,27 @@ function buildHelpCard(botName) {
 
   const body = [];
 
-  // ── Header block ────────────────────────────────────────────────────────────
+  // ── Clean Header block ──────────────────────────────────────────────────────
   body.push({
     type: 'Container',
     style: 'emphasis',
     bleed: true,
     items: [
       {
-        type: 'ColumnSet',
+        type: 'TextBlock',
+        text: (botName || 'JARVIS').toUpperCase(),
+        size: 'Large',
+        weight: 'Bolder',
+        color: 'Accent',
+        spacing: 'None'
+      },
+      {
+        type: 'TextBlock',
+        text: 'APM-02 Deployment Command Reference',
+        size: 'Small',
+        isSubtle: true,
         spacing: 'None',
-        columns: [
-          {
-            type: 'Column',
-            width: 'auto',
-            verticalContentAlignment: 'Center',
-            items: [{ type: 'TextBlock', text: '⚡', size: 'ExtraLarge', spacing: 'None' }]
-          },
-          {
-            type: 'Column',
-            width: 'stretch',
-            verticalContentAlignment: 'Center',
-            spacing: 'Small',
-            items: [
-              {
-                type: 'TextBlock',
-                text: 'JARVIS',
-                size: 'ExtraLarge',
-                weight: 'Bolder',
-                color: 'Accent',
-                spacing: 'None'
-              },
-              {
-                type: 'TextBlock',
-                text: 'APM-02  ·  Deployment Command Centre',
-                size: 'Small',
-                isSubtle: true,
-                spacing: 'None',
-                wrap: true
-              }
-            ]
-          }
-        ]
+        wrap: true
       }
     ]
   });
@@ -216,35 +184,15 @@ function buildHelpCard(botName) {
   for (const cmd of commands) {
     const items = [];
 
-    // Emoji + command name in a two-column row
+    // Clean Command Name (No cluttered emojis)
     items.push({
-      type: 'ColumnSet',
+      type: 'TextBlock',
+      text: cmd.name,
+      size: 'Medium',
+      weight: 'Bolder',
+      color: cmd.color,
       spacing: 'None',
-      columns: [
-        {
-          type: 'Column',
-          width: 'auto',
-          verticalContentAlignment: 'Center',
-          items: [{ type: 'TextBlock', text: cmd.emoji, size: 'Large', spacing: 'None' }]
-        },
-        {
-          type: 'Column',
-          width: 'stretch',
-          verticalContentAlignment: 'Center',
-          spacing: 'Small',
-          items: [
-            {
-              type: 'TextBlock',
-              text: cmd.name,
-              size: 'Large',
-              weight: 'Bolder',
-              color: cmd.color,
-              spacing: 'None',
-              wrap: true
-            }
-          ]
-        }
-      ]
+      wrap: true
     });
 
     // Primary syntax in monospace
@@ -258,7 +206,7 @@ function buildHelpCard(botName) {
       wrap: true
     });
 
-    // Alternate syntax (optional), slightly subtle
+    // Alternate syntax (optional)
     if (cmd.alt) {
       items.push({
         type: 'TextBlock',
@@ -272,7 +220,7 @@ function buildHelpCard(botName) {
       });
     }
 
-    // Description lines
+    // Description lines (Clean, professional text)
     cmd.desc.forEach((line, idx) => {
       items.push({
         type: 'TextBlock',
@@ -292,14 +240,14 @@ function buildHelpCard(botName) {
     });
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
+  // ── Clean Footer ───────────────────────────────────────────────────────────
   body.push({
     type: 'TextBlock',
-    text: '💡  Type any command above and press Enter — Jarvis handles the rest!',
+    text: 'Type any command above and press Enter to execute.',
     size: 'Small',
     isSubtle: true,
     wrap: true,
-    spacing: 'Large',
+    spacing: 'Medium',
     separator: true
   });
 
