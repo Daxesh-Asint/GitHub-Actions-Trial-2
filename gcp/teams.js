@@ -84,44 +84,45 @@ function _broadcastCard(urls, cardBodyElements, version, callback) {
  *   a visual separator between every command
  */
 function buildHelpCard(botName) {
+  const name = botName || 'Jarvis';
   const commands = [
     {
-      syntax: `@${botName} share snapshot`,
-      desc: 'Starts a new snapshot deployment with a default 60m cherry-pick window. You can specify a custom wait time (e.g. `@${botName} share snapshot 85m`).',
+      syntax: `@${name} share snapshot`,
+      desc: `Starts a new snapshot deployment with a default 60m cherry-pick window. You can specify a custom wait time (e.g. @${name} share snapshot 85m).`,
       color: 'Accent'
     },
     {
-      syntax: `@${botName} deploy now`,
+      syntax: `@${name} deploy now`,
       desc: 'Bypasses the remaining wait countdown and immediately merges the snapshot into APM-02 to trigger SAP CI/CD build.',
       color: 'Good'
     },
     {
-      syntax: `@${botName} extend`,
-      desc: 'Adds 10 minutes to the active cherry-pick countdown. You can specify custom minutes (e.g. `@${botName} extend 15m`).',
+      syntax: `@${name} extend`,
+      desc: `Adds 10 minutes to the active cherry-pick countdown. You can specify custom minutes (e.g. @${name} extend 15m).`,
       color: 'Accent'
     },
     {
-      syntax: `@${botName} reduce`,
-      desc: 'Subtracts 10 minutes from the active cherry-pick countdown. You can specify custom minutes (e.g. `@${botName} reduce 5m`).',
+      syntax: `@${name} reduce`,
+      desc: `Subtracts 10 minutes from the active cherry-pick countdown. You can specify custom minutes (e.g. @${name} reduce 5m).`,
       color: 'Warning'
     },
     {
-      syntax: `@${botName} re-trigger`,
+      syntax: `@${name} re-trigger`,
       desc: 'Restarts the SAP CI/CD pipeline without code changes. Only works when the tracking PR has the APM-02 Failed label (not allowed in IDLE state).',
       color: 'Attention'
     },
     {
-      syntax: `@${botName} deployment fix pushed, re-deploy`,
+      syntax: `@${name} deployment fix pushed, re-deploy`,
       desc: 'Re-merges the latest snapshot commits into APM-02 and triggers a new build after pushing a fix. Only works when the tracking PR has the APM-02 Failed label.',
       color: 'Attention'
     },
     {
-      syntax: `@${botName} status`,
+      syntax: `@${name} status`,
       desc: 'Displays the current real-time APM-02 deployment state, active tracking PR link, snapshot branch name, and initiator.',
       color: 'Good'
     },
     {
-      syntax: `@${botName} help`,
+      syntax: `@${name} help`,
       desc: 'Displays this command reference guide.',
       color: 'Default'
     }
