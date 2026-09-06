@@ -2,6 +2,85 @@ const https = require('https');
 const config = require('./config');
 
 /**
+ * Converts a raw message string into a structured array of Adaptive Card body elements.
+ *
+ * Rules:
+ *  - The cardTitle is rendered as a large, bold, accented header with a separator below.
+ *  - The messageText is split on \n\n into paragraphs; each paragraph becomes its own
+ *    TextBlock with Medium spacing above it (except the first).
+ *  - Lines beginning with "* " inside a paragraph are treated as bullet items and get
+ *    a "• " prefix so they look like proper bullets in Teams.
+ *  - No sentence content is modified — only visual structure is added.
+ */
+function buildCardBody(messageText, cardTitle) {
+  const cardBody = [];
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  if (cardTitle) {
+    cardBody.push({
+      type: 'TextBlock',
+      size: 'Large',
+      weight: 'Bolder',
+      color: 'Accent',
+      text: cardTitle,
+      wrap: true,
+      spacing: 'None'
+    });
+    // Thin separator line under the title
+    cardBody.push({
+      type: 'TextBlock',
+      text: ' ',
+      spacing: 'Small',
+      separator: true
+    });
+  }
+
+  // ── Body: split into paragraphs ─────────────────────────────────────────────
+  const paragraphs = messageText.split(/\n\n+/);
+  let isFirstParagraph = true;
+
+  for (const paragraph of paragraphs) {
+    const trimmedPara = paragraph.trim();
+    if (!trimmedPara) continue;
+
+    const lines = trimmedPara.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const trimmedLine = lines[i].trim();
+      if (!trimmedLine) continue;
+
+      // Detect bullet lines: lines that start with "* "
+      const isBullet = trimmedLine.startsWith('* ');
+      const lineText = isBullet ? '• ' + trimmedLine.slice(2) : trimmedLine;
+
+      // Determine spacing:
+      //  - First element after title: Small (tight under separator)
+      //  - First line of a new paragraph (not a bullet starting after a bullet): Medium
+      //  - Continuation lines inside a paragraph / sub-lines of a bullet: Small
+      let spacing;
+      if (isFirstParagraph && i === 0) {
+        spacing = 'Small';
+      } else if (i === 0) {
+        spacing = 'Medium';
+      } else {
+        spacing = 'Small';
+      }
+
+      cardBody.push({
+        type: 'TextBlock',
+        text: lineText,
+        wrap: true,
+        spacing: spacing
+      });
+    }
+
+    isFirstParagraph = false;
+  }
+
+  return cardBody;
+}
+
+/**
  * Sends a message directly to MS Teams Channel Main Feed via Incoming Webhook.
  * Uses AdaptiveCard format (compatible with Workflows and Connectors).
  */
@@ -14,22 +93,7 @@ function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
     return callback(new Error('No valid webhook URL configured'));
   }
 
-  const cardBody = [];
-  if (cardTitle) {
-    cardBody.push({
-      type: 'TextBlock',
-      size: 'Medium',
-      weight: 'Bolder',
-      text: cardTitle,
-      wrap: true
-    });
-  }
-
-  cardBody.push({
-    type: 'TextBlock',
-    text: messageText,
-    wrap: true
-  });
+  const cardBody = buildCardBody(messageText, cardTitle);
 
   const payload = JSON.stringify({
     type: 'message',
