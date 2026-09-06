@@ -181,13 +181,13 @@ function buildHelpCard(botName) {
   });
 
   // ── One Container per command ───────────────────────────────────────────────
-  for (const cmd of commands) {
+  commands.forEach((cmd, idx) => {
     const items = [];
 
-    // Clean Command Name (No cluttered emojis)
+    // Prominent, readable command syntax (e.g. "1.  @Jarvis share snapshot")
     items.push({
       type: 'TextBlock',
-      text: cmd.name,
+      text: `${idx + 1}.  ${cmd.syntax}`,
       size: 'Medium',
       weight: 'Bolder',
       color: cmd.color,
@@ -195,25 +195,14 @@ function buildHelpCard(botName) {
       wrap: true
     });
 
-    // Primary syntax in monospace
-    items.push({
-      type: 'TextBlock',
-      text: cmd.syntax,
-      fontType: 'Monospace',
-      size: 'Small',
-      color: 'Good',
-      spacing: 'Small',
-      wrap: true
-    });
-
-    // Alternate syntax (optional)
+    // Alternate syntax (optional, clean and indented)
     if (cmd.alt) {
       items.push({
         type: 'TextBlock',
-        text: 'or:  ' + cmd.alt,
-        fontType: 'Monospace',
+        text: `     or: ${cmd.alt}`,
         size: 'Small',
-        color: 'Good',
+        weight: 'Bolder',
+        color: cmd.color,
         isSubtle: true,
         spacing: 'None',
         wrap: true
@@ -221,14 +210,14 @@ function buildHelpCard(botName) {
     }
 
     // Description lines (Clean, professional text)
-    cmd.desc.forEach((line, idx) => {
+    cmd.desc.forEach((line, descIdx) => {
       items.push({
         type: 'TextBlock',
         text: line,
         size: 'Small',
         isSubtle: true,
         wrap: true,
-        spacing: idx === 0 ? 'Small' : 'None'
+        spacing: descIdx === 0 ? 'Small' : 'None'
       });
     });
 
@@ -238,7 +227,7 @@ function buildHelpCard(botName) {
       spacing: 'Medium',
       items: items
     });
-  }
+  });
 
   // ── Clean Footer ───────────────────────────────────────────────────────────
   body.push({
