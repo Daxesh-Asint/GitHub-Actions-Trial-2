@@ -20,24 +20,25 @@ let lastSnapshotTriggerTime = 0;
  * Main Cloud Function / Cloud Run Entry Point
  */
 exports.deployBot = (req, res) => {
-  // 1. Verify POST request from MS Teams
-  if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
-  }
+  try {
+    // 1. Verify POST request from MS Teams
+    if (req.method !== 'POST') {
+      return res.status(405).send('Method Not Allowed');
+    }
 
-  // 2. Extract Bot Name dynamically from MS Teams payload
-  //    Priority: Teams mention payload → BOT_NAME env var → 'Jarvis' fallback
-  const botName =
-    (req.body &&
-      req.body.entities &&
-      req.body.entities[0] &&
-      req.body.entities[0].mentioned &&
-      req.body.entities[0].mentioned.name) ||
-    config.DEFAULT_BOT_NAME;
+    // 2. Extract Bot Name dynamically from MS Teams payload
+    //    Priority: Teams mention payload → BOT_NAME env var → 'Jarvis' fallback
+    let botName = config.DEFAULT_BOT_NAME;
+    if (req.body && Array.isArray(req.body.entities)) {
+      const mentionEntity = req.body.entities.find((e) => e && e.type === 'mention' && e.mentioned);
+      if (mentionEntity && mentionEntity.mentioned && mentionEntity.mentioned.name) {
+        botName = mentionEntity.mentioned.name;
+      }
+    }
 
-  // 3. Clean user input (strip HTML tags like <at>Jarvis</at>)
-  const rawText = req.body && req.body.text ? req.body.text : '';
-  const cleanText = rawText.replace(/<[^>]*>/g, '').trim().toLowerCase();
+    // 3. Clean user input (strip HTML tags like <at>Jarvis</at>)
+    const rawText = (req.body && typeof req.body.text === 'string') ? req.body.text : '';
+    const cleanText = rawText.replace(/<[^>]*>/g, '').trim().toLowerCase();
 
   // -----------------------------------------------------------------------
   // COMMAND 1: share snapshot __m (PRIMARY) / share snapshot [minutes]
@@ -318,4 +319,11 @@ exports.deployBot = (req, res) => {
   } else {
     sendHelpCard(res, botName);
   }
+} catch (err) {
+  console.error('Unhandled exception in deployBot:', err);
+  return res.status(200).json({
+    type: 'message',
+    text: `⚠️ **Bot Encountered an Error:** ${err.message || 'Unknown error'}. Please try again.`
+  });
+}
 };
