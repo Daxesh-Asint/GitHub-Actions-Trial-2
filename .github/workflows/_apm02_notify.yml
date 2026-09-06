@@ -96,6 +96,7 @@ jobs:
           # ── Auto-fetch: Changes By, Commit Count, CI/CD Commit ID ────────────────
           CHANGES_BY=""
           COMMIT_COUNT=""
+          TENANT_COMMIT_COUNT=""
           CICD_COMMIT_ID=""
 
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ]; then
@@ -109,6 +110,9 @@ jobs:
           [ -z "$CHANGES_BY" ] && CHANGES_BY="${{ github.actor }}"
 
           if [ -n "$TENANT_PR_NUMBER" ] && [ "$TENANT_PR_NUMBER" != "null" ] && [ "$TENANT_PR_NUMBER" != "" ]; then
+            TENANT_COMMIT_COUNT=$(gh api "repos/$REPO/pulls/$TENANT_PR_NUMBER/commits" --paginate \
+              --jq 'length' \
+              2>/dev/null || echo "")
             CICD_COMMIT_ID=$(gh pr view "$TENANT_PR_NUMBER" --repo "$REPO" \
               --json mergeCommit --jq '.mergeCommit.oid // empty' \
               2>/dev/null | cut -c 1-7 || echo "")
@@ -136,10 +140,16 @@ jobs:
           fi
 
           if [ -n "$TENANT_PR_NUMBER" ] && [ "$TENANT_PR_NUMBER" != "null" ]; then
-            TENANT_PR_FACT="PR #$TENANT_PR_NUMBER"
+            if [ -n "$TENANT_COMMIT_COUNT" ] && [ "$TENANT_COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+              TENANT_PR_FACT="PR #$TENANT_PR_NUMBER ($TENANT_COMMIT_COUNT commits)"
+            else
+              TENANT_PR_FACT="PR #$TENANT_PR_NUMBER"
+            fi
+            TENANT_PR_BTN="Review APM-02 PR #$TENANT_PR_NUMBER"
             TENANT_PR_URL="https://github.com/$REPO/pull/$TENANT_PR_NUMBER"
           else
             TENANT_PR_FACT=""
+            TENANT_PR_BTN=""
             TENANT_PR_URL=""
           fi
 
@@ -215,7 +225,7 @@ jobs:
             --arg main_url "$MAIN_PR_URL" \
             --arg show_snap "$SHOW_SNAP_BTN" \
             --arg snap_url "$SNAPSHOT_URL" \
-            --arg tenant_pr "$TENANT_PR_FACT" \
+            --arg tenant_btn "$TENANT_PR_BTN" \
             --arg tenant_url "$TENANT_PR_URL" \
             --arg custom_title "$CUSTOM_BTN_TITLE" \
             --arg custom_url "$CUSTOM_BTN_URL" \
@@ -236,10 +246,10 @@ jobs:
                   url: $snap_url
                 }
               ] else [] end) +
-              (if $tenant_pr != "" then [
+              (if $tenant_btn != "" then [
                 {
                   type: "Action.OpenUrl",
-                  title: ("Review APM-02 " + $tenant_pr),
+                  title: $tenant_btn,
                   url: $tenant_url
                 }
               ] else [] end) +
