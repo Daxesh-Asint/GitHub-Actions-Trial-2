@@ -93,6 +93,31 @@ jobs:
             fi
           fi
 
+          # ── Auto-fetch: Changes By, Commit Count, CI/CD Commit ID ────────────────
+          CHANGES_BY=""
+          COMMIT_COUNT=""
+          TENANT_COMMIT_COUNT=""
+          CICD_COMMIT_ID=""
+
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ]; then
+            CHANGES_BY=$(gh api "repos/$REPO/pulls/$PR_NUMBER/commits" --paginate \
+              --jq '[.[] | if .author.login then .author.login else .commit.author.name end] | unique | if length > 3 then (.[0:3] + ["and \(length - 3) others"]) else . end | join(", ")' \
+              2>/dev/null || echo "")
+            COMMIT_COUNT=$(gh api "repos/$REPO/pulls/$PR_NUMBER/commits" --paginate \
+              --jq 'length' \
+              2>/dev/null || echo "")
+          fi
+          [ -z "$CHANGES_BY" ] && CHANGES_BY="${{ github.actor }}"
+
+          if [ -n "$TENANT_PR_NUMBER" ] && [ "$TENANT_PR_NUMBER" != "null" ] && [ "$TENANT_PR_NUMBER" != "" ]; then
+            TENANT_COMMIT_COUNT=$(gh api "repos/$REPO/pulls/$TENANT_PR_NUMBER/commits" --paginate \
+              --jq 'length' \
+              2>/dev/null || echo "")
+            CICD_COMMIT_ID=$(gh pr view "$TENANT_PR_NUMBER" --repo "$REPO" \
+              --json mergeCommit --jq '.mergeCommit.oid // empty' \
+              2>/dev/null | cut -c 1-7 || echo "")
+          fi
+
           # Build URLs
           SNAPSHOT_URL=""
           if [ -n "$SNAPSHOT" ]; then
@@ -101,20 +126,30 @@ jobs:
           MAIN_PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
           SAP_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-APM-02/TwoColumnsBeginExpanded"
 
-          # Build PR fact values
+          # Build PR fact values (include commit count in brackets if available)
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ]; then
-            TRACKING_PR_FACT="PR #$PR_NUMBER"
-            MAIN_PR_BTN="Review main $TRACKING_PR_FACT"
+            if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+              TRACKING_PR_FACT="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+            else
+              TRACKING_PR_FACT="PR #$PR_NUMBER"
+            fi
+            MAIN_PR_BTN="Review main PR #$PR_NUMBER"
           else
             TRACKING_PR_FACT="N/A"
             MAIN_PR_BTN=""
           fi
 
           if [ -n "$TENANT_PR_NUMBER" ] && [ "$TENANT_PR_NUMBER" != "null" ]; then
-            TENANT_PR_FACT="PR #$TENANT_PR_NUMBER"
+            if [ -n "$TENANT_COMMIT_COUNT" ] && [ "$TENANT_COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+              TENANT_PR_FACT="PR #$TENANT_PR_NUMBER ($TENANT_COMMIT_COUNT commits)"
+            else
+              TENANT_PR_FACT="PR #$TENANT_PR_NUMBER"
+            fi
+            TENANT_PR_BTN="Review APM-02 PR #$TENANT_PR_NUMBER"
             TENANT_PR_URL="https://github.com/$REPO/pull/$TENANT_PR_NUMBER"
           else
             TENANT_PR_FACT=""
+            TENANT_PR_BTN=""
             TENANT_PR_URL=""
           fi
 
@@ -156,16 +191,19 @@ jobs:
             fi
           fi
 
-          # Build facts array
+          # Build facts array (includes Changes By, commit count in PR, and CI/CD Commit ID)
           FACTS=$(jq -n \
             --arg repo "$REPO" \
+            --arg changes_by "$CHANGES_BY" \
             --arg snapshot "$SNAPSHOT" \
             --arg tracking_pr "$TRACKING_PR_FACT" \
             --arg tenant_pr "$TENANT_PR_FACT" \
+            --arg cicd_commit "$CICD_COMMIT_ID" \
             --arg eft "$EXTRA_FACT_TITLE" \
             --arg efv "$EXTRA_FACT_VALUE" \
             '[
               { title: "Repository",       value: $repo },
+              { title: "Changes By",       value: $changes_by },
               { title: "Snapshot Branch",  value: $snapshot }
             ] +
             (if $tenant_pr != "" then [
@@ -174,6 +212,9 @@ jobs:
             ] else [
               { title: "Main PR",          value: $tracking_pr }
             ] end) +
+            (if ($cicd_commit != "" and $cicd_commit != "N/A") then [
+              { title: "CI/CD Commit ID",  value: $cicd_commit }
+            ] else [] end) +
             (if ($eft != "" and $efv != "") then [
               { title: $eft,               value: $efv }
             ] else [] end)')
@@ -184,7 +225,7 @@ jobs:
             --arg main_url "$MAIN_PR_URL" \
             --arg show_snap "$SHOW_SNAP_BTN" \
             --arg snap_url "$SNAPSHOT_URL" \
-            --arg tenant_pr "$TENANT_PR_FACT" \
+            --arg tenant_btn "$TENANT_PR_BTN" \
             --arg tenant_url "$TENANT_PR_URL" \
             --arg custom_title "$CUSTOM_BTN_TITLE" \
             --arg custom_url "$CUSTOM_BTN_URL" \
@@ -205,10 +246,10 @@ jobs:
                   url: $snap_url
                 }
               ] else [] end) +
-              (if $tenant_pr != "" then [
+              (if $tenant_btn != "" then [
                 {
                   type: "Action.OpenUrl",
-                  title: ("Review APM-02 " + $tenant_pr),
+                  title: $tenant_btn,
                   url: $tenant_url
                 }
               ] else [] end) +
