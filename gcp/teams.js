@@ -86,69 +86,43 @@ function _broadcastCard(urls, cardBodyElements, version, callback) {
 function buildHelpCard(botName) {
   const commands = [
     {
-      name: 'share snapshot',
-      syntax: '@' + botName + ' share snapshot',
-      alt:    '@' + botName + ' share snapshot 85m',
-      desc: [
-        'Starts snapshot deployment with default 60m cherry-pick window.',
-        'Optionally specify a custom wait time — e.g. 85m, 45m, 30m.'
-      ],
+      syntax: `@${botName} share snapshot`,
+      desc: 'Starts a new snapshot deployment with a default 60m cherry-pick window. You can specify a custom wait time (e.g. `@${botName} share snapshot 85m`).',
       color: 'Accent'
     },
     {
-      name: 'deploy now',
-      syntax: '@' + botName + ' deploy now',
-      desc: [
-        'Bypasses the remaining wait countdown and immediately deploys the snapshot into APM-02.'
-      ],
+      syntax: `@${botName} deploy now`,
+      desc: 'Bypasses the remaining wait countdown and immediately merges the snapshot into APM-02 to trigger SAP CI/CD build.',
       color: 'Good'
     },
     {
-      name: 'extend',
-      syntax: '@' + botName + ' extend',
-      alt:    '@' + botName + ' extend 15m',
-      desc: [
-        'Adds extra minutes to the countdown window (default: +10m, or specify like 15m, 20m).'
-      ],
+      syntax: `@${botName} extend`,
+      desc: 'Adds 10 minutes to the active cherry-pick countdown. You can specify custom minutes (e.g. `@${botName} extend 15m`).',
       color: 'Accent'
     },
     {
-      name: 'reduce',
-      syntax: '@' + botName + ' reduce',
-      alt:    '@' + botName + ' reduce 5m',
-      desc: [
-        'Subtracts minutes from the countdown window (default: -10m, or specify like 5m, 20m).'
-      ],
+      syntax: `@${botName} reduce`,
+      desc: 'Subtracts 10 minutes from the active cherry-pick countdown. You can specify custom minutes (e.g. `@${botName} reduce 5m`).',
       color: 'Warning'
     },
     {
-      name: 're-trigger',
-      syntax: '@' + botName + ' re-trigger',
-      desc: [
-        'Restarts the SAP CI/CD pipeline without code changes.',
-        'Note: Only works when the tracking PR has the APM-02 Failed label (not in IDLE state).'
-      ],
+      syntax: `@${botName} re-trigger`,
+      desc: 'Restarts the SAP CI/CD pipeline without code changes. Only works when the tracking PR has the APM-02 Failed label (not allowed in IDLE state).',
       color: 'Attention'
     },
     {
-      name: 'deployment fix pushed, re-deploy',
-      syntax: '@' + botName + ' deployment fix pushed, re-deploy',
-      desc: [
-        'Re-merges the snapshot and triggers a new build after pushing a fix.',
-        'Note: Only works when the tracking PR has the APM-02 Failed label.'
-      ],
+      syntax: `@${botName} deployment fix pushed, re-deploy`,
+      desc: 'Re-merges the latest snapshot commits into APM-02 and triggers a new build after pushing a fix. Only works when the tracking PR has the APM-02 Failed label.',
       color: 'Attention'
     },
     {
-      name: 'status',
-      syntax: '@' + botName + ' status',
-      desc: ['Shows real-time APM-02 deployment state and active tracking PR.'],
+      syntax: `@${botName} status`,
+      desc: 'Displays the current real-time APM-02 deployment state, active tracking PR link, snapshot branch name, and initiator.',
       color: 'Good'
     },
     {
-      name: 'help',
-      syntax: '@' + botName + ' help',
-      desc: ['Displays this command reference guide.'],
+      syntax: `@${botName} help`,
+      desc: 'Displays this command reference guide.',
       color: 'Default'
     }
   ];
@@ -184,7 +158,7 @@ function buildHelpCard(botName) {
   commands.forEach((cmd, idx) => {
     const items = [];
 
-    // Prominent, readable command syntax (e.g. "1.  @Jarvis share snapshot")
+    // Prominent, readable command syntax
     items.push({
       type: 'TextBlock',
       text: `${idx + 1}.  ${cmd.syntax}`,
@@ -195,30 +169,14 @@ function buildHelpCard(botName) {
       wrap: true
     });
 
-    // Alternate syntax (optional, clean and indented)
-    if (cmd.alt) {
-      items.push({
-        type: 'TextBlock',
-        text: `     or: ${cmd.alt}`,
-        size: 'Small',
-        weight: 'Bolder',
-        color: cmd.color,
-        isSubtle: true,
-        spacing: 'None',
-        wrap: true
-      });
-    }
-
-    // Description lines (Clean, professional text)
-    cmd.desc.forEach((line, descIdx) => {
-      items.push({
-        type: 'TextBlock',
-        text: line,
-        size: 'Small',
-        isSubtle: true,
-        wrap: true,
-        spacing: descIdx === 0 ? 'Small' : 'None'
-      });
+    // Complete, clear description
+    items.push({
+      type: 'TextBlock',
+      text: cmd.desc,
+      size: 'Small',
+      isSubtle: true,
+      wrap: true,
+      spacing: 'Small'
     });
 
     body.push({
