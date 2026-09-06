@@ -21,7 +21,7 @@ function _broadcastCard(urls, cardBodyElements, version, callback) {
         content: {
           $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
           type: 'AdaptiveCard',
-          version: version || '1.5',
+          version: version || '1.4',
           body: cardBodyElements
         }
       }
@@ -374,7 +374,7 @@ function buildGenericCard(messageText, cardTitle) {
 // ─────────────────────────────────────────────────────────────────────────────
 function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
   const cardBody = buildGenericCard(messageText, cardTitle);
-  _broadcastCard(urls, cardBody, '1.5', callback);
+  _broadcastCard(urls, cardBody, '1.4', callback);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -415,7 +415,7 @@ function sendBotResponse(res, messageText, cardTitle) {
 function sendHelpCard(res, botName) {
   if (config.TEAMS_WEBHOOK_URL) {
     const cardBody = buildHelpCard(botName);
-    _broadcastCard(config.TEAMS_WEBHOOK_URL, cardBody, '1.5', (err) => {
+    _broadcastCard(config.TEAMS_WEBHOOK_URL, cardBody, '1.4', (err) => {
       if (err) {
         console.error('Failed to post help card to Teams webhook, falling back:', err);
         return res.status(200).json({
