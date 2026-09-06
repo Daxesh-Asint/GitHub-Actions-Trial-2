@@ -1,90 +1,10 @@
 const https = require('https');
 const config = require('./config');
 
-/**
- * Converts a raw message string into a structured array of Adaptive Card body elements.
- *
- * Rules:
- *  - The cardTitle is rendered as a large, bold, accented header with a separator below.
- *  - The messageText is split on \n\n into paragraphs; each paragraph becomes its own
- *    TextBlock with Medium spacing above it (except the first).
- *  - Lines beginning with "* " inside a paragraph are treated as bullet items and get
- *    a "• " prefix so they look like proper bullets in Teams.
- *  - No sentence content is modified — only visual structure is added.
- */
-function buildCardBody(messageText, cardTitle) {
-  const cardBody = [];
-
-  // ── Header ──────────────────────────────────────────────────────────────────
-  if (cardTitle) {
-    cardBody.push({
-      type: 'TextBlock',
-      size: 'Large',
-      weight: 'Bolder',
-      color: 'Accent',
-      text: cardTitle,
-      wrap: true,
-      spacing: 'None'
-    });
-    // Thin separator line under the title
-    cardBody.push({
-      type: 'TextBlock',
-      text: ' ',
-      spacing: 'Small',
-      separator: true
-    });
-  }
-
-  // ── Body: split into paragraphs ─────────────────────────────────────────────
-  const paragraphs = messageText.split(/\n\n+/);
-  let isFirstParagraph = true;
-
-  for (const paragraph of paragraphs) {
-    const trimmedPara = paragraph.trim();
-    if (!trimmedPara) continue;
-
-    const lines = trimmedPara.split('\n');
-
-    for (let i = 0; i < lines.length; i++) {
-      const trimmedLine = lines[i].trim();
-      if (!trimmedLine) continue;
-
-      // Detect bullet lines: lines that start with "* "
-      const isBullet = trimmedLine.startsWith('* ');
-      const lineText = isBullet ? '• ' + trimmedLine.slice(2) : trimmedLine;
-
-      // Determine spacing:
-      //  - First element after title: Small (tight under separator)
-      //  - First line of a new paragraph (not a bullet starting after a bullet): Medium
-      //  - Continuation lines inside a paragraph / sub-lines of a bullet: Small
-      let spacing;
-      if (isFirstParagraph && i === 0) {
-        spacing = 'Small';
-      } else if (i === 0) {
-        spacing = 'Medium';
-      } else {
-        spacing = 'Small';
-      }
-
-      cardBody.push({
-        type: 'TextBlock',
-        text: lineText,
-        wrap: true,
-        spacing: spacing
-      });
-    }
-
-    isFirstParagraph = false;
-  }
-
-  return cardBody;
-}
-
-/**
- * Sends a message directly to MS Teams Channel Main Feed via Incoming Webhook.
- * Uses AdaptiveCard format (compatible with Workflows and Connectors).
- */
-function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
+// ─────────────────────────────────────────────────────────────────────────────
+// PRIVATE HELPER: Send one Adaptive Card payload to a list of webhook URLs
+// ─────────────────────────────────────────────────────────────────────────────
+function _broadcastCard(urls, cardBodyElements, version, callback) {
   const urlList = Array.isArray(urls)
     ? urls
     : urls.split(',').map((u) => u.trim()).filter(Boolean);
@@ -92,8 +12,6 @@ function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
   if (urlList.length === 0) {
     return callback(new Error('No valid webhook URL configured'));
   }
-
-  const cardBody = buildCardBody(messageText, cardTitle);
 
   const payload = JSON.stringify({
     type: 'message',
@@ -103,8 +21,8 @@ function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
         content: {
           $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
           type: 'AdaptiveCard',
-          version: '1.4',
-          body: cardBody
+          version: version || '1.5',
+          body: cardBodyElements
         }
       }
     ]
@@ -126,26 +44,22 @@ function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
         }
       };
 
-      const req = https.request(options, (res) => {
+      const req = https.request(options, (httpRes) => {
         let body = '';
-        res.on('data', (chunk) => (body += chunk));
-        res.on('end', () => {
+        httpRes.on('data', (chunk) => (body += chunk));
+        httpRes.on('end', () => {
           completed++;
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            if (!firstErr) firstErr = new Error(`Status ${res.statusCode}: ${body}`);
+          if (httpRes.statusCode < 200 || httpRes.statusCode >= 300) {
+            if (!firstErr) firstErr = new Error(`Status ${httpRes.statusCode}: ${body}`);
           }
-          if (completed === urlList.length) {
-            callback(firstErr);
-          }
+          if (completed === urlList.length) callback(firstErr);
         });
       });
 
       req.on('error', (err) => {
         completed++;
         if (!firstErr) firstErr = err;
-        if (completed === urlList.length) {
-          callback(firstErr);
-        }
+        if (completed === urlList.length) callback(firstErr);
       });
 
       req.write(payload);
@@ -153,44 +67,374 @@ function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
     } catch (e) {
       completed++;
       if (!firstErr) firstErr = e;
-      if (completed === urlList.length) {
-        callback(firstErr);
-      }
+      if (completed === urlList.length) callback(firstErr);
     }
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD BUILDER 1:  HELP CARD  ──  Stunning "marriage-invitation" layout
+// ─────────────────────────────────────────────────────────────────────────────
 /**
- * Helper to send response to the user.
- * If TEAMS_WEBHOOK_URL is configured, posts directly into the main channel feed
- * and responds to the Outgoing Webhook trigger with an empty 200 OK so Teams does not
- * create a collapsed thread reply under the user's message.
- * If TEAMS_WEBHOOK_URL is not set, gracefully falls back to direct thread reply.
+ * Builds a fully structured, beautiful Adaptive Card for the help command.
+ * Each command gets its own Container block with:
+ *   emoji icon  +  large accent command name
+ *   monospace syntax line(s)
+ *   subtle description text
+ *   a visual separator between every command
+ */
+function buildHelpCard(botName) {
+  const commands = [
+    {
+      emoji: '🚀',
+      name: 'share snapshot',
+      syntax: '@' + botName + ' share snapshot',
+      alt:    '@' + botName + ' share snapshot 85m',
+      desc: [
+        'Starts snapshot deployment with default 60m cherry-pick window.',
+        'Optionally pass a custom wait time — e.g. 85m, 45m, 30m.'
+      ],
+      color: 'Accent'
+    },
+    {
+      emoji: '⚡',
+      name: 'deploy now',
+      syntax: '@' + botName + ' deploy now',
+      desc: [
+        'Bypasses the remaining wait countdown and immediately deploys',
+        'the snapshot into APM-02.'
+      ],
+      color: 'Good'
+    },
+    {
+      emoji: '⏰',
+      name: 'extend',
+      syntax: '@' + botName + ' extend',
+      alt:    '@' + botName + ' extend 15m',
+      desc: [
+        'Adds extra minutes to the countdown (default: +10m).',
+        'Or pass a custom value — e.g. 15m, 20m.'
+      ],
+      color: 'Accent'
+    },
+    {
+      emoji: '✂️',
+      name: 'reduce',
+      syntax: '@' + botName + ' reduce',
+      alt:    '@' + botName + ' reduce 5m',
+      desc: [
+        'Subtracts minutes from the countdown (default: -10m).',
+        'Or pass a custom value — e.g. 5m, 20m.'
+      ],
+      color: 'Warning'
+    },
+    {
+      emoji: '🔄',
+      name: 're-trigger',
+      syntax: '@' + botName + ' re-trigger',
+      desc: [
+        'Restarts the SAP CI/CD pipeline without any code changes.',
+        '⚠️  Only works when the tracking PR has the APM-02 Failed label.',
+        '    Does NOT work in IDLE state.'
+      ],
+      color: 'Attention'
+    },
+    {
+      emoji: '🛠️',
+      name: 'deployment fix pushed, re-deploy',
+      syntax: '@' + botName + ' deployment fix pushed, re-deploy',
+      desc: [
+        'Re-merges the snapshot and triggers a new build after you push a fix.',
+        '⚠️  Only works when the tracking PR has the APM-02 Failed label.'
+      ],
+      color: 'Attention'
+    },
+    {
+      emoji: '📊',
+      name: 'status',
+      syntax: '@' + botName + ' status',
+      desc: ['Shows real-time APM-02 deployment state and the active tracking PR.'],
+      color: 'Good'
+    },
+    {
+      emoji: '❓',
+      name: 'help',
+      syntax: '@' + botName + ' help',
+      desc: ['Displays this command reference guide.'],
+      color: 'Default'
+    }
+  ];
+
+  const body = [];
+
+  // ── Header block ────────────────────────────────────────────────────────────
+  body.push({
+    type: 'Container',
+    style: 'emphasis',
+    bleed: true,
+    items: [
+      {
+        type: 'ColumnSet',
+        spacing: 'None',
+        columns: [
+          {
+            type: 'Column',
+            width: 'auto',
+            verticalContentAlignment: 'Center',
+            items: [{ type: 'TextBlock', text: '⚡', size: 'ExtraLarge', spacing: 'None' }]
+          },
+          {
+            type: 'Column',
+            width: 'stretch',
+            verticalContentAlignment: 'Center',
+            spacing: 'Small',
+            items: [
+              {
+                type: 'TextBlock',
+                text: 'JARVIS',
+                size: 'ExtraLarge',
+                weight: 'Bolder',
+                color: 'Accent',
+                spacing: 'None'
+              },
+              {
+                type: 'TextBlock',
+                text: 'APM-02  ·  Deployment Command Centre',
+                size: 'Small',
+                isSubtle: true,
+                spacing: 'None',
+                wrap: true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  // ── One Container per command ───────────────────────────────────────────────
+  for (const cmd of commands) {
+    const items = [];
+
+    // Emoji + command name in a two-column row
+    items.push({
+      type: 'ColumnSet',
+      spacing: 'None',
+      columns: [
+        {
+          type: 'Column',
+          width: 'auto',
+          verticalContentAlignment: 'Center',
+          items: [{ type: 'TextBlock', text: cmd.emoji, size: 'Large', spacing: 'None' }]
+        },
+        {
+          type: 'Column',
+          width: 'stretch',
+          verticalContentAlignment: 'Center',
+          spacing: 'Small',
+          items: [
+            {
+              type: 'TextBlock',
+              text: cmd.name,
+              size: 'Large',
+              weight: 'Bolder',
+              color: cmd.color,
+              spacing: 'None',
+              wrap: true
+            }
+          ]
+        }
+      ]
+    });
+
+    // Primary syntax in monospace
+    items.push({
+      type: 'TextBlock',
+      text: cmd.syntax,
+      fontType: 'Monospace',
+      size: 'Small',
+      color: 'Good',
+      spacing: 'Small',
+      wrap: true
+    });
+
+    // Alternate syntax (optional), slightly subtle
+    if (cmd.alt) {
+      items.push({
+        type: 'TextBlock',
+        text: 'or:  ' + cmd.alt,
+        fontType: 'Monospace',
+        size: 'Small',
+        color: 'Good',
+        isSubtle: true,
+        spacing: 'None',
+        wrap: true
+      });
+    }
+
+    // Description lines
+    cmd.desc.forEach((line, idx) => {
+      items.push({
+        type: 'TextBlock',
+        text: line,
+        size: 'Small',
+        isSubtle: true,
+        wrap: true,
+        spacing: idx === 0 ? 'Small' : 'None'
+      });
+    });
+
+    body.push({
+      type: 'Container',
+      separator: true,
+      spacing: 'Medium',
+      items: items
+    });
+  }
+
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  body.push({
+    type: 'TextBlock',
+    text: '💡  Type any command above and press Enter — Jarvis handles the rest!',
+    size: 'Small',
+    isSubtle: true,
+    wrap: true,
+    spacing: 'Large',
+    separator: true
+  });
+
+  return body;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD BUILDER 2:  GENERIC CARD  ──  For status / blocked / confirmation cards
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Converts a plain-text message string into a structured, properly-spaced
+ * Adaptive Card body.
+ *
+ * Layout rules:
+ *  • cardTitle      → Large bold accent header + separator line below
+ *  • paragraphs (\n\n) → Medium spacing between blocks
+ *  • lines (\n)     → Small spacing between lines
+ *  • "* " prefix    → rendered as "• " bullet
+ */
+function buildGenericCard(messageText, cardTitle) {
+  const body = [];
+
+  if (cardTitle) {
+    body.push({
+      type: 'TextBlock',
+      size: 'Large',
+      weight: 'Bolder',
+      color: 'Accent',
+      text: cardTitle,
+      wrap: true,
+      spacing: 'None'
+    });
+    body.push({ type: 'TextBlock', text: ' ', spacing: 'Small', separator: true });
+  }
+
+  const paragraphs = messageText.split(/\n\n+/);
+  let firstParagraph = true;
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim();
+    if (!trimmed) continue;
+
+    const lines = trimmed.split('\n');
+
+    lines.forEach((line, lineIdx) => {
+      const trimLine = line.trim();
+      if (!trimLine) return;
+
+      const isBullet = trimLine.startsWith('* ');
+      const text = isBullet ? '• ' + trimLine.slice(2) : trimLine;
+
+      let spacing;
+      if (firstParagraph && lineIdx === 0) {
+        spacing = 'Small';
+      } else if (lineIdx === 0) {
+        spacing = 'Medium';
+      } else {
+        spacing = 'Small';
+      }
+
+      body.push({ type: 'TextBlock', text, wrap: true, spacing });
+    });
+
+    firstParagraph = false;
+  }
+
+  return body;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC: postToTeamsWebhook  ──  generic webhook broadcast
+// ─────────────────────────────────────────────────────────────────────────────
+function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
+  const cardBody = buildGenericCard(messageText, cardTitle);
+  _broadcastCard(urls, cardBody, '1.5', callback);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC: sendBotResponse  ──  generic response (status / blocked / confirm)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Posts a generic card to the Teams main feed via Incoming Webhook.
+ * Falls back to a thread reply if no webhook URL is configured.
  */
 function sendBotResponse(res, messageText, cardTitle) {
   if (config.TEAMS_WEBHOOK_URL) {
     postToTeamsWebhook(config.TEAMS_WEBHOOK_URL, messageText, cardTitle, (err) => {
       if (err) {
-        console.error('Failed to post to Teams main feed webhook, falling back to thread reply:', err);
+        console.error('Failed to post to Teams webhook, falling back to thread reply:', err);
         return res.status(200).json({
           type: 'message',
-          text: (cardTitle ? `### ${cardTitle}\n\n` : '') + messageText
+          text: (cardTitle ? '### ' + cardTitle + '\n\n' : '') + messageText
         });
       }
-      // Successfully broadcasted to main feed!
-      // Return HTTP 204 No Content so MS Teams creates ZERO replies in the thread!
+      // HTTP 204 → Teams creates ZERO collapsed reply threads
       return res.status(204).end();
     });
   } else {
-    // Fallback if TEAMS_WEBHOOK_URL is not set yet in GCP environment variables
     return res.status(200).json({
       type: 'message',
-      text: (cardTitle ? `### ${cardTitle}\n\n` : '') + messageText
+      text: (cardTitle ? '### ' + cardTitle + '\n\n' : '') + messageText
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC: sendHelpCard  ──  the stunning structured help card
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Posts the rich, eye-catching help card to the Teams main feed.
+ * Falls back to a minimal thread reply if no webhook URL is configured.
+ */
+function sendHelpCard(res, botName) {
+  if (config.TEAMS_WEBHOOK_URL) {
+    const cardBody = buildHelpCard(botName);
+    _broadcastCard(config.TEAMS_WEBHOOK_URL, cardBody, '1.5', (err) => {
+      if (err) {
+        console.error('Failed to post help card to Teams webhook, falling back:', err);
+        return res.status(200).json({
+          type: 'message',
+          text: '### ⚡ ' + botName + ' – APM-02 Command Centre\n\nType `@' + botName + ' help` to see available commands.'
+        });
+      }
+      return res.status(204).end();
+    });
+  } else {
+    return res.status(200).json({
+      type: 'message',
+      text: '### ⚡ ' + botName + ' – APM-02 Command Centre\n\nType `@' + botName + ' help` to see available commands.'
     });
   }
 }
 
 module.exports = {
   postToTeamsWebhook,
-  sendBotResponse
+  sendBotResponse,
+  sendHelpCard
 };

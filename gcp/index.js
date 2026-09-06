@@ -4,7 +4,7 @@ const {
   getActiveDeploymentPR,
   triggerWorkflowDispatch
 } = require('./github');
-const { sendBotResponse } = require('./teams');
+const { sendBotResponse, sendHelpCard } = require('./teams');
 const {
   getBlockedExplanation,
   getHelpMessage,
@@ -313,10 +313,9 @@ exports.deployBot = (req, res) => {
     });
 
   // -----------------------------------------------------------------------
-  // COMMAND 8: help (PRIMARY)
+  // COMMAND 8: help (PRIMARY) — beautiful structured card
   // -----------------------------------------------------------------------
   } else {
-    const helpInfo = getHelpMessage(botName);
-    sendBotResponse(res, helpInfo.body, helpInfo.title);
+    sendHelpCard(res, botName);
   }
 };
