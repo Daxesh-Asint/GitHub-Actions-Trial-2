@@ -6,16 +6,16 @@ on:
       - 'snapshot/main-*'
   repository_dispatch:
     types: [retrigger_apm02_deployment, redeploy_apm02_fix]
-  workflow_dispatch:
-    inputs:
-      action:
-        description: "Recovery Action"
-        type: choice
-        options:
-          - "auto_detect"
-          - "retrigger_no_code"
-          - "redeploy_fix"
-        default: "auto_detect"
+#  workflow_dispatch:
+#    inputs:
+#      action:
+#        description: "Recovery Action"
+#        type: choice
+#        options:
+#          - "auto_detect"
+#          - "retrigger_no_code"
+#          - "redeploy_fix"
+#        default: "auto_detect"
 
 permissions:
   contents: write
