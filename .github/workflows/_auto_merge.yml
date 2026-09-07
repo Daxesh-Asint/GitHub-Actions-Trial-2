@@ -14,6 +14,11 @@ on:
         required: false
         type: string
         default: ""
+      dashboard_url:
+        description: "URL for the SAP CI/CD Dashboard."
+        required: false
+        type: string
+        default: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
 
 jobs:
   process:
@@ -39,10 +44,12 @@ jobs:
       - name: Check for existing PR
         id: check-for-existing-pr
         run: |
+          DEPLOY_LABEL="auto merge for ${{ inputs.deployment_name }}"
+          [ -z "${{ inputs.deployment_name }}" ] && DEPLOY_LABEL="auto merge"
           PR_LIST_RESP=$(gh pr list \
             --base ${{ inputs.base }} \
             --head ${{ inputs.compare }} \
-            --label "auto merge for AIS02" \
+            --label "$DEPLOY_LABEL" \
             --json number)
           PR_NUMBER=$(echo "$PR_LIST_RESP" | jq -r '.[0].number')
           if [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
@@ -76,8 +83,11 @@ jobs:
         id: create-pr
         if: env.pr_exists == 'false' && env.new_commits == 'true'
         run: |
+          DEPLOY_LABEL="auto merge for ${{ inputs.deployment_name }}"
+          [ -z "${{ inputs.deployment_name }}" ] && DEPLOY_LABEL="auto merge"
+
           # Ensure label exists, create if missing
-          gh label create "auto merge for AIS02" --color "#0075ca" --description "Automated merge PR" 2>/dev/null || true
+          gh label create "$DEPLOY_LABEL" --color "#0075ca" --description "Automated merge PR" 2>/dev/null || true
 
           # Create PR without label to avoid race condition
           gh pr create \
@@ -94,7 +104,7 @@ jobs:
             --jq '.[0].number')
 
           # Add label separately after PR exists
-          gh pr edit "$PR_NUMBER" --add-label "auto merge for AIS02"
+          gh pr edit "$PR_NUMBER" --add-label "$DEPLOY_LABEL"
 
           echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
           echo "pr_created=true" >> $GITHUB_ENV
@@ -193,8 +203,8 @@ jobs:
           fi
 
           # Check if at least one webhook URL is set
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
-            echo "No TEAMS_WEBHOOK_URL_AIS02 secrets are set, skipping notification."
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
+            echo "No Teams webhook secrets are set, skipping notification."
             exit 0
           fi
 
@@ -278,6 +288,12 @@ jobs:
             fi
           fi
 
+          DASHBOARD_URL="${{ inputs.dashboard_url }}"
+          DASHBOARD_TITLE="Track Deployment in SAP CI/CD Dashboard"
+          if [ -n "$DEPLOY_NAME" ]; then
+            DASHBOARD_TITLE="Track $DEPLOY_NAME Deployment in SAP CI/CD Dashboard"
+          fi
+
           # Build Adaptive Card JSON using jq to avoid escaping and syntax issues
           PAYLOAD=$(jq -n \
             --arg title "$CARD_TITLE" \
@@ -292,6 +308,8 @@ jobs:
             --arg pr_url "$PR_URL" \
             --arg pr_label "$PR_LABEL" \
             --arg subtitle "$CARD_SUBTITLE" \
+            --arg dashboard_url "$DASHBOARD_URL" \
+            --arg dashboard_title "$DASHBOARD_TITLE" \
             '{
               type: "message",
               attachments: [{
@@ -348,18 +366,22 @@ jobs:
                       }
                     ]
                   ),
-                  actions: [
-                    {
-                      type: "Action.OpenUrl",
-                      title: $pr_label,
-                      url: $pr_url
-                    },
-                    {
-                      type: "Action.OpenUrl",
-                      title: "Track AIS-02 Deployment Status in SAP CI/CD Dashboard",
-                      url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
-                    }
-                  ]
+                  actions: (
+                    [
+                      {
+                        type: "Action.OpenUrl",
+                        title: $pr_label,
+                        url: $pr_url
+                      }
+                    ] +
+                    (if $dashboard_url != "" then [
+                      {
+                        type: "Action.OpenUrl",
+                        title: $dashboard_title,
+                        url: $dashboard_url
+                      }
+                    ] else [] end)
+                  )
                 }
               }]
             }')
@@ -367,6 +389,9 @@ jobs:
           # Send to all MS Teams webhooks
           for WEBHOOK_URL in \
             "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
             "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
