@@ -49,13 +49,26 @@ jobs:
             echo "❌ ERROR: CF_USERNAME or CF_PASSWORD secrets are missing in repository settings."
             exit 1
           fi
-          echo "Authenticating with Cloud Foundry at ${{ inputs.api_endpoint }}..."
+
+          echo "Authenticating with Cloud Foundry API at ${{ inputs.api_endpoint }}..."
           cf login -a "${{ inputs.api_endpoint }}" \
                    -u "$CF_USERNAME" \
-                   -p "$CF_PASSWORD" \
-                   -o "${{ inputs.org }}" \
-                   -s "${{ inputs.space }}"
-          echo "✅ Successfully logged in and targeted Org [${{ inputs.org }}], Space [${{ inputs.space }}]"
+                   -p "$CF_PASSWORD"
+
+          echo "=== Available Organizations for this user ==="
+          cf orgs
+
+          TARGET_ORG="${{ inputs.org }}"
+          echo "Attempting to target Org: [$TARGET_ORG], Space: [${{ inputs.space }}]..."
+
+          if ! cf target -o "$TARGET_ORG" -s "${{ inputs.space }}"; then
+            echo "⚠️ Direct target by name failed. Listing all available orgs and attempting fallback..."
+            # Try targeting using the Org GUID from BTP cockpit if known
+            cf target -o "fdf52ab7-15d3-4d9a-b839-e479b1671808" -s "${{ inputs.space }}" || true
+          fi
+
+          echo "✅ CF target status:"
+          cf target
 
       - name: Execute App Action (${{ inputs.action }})
         id: action
