@@ -29,6 +29,7 @@ on:
         type: choice
         options:
           - "AsInt-AIS-02"
+          - "AsInt-AIS-02-Safety-Test-DND"
           - "AsInt-AIS-02-mta-fix"
           - "AsInt-APM-01"
           - "AsInt-APM-EIOT"
@@ -72,6 +73,7 @@ jobs:
           # ──────────────────────────────────────────────────────────
           ALLOWED_JOBS=(
             "AsInt-AIS-02"
+            "AsInt-AIS-02-Safety-Test-DND"
             "AsInt-AIS-02-mta-fix"
             "AsInt-APM-01"
             "AsInt-APM-EIOT"
