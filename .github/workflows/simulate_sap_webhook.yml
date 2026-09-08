@@ -23,6 +23,23 @@ on:
       resource_name:
         description: "SAP CI/CD Resource Name"
         required: true
+        type: choice
+        options:
+          - "AsInt-AIS-02"
+          - "AsInt-AIS-02-Safety-Test-DND"
+          - "AsInt-AIS-02-mta-fix"
+          - "AsInt-APM-01"
+          - "AsInt-APM-EIOT"
+          - "AsInt-DEMO"
+          - "AsInt-IRC"
+          - "AsInt-ST"
+          - "BAYSTAR"
+          - "Hemlock-NON-PROD"
+          - "Hemlock-PROD"
+          - "Indorama-PROD-900"
+          - "Indorama-PROD-933"
+          - "Indorama-QA-233"
+          - "Indorama-QA-234"
         default: "AsInt-Indorama-Prod-900"
 
 permissions:
