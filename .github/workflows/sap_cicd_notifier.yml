@@ -26,6 +26,21 @@ on:
       resource_name:
         description: "SAP CI/CD Resource / Job Name"
         required: true
+        type: choice
+        options:
+          - "AsInt-AIS-02"
+          - "AsInt-APM-01"
+          - "AsInt-APM-EIOT"
+          - "AsInt-DEMO"
+          - "AsInt-IRC"
+          - "AsInt-ST"
+          - "BAYSTAR"
+          - "Hemlock-NON-PROD"
+          - "Hemlock-PROD"
+          - "Indorama-PROD-900"
+          - "Indorama-PROD-933"
+          - "Indorama-QA-233"
+          - "Indorama-QA-234"
         default: "AsInt-AIS-02"
       subject:
         description: "Subject / Description"
@@ -50,6 +65,38 @@ jobs:
           RESOURCE_NAME="${{ github.event.client_payload.resource_name }}"
           [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="${{ github.event.inputs.resource_name }}"
           [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="SAP CI/CD Pipeline"
+
+          # ──────────────────────────────────────────────────────────
+          # 🛡️ WHITELIST FILTER: Only process approved tenant jobs
+          # ──────────────────────────────────────────────────────────
+          ALLOWED_JOBS=(
+            "AsInt-AIS-02"
+            "AsInt-APM-01"
+            "AsInt-APM-EIOT"
+            "AsInt-DEMO"
+            "AsInt-IRC"
+            "AsInt-ST"
+            "BAYSTAR"
+            "Hemlock-NON-PROD"
+            "Hemlock-PROD"
+            "Indorama-PROD-900"
+            "Indorama-PROD-933"
+            "Indorama-QA-233"
+            "Indorama-QA-234"
+          )
+
+          IS_ALLOWED=false
+          for job in "${ALLOWED_JOBS[@]}"; do
+            if [ "$RESOURCE_NAME" = "$job" ]; then
+              IS_ALLOWED=true
+              break
+            fi
+          done
+
+          if [ "$IS_ALLOWED" != "true" ]; then
+            echo "🚫 Job '$RESOURCE_NAME' is not in the allowed notification whitelist. Skipping notification."
+            exit 0
+          fi
 
           STATUS="${{ github.event.client_payload.status }}"
           [ -z "$STATUS" ] && STATUS="${{ github.event.inputs.status }}"
