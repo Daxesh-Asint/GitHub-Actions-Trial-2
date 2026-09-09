@@ -48,6 +48,10 @@ on:
         description: "Subject / Description"
         required: false
         default: "Build execution triggered in SAP CI/CD"
+      commit_id:
+        description: "Git Commit ID (optional)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -55,8 +59,12 @@ permissions:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    outputs:
+      event_type: ${{ steps.process.outputs.event_type }}
+      resource_name: ${{ steps.process.outputs.resource_name }}
     steps:
       - name: Process SAP CI/CD Event and Send MS Teams Notification
+        id: process
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -102,6 +110,9 @@ jobs:
             exit 0
           fi
 
+          echo "event_type=$EVENT_TYPE" >> $GITHUB_OUTPUT
+          echo "resource_name=$RESOURCE_NAME" >> $GITHUB_OUTPUT
+
           STATUS="${{ github.event.client_payload.status }}"
           [ -z "$STATUS" ] && STATUS="${{ github.event.inputs.status }}"
           [ -z "$STATUS" ] && STATUS="INFO"
@@ -115,8 +126,76 @@ jobs:
           # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
           CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 
+          # Map Resource Name to Target Branch to determine Commit ID
+          TARGET_BRANCH=""
+          case "$RESOURCE_NAME" in
+            "AsInt-AIS-02"|"AsInt-AIS-02-Safety-Test-DND"|"AsInt-AIS-02-mta-fix")
+              TARGET_BRANCH="tenant/asint-ais-02"
+              ;;
+            "AsInt-APM-01")
+              TARGET_BRANCH="tenant/asint-apm-01-new"
+              ;;
+            "AsInt-APM-EIOT")
+              TARGET_BRANCH="apm-eiot-temp-copy"
+              ;;
+            "AsInt-DEMO")
+              TARGET_BRANCH="tenant/asint-demo"
+              ;;
+            "AsInt-IRC")
+              TARGET_BRANCH="tenant/asint-irc-temp"
+              ;;
+            "AsInt-ST")
+              TARGET_BRANCH="st-env-for-contentfederation"
+              ;;
+            "BAYSTAR")
+              TARGET_BRANCH="tenant/baystar"
+              ;;
+            "Hemlock-NON-PROD")
+              TARGET_BRANCH="tenant/hemlock-non-prod"
+              ;;
+            "Hemlock-PROD")
+              TARGET_BRANCH="tenant/hemlock-prod"
+              ;;
+            "Indorama-PROD-900")
+              TARGET_BRANCH="tenant/indorama-prod-900"
+              ;;
+            "Indorama-PROD-933")
+              TARGET_BRANCH="tenant/indorama-prod-933"
+              ;;
+            "Indorama-QA-233")
+              TARGET_BRANCH="tenant/indorama-qa-233"
+              ;;
+            "Indorama-QA-234")
+              TARGET_BRANCH="tenant/indorama-qa-234"
+              ;;
+          esac
+
+          COMMIT_ID="${{ github.event.client_payload.commit_id }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.commit }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.sha }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.inputs.commit_id }}"
+
+          # If commit_id is empty or the unexpanded placeholder, check inside tags
+          RAW_TAGS="${{ github.event.client_payload.tags }}"
+          if [ -z "$COMMIT_ID" ] || [ "$COMMIT_ID" = "{tags.cicd:commitish}" ]; then
+            TAG_COMMIT=$(echo "$RAW_TAGS" | grep -oE 'commitish[=:][" ]?[a-f0-9]+' | grep -oE '[a-f0-9]{7,40}' | head -n 1)
+            [ -n "$TAG_COMMIT" ] && COMMIT_ID="$TAG_COMMIT"
+          fi
+
+          # Shorten to 7 characters if a valid commit hash was received
+          if echo "$COMMIT_ID" | grep -qE '^[a-f0-9]{7,40}$'; then
+            COMMIT_ID=$(echo "$COMMIT_ID" | cut -c 1-7)
+          elif [ "$COMMIT_ID" = "{tags.cicd:commitish}" ]; then
+            COMMIT_ID=""
+          fi
+
+          if [ -z "$COMMIT_ID" ] && [ -n "$TARGET_BRANCH" ]; then
+            COMMIT_ID=$(gh api repos/${{ github.repository }}/commits/$TARGET_BRANCH --jq '.sha' 2>/dev/null | cut -c 1-7)
+          fi
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="N/A"
+
           DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
 
           # 2. Configure Card Header, Color, and Subtitle based on Event Type
           if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
@@ -152,6 +231,7 @@ jobs:
             --arg status "$STATUS_BADGE" \
             --arg job "$RESOURCE_NAME" \
             --arg env_name "$CLEAN_NAME" \
+            --arg commit_id "$COMMIT_ID" \
             --arg time "$TIMESTAMP" \
             --arg dashboard "$DASHBOARD_URL" \
             '{
@@ -197,6 +277,7 @@ jobs:
                       facts: [
                         { title: "Environment", value: $env_name },
                         { title: "SAP CI/CD Job", value: $job },
+                        { title: "CI/CD Commit ID", value: $commit_id },
                         { title: "Timestamp", value: $time }
                       ]
                     }
@@ -230,3 +311,31 @@ jobs:
                 "$WEBHOOK_URL"
             fi
           done
+
+  # ──────────────────────────────────────────────────────────
+  # 🚀 POST-DEPLOY: Automatically Restart crawler-layer-backend
+  # Triggered when AIS-02 or APM-01 build finishes (Success OR Failure)
+  # ──────────────────────────────────────────────────────────
+  post-restart-ais02:
+    needs: notify
+    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-AIS-02'
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
+      org: "ais-02-eu10-org"
+      space: "main"
+      app_name: "crawler-layer-backend"
+      action: "start"
+    secrets: inherit
+
+  post-restart-apm01:
+    needs: notify
+    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-APM-01'
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
+      org: "asint-apm-01"
+      space: "demo"
+      app_name: "crawler-layer-backend"
+      action: "start"
+    secrets: inherit
