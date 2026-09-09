@@ -16,4 +16,5 @@ jobs:
       compare: "main"
       deployment_name: "Indorama QA 234"
       dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+      reviewers: "Daxesh-Prajapati"
     secrets: inherit

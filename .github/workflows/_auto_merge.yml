@@ -19,6 +19,31 @@ on:
         required: false
         type: string
         default: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+      cf_stop_app:
+        description: "Optional CF app name to stop before merging (only if new commits exist)"
+        required: false
+        type: string
+        default: ""
+      cf_api:
+        description: "CF API endpoint"
+        required: false
+        type: string
+        default: "https://api.cf.eu10-004.hana.ondemand.com"
+      cf_org:
+        description: "CF Org"
+        required: false
+        type: string
+        default: ""
+      cf_space:
+        description: "CF Space"
+        required: false
+        type: string
+        default: ""
+      reviewers:
+        description: "Reviewers required to approve PR before merging (e.g. Daxesh-Prajapati). If set, skips immediate merge and waits for approval."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   process:
@@ -40,6 +65,7 @@ jobs:
           echo "pr_number=" >> $GITHUB_ENV
           echo "new_commits=false" >> $GITHUB_ENV
           echo "has_conflicts=false" >> $GITHUB_ENV
+          echo "awaiting_approval=false" >> $GITHUB_ENV
 
       - name: Check for existing PR
         id: check-for-existing-pr
@@ -143,6 +169,8 @@ jobs:
             elif [[ "$STATUS" == "CONFLICTING" ]]; then
               echo "pr_mergeable=false" >> $GITHUB_ENV
               echo "has_conflicts=true" >> $GITHUB_ENV
+              gh label create "conflicts detected" --color "#d93f0b" --description "PR has unresolved merge conflicts" 2>/dev/null || true
+              gh pr edit "$PR_NUMBER" --add-label "conflicts detected" 2>/dev/null || true
               gh pr comment "$PR_NUMBER" --body "Auto-merge blocked: merge conflicts detected between \`${{ inputs.compare }}\` and \`${{ inputs.base }}\`. Manual resolution required."
               echo "PR '$PR_NUMBER' has conflicts — manual intervention needed"
               exit 1
@@ -154,6 +182,46 @@ jobs:
           exit 1
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      # ──────────────────────────────────────────────────────────
+      # 👥 Assign Reviewer & Wait for Approval (for protected branches)
+      # ──────────────────────────────────────────────────────────
+      - name: Request Review for Protected Branch
+        if: (env.pr_exists == 'true' || env.pr_created == 'true') && inputs.reviewers != '' && env.pr_mergeable == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.pr_number }}
+        run: |
+          echo "Protected branch requires review from: ${{ inputs.reviewers }}"
+          gh pr edit "$PR_NUMBER" --add-reviewer "${{ inputs.reviewers }}" 2>/dev/null || true
+          gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
+          gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned @${{ inputs.reviewers }} as reviewer. Once approved, deployment will proceed automatically." 2>/dev/null || true
+          echo "awaiting_approval=true" >> $GITHUB_ENV
+          echo "pr_mergeable=false" >> $GITHUB_ENV
+
+      # ──────────────────────────────────────────────────────────
+      # 🛑 Stop App Just-In-Time (ONLY if PR is mergeable and ready to merge)
+      # ──────────────────────────────────────────────────────────
+      - name: Stop App Before Merge
+        if: env.pr_mergeable == 'true' && inputs.cf_stop_app != ''
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          echo "Installing CF CLI..."
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update -qq
+          sudo apt-get install -y cf8-cli
+
+          echo "Logging into Cloud Foundry..."
+          cf login -a "${{ inputs.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ inputs.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ inputs.cf_space }}" || true
+
+          echo "🛑 Stopping app ${{ inputs.cf_stop_app }} to free memory quota for deployment..."
+          cf stop "${{ inputs.cf_stop_app }}"
+          echo "app_was_stopped=true" >> $GITHUB_ENV
 
       - name: Merge PR
         id: merge-pr
@@ -169,6 +237,20 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      # ──────────────────────────────────────────────────────────
+      # 🛡️ Safety Net: Restart App if Merge Fails
+      # ──────────────────────────────────────────────────────────
+      - name: Safety Restart App If Merge Failed
+        if: failure() && env.app_was_stopped == 'true'
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          echo "⚠️ Merge failed after app was stopped! Restarting ${{ inputs.cf_stop_app }} immediately..."
+          cf login -a "${{ inputs.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ inputs.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ inputs.cf_space }}" || true
+          cf start "${{ inputs.cf_stop_app }}"
 
       # ──────────────────────────────────────────────────────────
       # MS Teams Notification (Adaptive Card format)
@@ -222,6 +304,22 @@ jobs:
               PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               PR_LABEL="View Run on GitHub"
               PR_FACT_VAL="None Required"
+            elif [ "${{ env.awaiting_approval }}" = "true" ]; then
+              MERGE_STATUS="⏳ Waiting for Approval"
+              MERGE_COLOR="warning"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="🟡 $DEPLOY_NAME: Awaiting Review & Approval"
+              else
+                CARD_TITLE="🟡 Awaiting Review & Approval"
+              fi
+              CARD_SUBTITLE="Target branch is protected. Assigned ${{ inputs.reviewers }} as reviewer. Once approved, deployment will start automatically."
+              PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+              PR_LABEL="Review & Approve PR on GitHub"
+              if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+                PR_FACT_VAL="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+              else
+                PR_FACT_VAL="PR #$PR_NUMBER"
+              fi
             else
               MERGE_STATUS="✅ Merged Successfully"
               MERGE_COLOR="good"
