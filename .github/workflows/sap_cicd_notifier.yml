@@ -55,8 +55,12 @@ permissions:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    outputs:
+      event_type: ${{ steps.process.outputs.event_type }}
+      resource_name: ${{ steps.process.outputs.resource_name }}
     steps:
       - name: Process SAP CI/CD Event and Send MS Teams Notification
+        id: process
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -101,6 +105,9 @@ jobs:
             echo "🚫 Job '$RESOURCE_NAME' is not in the allowed notification whitelist. Skipping notification."
             exit 0
           fi
+
+          echo "event_type=$EVENT_TYPE" >> $GITHUB_OUTPUT
+          echo "resource_name=$RESOURCE_NAME" >> $GITHUB_OUTPUT
 
           STATUS="${{ github.event.client_payload.status }}"
           [ -z "$STATUS" ] && STATUS="${{ github.event.inputs.status }}"
@@ -230,3 +237,19 @@ jobs:
                 "$WEBHOOK_URL"
             fi
           done
+
+  # ──────────────────────────────────────────────────────────
+  # 🚀 POST-DEPLOY: Automatically Restart crawler-layer-backend
+  # Triggered ONLY when AsInt-AIS-02 build finishes (Success OR Failure)
+  # ──────────────────────────────────────────────────────────
+  post-restart-crawler:
+    needs: notify
+    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-AIS-02'
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
+      org: "ais-02-eu10-org"
+      space: "main"
+      app_name: "crawler-layer-backend"
+      action: "start"
+    secrets: inherit
