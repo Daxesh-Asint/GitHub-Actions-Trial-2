@@ -16,5 +16,5 @@ jobs:
       compare: "main"
       deployment_name: "HSC Non-Prod"
       dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-      reviewers: "Daxesh-Prajapati"
+      reviewers: "Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
     secrets: inherit
