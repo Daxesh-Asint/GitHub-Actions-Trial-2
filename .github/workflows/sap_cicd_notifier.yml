@@ -69,6 +69,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # 1. Determine payload inputs (from repository_dispatch or workflow_dispatch)
+          echo "=== RECEIVED CLIENT PAYLOAD ==="
+          echo '${{ toJson(github.event.client_payload) }}'
+          echo "================================"
+
           EVENT_TYPE="${{ github.event.action }}"
           [ -z "$EVENT_TYPE" ] && EVENT_TYPE="${{ github.event.inputs.event_type }}"
 
@@ -175,17 +179,23 @@ jobs:
           [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.sha }}"
           [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.inputs.commit_id }}"
 
-          # If commit_id is empty or the unexpanded placeholder, check inside tags
+          # If commit_id is an unexpanded template placeholder, clear it
+          case "$COMMIT_ID" in
+            "{"*|*"}"*) COMMIT_ID="" ;;
+          esac
+
+          # Search inside tags or raw payload if commit_id is empty
           RAW_TAGS="${{ github.event.client_payload.tags }}"
-          if [ -z "$COMMIT_ID" ] || [ "$COMMIT_ID" = "{tags.cicd:commitish}" ]; then
-            TAG_COMMIT=$(echo "$RAW_TAGS" | grep -oE 'commitish[=:][" ]?[a-f0-9]+' | grep -oE '[a-f0-9]{7,40}' | head -n 1)
+          [ -z "$RAW_TAGS" ] && RAW_TAGS='${{ toJson(github.event.client_payload) }}'
+          if [ -z "$COMMIT_ID" ]; then
+            TAG_COMMIT=$(echo "$RAW_TAGS" | grep -oE '(commitish|commit|sha)[=:][" ]?[a-f0-9]+' | grep -oE '[a-f0-9]{7,40}' | head -n 1)
             [ -n "$TAG_COMMIT" ] && COMMIT_ID="$TAG_COMMIT"
           fi
 
           # Shorten to 7 characters if a valid commit hash was received
           if echo "$COMMIT_ID" | grep -qE '^[a-f0-9]{7,40}$'; then
             COMMIT_ID=$(echo "$COMMIT_ID" | cut -c 1-7)
-          elif [ "$COMMIT_ID" = "{tags.cicd:commitish}" ]; then
+          else
             COMMIT_ID=""
           fi
 
