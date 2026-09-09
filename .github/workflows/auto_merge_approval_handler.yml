@@ -1,0 +1,199 @@
+name: "Auto-Merge: PR Approval Handler"
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: pr-approval-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-approval:
+    runs-on: ubuntu-latest
+    if: github.event.review.state == 'approved' && github.event.pull_request.state == 'open'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Process Approval & Merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          echo "PR #$PR_NUMBER approved by $REVIEWER."
+
+          # 1. Fetch Labels and verify if this is an auto-merge deployment PR
+          LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
+          echo "PR Labels: $LABELS"
+
+          IS_AUTO_MERGE="false"
+          if echo "$LABELS" | grep -qE '^auto merge|awaiting approval'; then
+            IS_AUTO_MERGE="true"
+          fi
+
+          if [ "$IS_AUTO_MERGE" != "true" ]; then
+            echo "PR #$PR_NUMBER is not an automated deployment PR. Skipping."
+            exit 0
+          fi
+
+          # 2. Map Base Branch to Environment Metadata
+          DEPLOY_NAME="Protected Environment"
+          DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+
+          case "$BASE_BRANCH" in
+            "tenant/hemlock-non-prod")
+              DEPLOY_NAME="HSC Non-Prod"
+              ;;
+            "tenant/hemlock-prod")
+              DEPLOY_NAME="HSC Prod"
+              ;;
+            "tenant/indorama-qa-233")
+              DEPLOY_NAME="Indorama QA 233"
+              ;;
+            "tenant/indorama-qa-234")
+              DEPLOY_NAME="Indorama QA 234"
+              ;;
+            "tenant/indorama-prod-900")
+              DEPLOY_NAME="Indorama Prod 900"
+              ;;
+            "tenant/indorama-prod-933")
+              DEPLOY_NAME="Indorama Prod 933"
+              ;;
+            *)
+              # Fallback if other branch has awaiting approval
+              DEPLOY_NAME=$(echo "$LABELS" | grep -oE 'auto merge for .+' | sed 's/auto merge for //' || echo "$BASE_BRANCH")
+              ;;
+          esac
+
+          # 3. Merge the Pull Request
+          echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
+          if gh pr merge "$PR_NUMBER" --merge; then
+            echo "PR #$PR_NUMBER successfully merged!"
+          else
+            echo "Failed to merge PR #$PR_NUMBER"
+            exit 1
+          fi
+
+          # 4. Update PR Labels
+          gh label create "approved and merged" --color "#0e8a16" --description "Approved by reviewer and merged" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --remove-label "awaiting approval" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "approved and merged" 2>/dev/null || true
+
+          # 5. Fetch resulting merge commit ID
+          MERGE_COMMIT_ID=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null | cut -c 1-7)
+          [ -z "$MERGE_COMMIT_ID" ] && MERGE_COMMIT_ID="N/A"
+
+          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
+          REPO="${{ github.repository }}"
+          PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
+          CARD_TITLE="🚀 $DEPLOY_NAME: PR Approved & Deployment Started"
+          CARD_SUBTITLE="PR #$PR_NUMBER was approved by $REVIEWER. PR has been merged and SAP CI/CD deployment has started!"
+          STATUS_TEXT="✅ Approved & Merged • Deployment Started"
+
+          # 6. Build MS Teams Adaptive Card
+          PAYLOAD=$(jq -n \
+            --arg title "$CARD_TITLE" \
+            --arg subtitle "$CARD_SUBTITLE" \
+            --arg status "$STATUS_TEXT" \
+            --arg color "good" \
+            --arg repo "$REPO" \
+            --arg pr "PR #$PR_NUMBER" \
+            --arg source "$HEAD_BRANCH" \
+            --arg target "$BASE_BRANCH" \
+            --arg reviewer "$REVIEWER" \
+            --arg commit_id "$MERGE_COMMIT_ID" \
+            --arg pr_url "$PR_URL" \
+            --arg time "$TIMESTAMP" \
+            --arg dashboard "$DASHBOARD_URL" \
+            '{
+              type: "message",
+              attachments: [{
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: [
+                    {
+                      type: "TextBlock",
+                      size: "Large",
+                      weight: "Bolder",
+                      text: $title,
+                      wrap: true
+                    },
+                    {
+                      type: "TextBlock",
+                      text: $subtitle,
+                      size: "Medium",
+                      wrap: true,
+                      color: "Good"
+                    },
+                    {
+                      type: "ColumnSet",
+                      columns: [
+                        {
+                          type: "Column",
+                          width: "auto",
+                          items: [{
+                            type: "TextBlock",
+                            text: $status,
+                            weight: "Bolder",
+                            color: $color
+                          }]
+                        }
+                      ]
+                    },
+                    {
+                      type: "FactSet",
+                      facts: [
+                        { title: "Environment", value: "${DEPLOY_NAME}" },
+                        { title: "Approved By", value: $reviewer },
+                        { title: "Pull Request", value: $pr },
+                        { title: "Source Branch", value: $source },
+                        { title: "Target Branch", value: $target },
+                        { title: "CI/CD Commit ID", value: $commit_id },
+                        { title: "Timestamp", value: $time },
+                        { title: "Next Step", value: "SAP CI/CD pipeline will be started shortly" }
+                      ]
+                    }
+                  ],
+                  actions: [
+                    {
+                      type: "Action.OpenUrl",
+                      title: "View Merged PR on GitHub",
+                      url: $pr_url
+                    },
+                    {
+                      type: "Action.OpenUrl",
+                      title: "Open SAP CI/CD Dashboard",
+                      url: $dashboard
+                    }
+                  ]
+                }
+              }]
+            }')
+
+          # 7. Broadcast to MS Teams webhooks
+          for WEBHOOK_URL in \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+            if [ -n "$WEBHOOK_URL" ]; then
+              curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" || true
+            fi
+          done
+          echo "Teams card successfully sent!"

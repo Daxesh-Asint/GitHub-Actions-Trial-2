@@ -39,6 +39,11 @@ on:
         required: false
         type: string
         default: ""
+      reviewers:
+        description: "Reviewers required to approve PR before merging (e.g. Daxesh-Prajapati). If set, skips immediate merge and waits for approval."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   process:
@@ -60,6 +65,7 @@ jobs:
           echo "pr_number=" >> $GITHUB_ENV
           echo "new_commits=false" >> $GITHUB_ENV
           echo "has_conflicts=false" >> $GITHUB_ENV
+          echo "awaiting_approval=false" >> $GITHUB_ENV
 
       - name: Check for existing PR
         id: check-for-existing-pr
@@ -178,6 +184,23 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       # ──────────────────────────────────────────────────────────
+      # 👥 Assign Reviewer & Wait for Approval (for protected branches)
+      # ──────────────────────────────────────────────────────────
+      - name: Request Review for Protected Branch
+        if: (env.pr_exists == 'true' || env.pr_created == 'true') && inputs.reviewers != '' && env.pr_mergeable == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.pr_number }}
+        run: |
+          echo "Protected branch requires review from: ${{ inputs.reviewers }}"
+          gh pr edit "$PR_NUMBER" --add-reviewer "${{ inputs.reviewers }}" 2>/dev/null || true
+          gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
+          gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned @${{ inputs.reviewers }} as reviewer. Once approved, deployment will proceed automatically." 2>/dev/null || true
+          echo "awaiting_approval=true" >> $GITHUB_ENV
+          echo "pr_mergeable=false" >> $GITHUB_ENV
+
+      # ──────────────────────────────────────────────────────────
       # 🛑 Stop App Just-In-Time (ONLY if PR is mergeable and ready to merge)
       # ──────────────────────────────────────────────────────────
       - name: Stop App Before Merge
@@ -281,6 +304,22 @@ jobs:
               PR_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               PR_LABEL="View Run on GitHub"
               PR_FACT_VAL="None Required"
+            elif [ "${{ env.awaiting_approval }}" = "true" ]; then
+              MERGE_STATUS="⏳ Waiting for Approval"
+              MERGE_COLOR="warning"
+              if [ -n "$DEPLOY_NAME" ]; then
+                CARD_TITLE="🟡 $DEPLOY_NAME: Awaiting Review & Approval"
+              else
+                CARD_TITLE="🟡 Awaiting Review & Approval"
+              fi
+              CARD_SUBTITLE="Target branch is protected. Assigned ${{ inputs.reviewers }} as reviewer. Once approved, deployment will start automatically."
+              PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+              PR_LABEL="Review & Approve PR on GitHub"
+              if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
+                PR_FACT_VAL="PR #$PR_NUMBER ($COMMIT_COUNT commits)"
+              else
+                PR_FACT_VAL="PR #$PR_NUMBER"
+              fi
             else
               MERGE_STATUS="✅ Merged Successfully"
               MERGE_COLOR="good"
