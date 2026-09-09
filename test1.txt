@@ -1,3 +1,0 @@
-﻿conflict dev
-Hi
-Hi2

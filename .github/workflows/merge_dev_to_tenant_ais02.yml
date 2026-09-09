@@ -1,23 +1,12 @@
-name: AsInt Bot [Dev -> AIS-02]
+name: "Deploy: AIS-02"
 
 on:
-
-  schedule:
-    # Catchup run — picks up any changes merged into dev after 9 PM IST
-    # Runs at 6:30 AM IST (01:00 UTC) every weekday Mon-Fri
-    - cron: '0 1 * * 1-5'
-
-  # schedule:
-  #   # 11:00 AM IST = 05:30 UTC
-  #   - cron: '30 5 * * 1-5'
-  #   # 2:00 PM IST = 08:30 UTC
-  #   - cron: '30 8 * * 1-5'
-  #   # 5:00 PM IST = 11:30 UTC
-  #   - cron: '30 11 * * 1-5'
-
   push:
     branches:
       - dev
+
+  repository_dispatch:
+    types: [trigger_ais02_deployment]
 
   workflow_dispatch:
 
@@ -31,5 +20,9 @@ jobs:
       base: "tenant/asint-ais-02"
       compare: "dev"
       deployment_name: "AIS-02"
+      dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
+      cf_stop_app: "crawler-layer-backend"
+      cf_api: "https://api.cf.eu10-004.hana.ondemand.com"
+      cf_org: "ais-02-eu10-org"
+      cf_space: "main"
     secrets: inherit
-
