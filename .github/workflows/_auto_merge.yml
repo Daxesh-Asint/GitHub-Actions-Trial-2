@@ -163,6 +163,8 @@ jobs:
             elif [[ "$STATUS" == "CONFLICTING" ]]; then
               echo "pr_mergeable=false" >> $GITHUB_ENV
               echo "has_conflicts=true" >> $GITHUB_ENV
+              gh label create "conflicts detected" --color "#d93f0b" --description "PR has unresolved merge conflicts" 2>/dev/null || true
+              gh pr edit "$PR_NUMBER" --add-label "conflicts detected" 2>/dev/null || true
               gh pr comment "$PR_NUMBER" --body "Auto-merge blocked: merge conflicts detected between \`${{ inputs.compare }}\` and \`${{ inputs.base }}\`. Manual resolution required."
               echo "PR '$PR_NUMBER' has conflicts — manual intervention needed"
               exit 1
