@@ -175,6 +175,20 @@ jobs:
           [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.sha }}"
           [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.inputs.commit_id }}"
 
+          # If commit_id is empty or the unexpanded placeholder, check inside tags
+          RAW_TAGS="${{ github.event.client_payload.tags }}"
+          if [ -z "$COMMIT_ID" ] || [ "$COMMIT_ID" = "{tags.cicd:commitish}" ]; then
+            TAG_COMMIT=$(echo "$RAW_TAGS" | grep -oE 'commitish[=:][" ]?[a-f0-9]+' | grep -oE '[a-f0-9]{7,40}' | head -n 1)
+            [ -n "$TAG_COMMIT" ] && COMMIT_ID="$TAG_COMMIT"
+          fi
+
+          # Shorten to 7 characters if a valid commit hash was received
+          if echo "$COMMIT_ID" | grep -qE '^[a-f0-9]{7,40}$'; then
+            COMMIT_ID=$(echo "$COMMIT_ID" | cut -c 1-7)
+          elif [ "$COMMIT_ID" = "{tags.cicd:commitish}" ]; then
+            COMMIT_ID=""
+          fi
+
           if [ -z "$COMMIT_ID" ] && [ -n "$TARGET_BRANCH" ]; then
             COMMIT_ID=$(gh api repos/${{ github.repository }}/commits/$TARGET_BRANCH --jq '.sha' 2>/dev/null | cut -c 1-7)
           fi
