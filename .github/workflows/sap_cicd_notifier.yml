@@ -1,0 +1,267 @@
+name: "SAP CI/CD: Notification Service"
+
+on:
+  repository_dispatch:
+    types: [sap_cicd_started, sap_cicd_finished]
+  workflow_dispatch:
+    inputs:
+      event_type:
+        description: "Event Type"
+        required: true
+        type: choice
+        options:
+          - sap_cicd_started
+          - sap_cicd_finished
+        default: sap_cicd_started
+      status:
+        description: "Status / Severity"
+        required: true
+        type: choice
+        options:
+          - INFO
+          - SUCCESS
+          - ERROR
+          - FATAL
+        default: INFO
+      resource_name:
+        description: "SAP CI/CD Resource / Job Name"
+        required: true
+        type: choice
+        options:
+          - "AsInt-AIS-02"
+          - "AsInt-AIS-02-Safety-Test-DND"
+          - "AsInt-AIS-02-mta-fix"
+          - "AsInt-APM-01"
+          - "AsInt-APM-EIOT"
+          - "AsInt-DEMO"
+          - "AsInt-IRC"
+          - "AsInt-ST"
+          - "BAYSTAR"
+          - "Hemlock-NON-PROD"
+          - "Hemlock-PROD"
+          - "Indorama-PROD-900"
+          - "Indorama-PROD-933"
+          - "Indorama-QA-233"
+          - "Indorama-QA-234"
+        default: "AsInt-AIS-02"
+      subject:
+        description: "Subject / Description"
+        required: false
+        default: "Build execution triggered in SAP CI/CD"
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    outputs:
+      event_type: ${{ steps.process.outputs.event_type }}
+      resource_name: ${{ steps.process.outputs.resource_name }}
+    steps:
+      - name: Process SAP CI/CD Event and Send MS Teams Notification
+        id: process
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Determine payload inputs (from repository_dispatch or workflow_dispatch)
+          EVENT_TYPE="${{ github.event.action }}"
+          [ -z "$EVENT_TYPE" ] && EVENT_TYPE="${{ github.event.inputs.event_type }}"
+
+          RESOURCE_NAME="${{ github.event.client_payload.resource_name }}"
+          [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="${{ github.event.inputs.resource_name }}"
+          [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="SAP CI/CD Pipeline"
+
+          # ──────────────────────────────────────────────────────────
+          # 🛡️ WHITELIST FILTER: Only process approved tenant jobs
+          # ──────────────────────────────────────────────────────────
+          ALLOWED_JOBS=(
+            "AsInt-AIS-02"
+            "AsInt-AIS-02-Safety-Test-DND"
+            "AsInt-AIS-02-mta-fix"
+            "AsInt-APM-01"
+            "AsInt-APM-EIOT"
+            "AsInt-DEMO"
+            "AsInt-IRC"
+            "AsInt-ST"
+            "BAYSTAR"
+            "Hemlock-NON-PROD"
+            "Hemlock-PROD"
+            "Indorama-PROD-900"
+            "Indorama-PROD-933"
+            "Indorama-QA-233"
+            "Indorama-QA-234"
+          )
+
+          IS_ALLOWED=false
+          for job in "${ALLOWED_JOBS[@]}"; do
+            if [ "$RESOURCE_NAME" = "$job" ]; then
+              IS_ALLOWED=true
+              break
+            fi
+          done
+
+          if [ "$IS_ALLOWED" != "true" ]; then
+            echo "🚫 Job '$RESOURCE_NAME' is not in the allowed notification whitelist. Skipping notification."
+            exit 0
+          fi
+
+          echo "event_type=$EVENT_TYPE" >> $GITHUB_OUTPUT
+          echo "resource_name=$RESOURCE_NAME" >> $GITHUB_OUTPUT
+
+          STATUS="${{ github.event.client_payload.status }}"
+          [ -z "$STATUS" ] && STATUS="${{ github.event.inputs.status }}"
+          [ -z "$STATUS" ] && STATUS="INFO"
+
+          SUBJECT="${{ github.event.client_payload.subject }}"
+          [ -z "$SUBJECT" ] && SUBJECT="${{ github.event.inputs.subject }}"
+
+          BODY="${{ github.event.client_payload.body }}"
+          CATEGORY="${{ github.event.client_payload.category }}"
+          
+          # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
+          CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
+
+          DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          # 2. Configure Card Header, Color, and Subtitle based on Event Type
+          if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
+            CARD_TITLE="🟡 SAP CI/CD Pipeline Started"
+            CARD_COLOR="warning"
+            STATUS_BADGE="⏳ Running Build & Deployment"
+            CARD_SUBTITLE="Build execution is now in progress for $CLEAN_NAME."
+          elif [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
+            CARD_TITLE="✅ SAP CI/CD Deployment Succeeded"
+            CARD_COLOR="good"
+            STATUS_BADGE="🚀 Deployed Successfully"
+            CARD_SUBTITLE="Pipeline build and deployment completed without errors."
+          else
+            CARD_TITLE="❌ SAP CI/CD Deployment Failed"
+            CARD_COLOR="attention"
+            STATUS_BADGE="⚠️ Build / Deployment Failed"
+            CARD_SUBTITLE="Pipeline execution encountered an error. Please inspect logs."
+          fi
+
+          [ -n "$SUBJECT" ] && [ "$SUBJECT" != "null" ] && CARD_SUBTITLE="$SUBJECT"
+
+          # 3. Check for configured MS Teams Webhook URLs
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
+            echo "No Teams webhook secrets configured. Skipping notification."
+            exit 0
+          fi
+
+          # 4. Construct MS Teams Adaptive Card Payload
+          PAYLOAD=$(jq -n \
+            --arg title "$CARD_TITLE" \
+            --arg color "$CARD_COLOR" \
+            --arg subtitle "$CARD_SUBTITLE" \
+            --arg status "$STATUS_BADGE" \
+            --arg job "$RESOURCE_NAME" \
+            --arg env_name "$CLEAN_NAME" \
+            --arg time "$TIMESTAMP" \
+            --arg dashboard "$DASHBOARD_URL" \
+            '{
+              type: "message",
+              attachments: [{
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: [
+                    {
+                      type: "TextBlock",
+                      size: "Large",
+                      weight: "Bolder",
+                      text: $title,
+                      wrap: true
+                    },
+                    {
+                      type: "TextBlock",
+                      text: $subtitle,
+                      size: "Small",
+                      isSubtle: true,
+                      wrap: true
+                    },
+                    {
+                      type: "ColumnSet",
+                      columns: [
+                        {
+                          type: "Column",
+                          width: "auto",
+                          items: [{
+                            type: "TextBlock",
+                            text: $status,
+                            weight: "Bolder",
+                            color: $color
+                          }]
+                        }
+                      ]
+                    },
+                    {
+                      type: "FactSet",
+                      facts: [
+                        { title: "Environment", value: $env_name },
+                        { title: "SAP CI/CD Job", value: $job },
+                        { title: "Timestamp", value: $time }
+                      ]
+                    }
+                  ],
+                  actions: [
+                    {
+                      type: "Action.OpenUrl",
+                      title: "Open SAP CI/CD Dashboard",
+                      url: $dashboard
+                    }
+                  ]
+                }
+              }]
+            }')
+
+          # 5. Broadcast to all configured Teams Webhooks
+          for WEBHOOK_URL in \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+            if [ -n "$WEBHOOK_URL" ]; then
+              curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -d "$PAYLOAD" \
+                "$WEBHOOK_URL"
+            fi
+          done
+
+  # ──────────────────────────────────────────────────────────
+  # 🚀 POST-DEPLOY: Automatically Restart crawler-layer-backend
+  # Triggered when AIS-02 or APM-01 build finishes (Success OR Failure)
+  # ──────────────────────────────────────────────────────────
+  post-restart-ais02:
+    needs: notify
+    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-AIS-02'
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
+      org: "ais-02-eu10-org"
+      space: "main"
+      app_name: "crawler-layer-backend"
+      action: "start"
+    secrets: inherit
+
+  post-restart-apm01:
+    needs: notify
+    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-APM-01'
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
+      org: "asint-apm-01"
+      space: "demo"
+      app_name: "crawler-layer-backend"
+      action: "start"
+    secrets: inherit
