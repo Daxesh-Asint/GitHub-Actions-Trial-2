@@ -1,0 +1,160 @@
+name: "Auto-Merge: Conflict Resolution Handler"
+
+on:
+  pull_request:
+    types: [synchronize]
+
+concurrency:
+  group: conflict-resolver-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  resolve-and-resume-deploy:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.state == 'open'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Labels & Mergeability
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "Inspecting PR #$PR_NUMBER (Base: $BASE_BRANCH)..."
+
+          # 1. Check if PR has an auto-merge label
+          LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
+          echo "PR Labels: $LABELS"
+          
+          IS_AUTO_MERGE="false"
+          if echo "$LABELS" | grep -qE '^auto merge'; then
+            IS_AUTO_MERGE="true"
+          fi
+
+          if [ "$IS_AUTO_MERGE" != "true" ]; then
+            echo "PR #$PR_NUMBER is not an automated deployment PR (no 'auto merge' label). Skipping."
+            echo "should_resume=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "✅ Valid auto-merge PR detected."
+
+          # 2. Wait for GitHub to compute mergeability
+          echo "Waiting for GitHub mergeability calculation..."
+          MERGEABLE="UNKNOWN"
+          for i in {1..12}; do
+            PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
+            if [ "$PR_STATE" != "OPEN" ]; then
+              echo "PR #$PR_NUMBER is no longer OPEN (current state: $PR_STATE). Exiting."
+              echo "should_resume=false" >> $GITHUB_ENV
+              exit 0
+            fi
+
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable -q .mergeable)
+            echo "Attempt $i: mergeable status = '$MERGEABLE'"
+
+            if [ "$MERGEABLE" = "MERGEABLE" ]; then
+              echo "🎉 Conflicts resolved! PR is now MERGEABLE."
+              break
+            elif [ "$MERGEABLE" = "CONFLICTING" ]; then
+              echo "PR still has unresolved merge conflicts."
+            fi
+            sleep 5
+          done
+
+          if [ "$MERGEABLE" != "MERGEABLE" ]; then
+            echo "PR #$PR_NUMBER is not mergeable (status: $MERGEABLE). Manual conflict resolution still required."
+            echo "should_resume=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "should_resume=true" >> $GITHUB_ENV
+
+          # 3. Map base branch to deployment workflow file
+          WORKFLOW_FILE=""
+          DEPLOY_NAME=""
+          case "$BASE_BRANCH" in
+            "tenant/asint-ais-02")
+              WORKFLOW_FILE="merge_dev_to_tenant_ais02.yml"
+              DEPLOY_NAME="AIS-02"
+              ;;
+            "tenant/asint-apm-01-new")
+              WORKFLOW_FILE="deploy_apm01.yml"
+              DEPLOY_NAME="APM-01"
+              ;;
+            "st-env-for-contentfederation")
+              WORKFLOW_FILE="deploy_st_env.yml"
+              DEPLOY_NAME="ST-ENV"
+              ;;
+            "apm-eiot-temp-copy")
+              WORKFLOW_FILE="deploy_apm_eiot.yml"
+              DEPLOY_NAME="APM-EIOT"
+              ;;
+            "tenant/hemlock-non-prod")
+              WORKFLOW_FILE="deploy_hsc_non_prod.yml"
+              DEPLOY_NAME="HSC-NON-PROD"
+              ;;
+            "tenant/hemlock-prod")
+              WORKFLOW_FILE="deploy_hsc_prod.yml"
+              DEPLOY_NAME="HSC-PROD"
+              ;;
+            "tenant/asint-irc-temp")
+              WORKFLOW_FILE="deploy_irc.yml"
+              DEPLOY_NAME="IRC"
+              ;;
+            "tenant/baystar")
+              WORKFLOW_FILE="deploy_baystar.yml"
+              DEPLOY_NAME="BAYSTAR"
+              ;;
+            "tenant/indorama-qa-233")
+              WORKFLOW_FILE="deploy_indorama_qa_233.yml"
+              DEPLOY_NAME="INDORAMA-QA-233"
+              ;;
+            "tenant/indorama-qa-234")
+              WORKFLOW_FILE="deploy_indorama_qa_234.yml"
+              DEPLOY_NAME="INDORAMA-QA-234"
+              ;;
+            "tenant/indorama-prod-900")
+              WORKFLOW_FILE="deploy_indorama_prod_900.yml"
+              DEPLOY_NAME="INDORAMA-PROD-900"
+              ;;
+            "tenant/indorama-prod-933")
+              WORKFLOW_FILE="deploy_indorama_prod_933.yml"
+              DEPLOY_NAME="INDORAMA-PROD-933"
+              ;;
+            "tenant/asint-demo")
+              WORKFLOW_FILE="deploy_asint_demo.yml"
+              DEPLOY_NAME="ASINT-DEMO"
+              ;;
+            *)
+              echo "No matching deployment workflow found for base branch '$BASE_BRANCH'."
+              echo "should_resume=false" >> $GITHUB_ENV
+              exit 0
+              ;;
+          esac
+
+          echo "workflow_file=$WORKFLOW_FILE" >> $GITHUB_ENV
+          echo "deploy_name=$DEPLOY_NAME" >> $GITHUB_ENV
+
+      - name: Resume Automated Deployment
+        if: env.should_resume == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Resuming deployment for ${{ env.deploy_name }} via ${{ env.workflow_file }}..."
+
+          # Add comment on PR to notify developer
+          gh pr comment "$PR_NUMBER" --body "🟢 **Conflicts Resolved:** Automated deployment has been resumed. Triggering \`${{ env.workflow_file }}\` to stop app (if required), merge PR, and hand off to SAP CI/CD."
+
+          # Trigger the corresponding deployment workflow
+          gh workflow run "${{ env.workflow_file }}" --ref dev
+          echo "Deployment workflow '${{ env.workflow_file }}' successfully dispatched!"
