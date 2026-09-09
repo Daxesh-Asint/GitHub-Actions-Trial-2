@@ -118,6 +118,7 @@ jobs:
             --arg pr_url "$PR_URL" \
             --arg time "$TIMESTAMP" \
             --arg dashboard "$DASHBOARD_URL" \
+            --arg env "$DEPLOY_NAME" \
             '{
               type: "message",
               attachments: [{
@@ -159,7 +160,7 @@ jobs:
                     {
                       type: "FactSet",
                       facts: [
-                        { title: "Environment", value: "${DEPLOY_NAME}" },
+                        { title: "Environment", value: $env },
                         { title: "Approved By", value: $reviewer },
                         { title: "Pull Request", value: $pr },
                         { title: "Source Branch", value: $source },
