@@ -193,10 +193,11 @@ jobs:
           PR_NUMBER: ${{ env.pr_number }}
         run: |
           echo "Protected branch requires review from: ${{ inputs.reviewers }}"
-          gh pr edit "$PR_NUMBER" --add-reviewer "${{ inputs.reviewers }}" 2>/dev/null || true
+          CLEAN_REVIEWERS=$(echo "${{ inputs.reviewers }}" | tr -d ' ')
+          gh pr edit "$PR_NUMBER" --add-reviewer "$CLEAN_REVIEWERS" 2>/dev/null || true
           gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
-          gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned @${{ inputs.reviewers }} as reviewer. Once approved, deployment will proceed automatically." 2>/dev/null || true
+          gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned ${{ inputs.reviewers }} as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
           echo "awaiting_approval=true" >> $GITHUB_ENV
           echo "pr_mergeable=false" >> $GITHUB_ENV
 
