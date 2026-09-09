@@ -321,7 +321,7 @@ jobs:
                         { title: "Source Branch", value: $source },
                         { title: "Target Branch", value: $target },
                         { title: "CI/CD Commit ID", value: $commit_id },
-                        { title: "Next Step", value: "SAP CI/CD build triggered • App will restart upon completion" }
+                        { title: "Next Step", value: "SAP CI/CD pipeline will be started shortly" }
                       ]
                     }
                   ],
