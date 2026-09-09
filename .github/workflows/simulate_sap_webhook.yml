@@ -41,6 +41,10 @@ on:
           - "Indorama-QA-233"
           - "Indorama-QA-234"
         default: "AsInt-Indorama-Prod-900"
+      commit_id:
+        description: "Commit ID (optional, defaults to branch HEAD)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -59,5 +63,6 @@ jobs:
             -f event_type="${{ inputs.event_type }}" \
             -F client_payload[status]="${{ inputs.status }}" \
             -F client_payload[resource_name]="${{ inputs.resource_name }}" \
+            -F client_payload[commit_id]="${{ inputs.commit_id }}" \
             -F client_payload[subject]="Simulated ${{ inputs.event_type }} for ${{ inputs.resource_name }}"
           echo "✅ Webhook successfully sent!"

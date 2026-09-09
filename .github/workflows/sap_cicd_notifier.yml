@@ -48,6 +48,10 @@ on:
         description: "Subject / Description"
         required: false
         default: "Build execution triggered in SAP CI/CD"
+      commit_id:
+        description: "Git Commit ID (optional)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -122,8 +126,62 @@ jobs:
           # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
           CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 
+          # Map Resource Name to Target Branch to determine Commit ID
+          TARGET_BRANCH=""
+          case "$RESOURCE_NAME" in
+            "AsInt-AIS-02"|"AsInt-AIS-02-Safety-Test-DND"|"AsInt-AIS-02-mta-fix")
+              TARGET_BRANCH="tenant/asint-ais-02"
+              ;;
+            "AsInt-APM-01")
+              TARGET_BRANCH="tenant/asint-apm-01-new"
+              ;;
+            "AsInt-APM-EIOT")
+              TARGET_BRANCH="apm-eiot-temp-copy"
+              ;;
+            "AsInt-DEMO")
+              TARGET_BRANCH="tenant/asint-demo"
+              ;;
+            "AsInt-IRC")
+              TARGET_BRANCH="tenant/asint-irc-temp"
+              ;;
+            "AsInt-ST")
+              TARGET_BRANCH="st-env-for-contentfederation"
+              ;;
+            "BAYSTAR")
+              TARGET_BRANCH="tenant/baystar"
+              ;;
+            "Hemlock-NON-PROD")
+              TARGET_BRANCH="tenant/hemlock-non-prod"
+              ;;
+            "Hemlock-PROD")
+              TARGET_BRANCH="tenant/hemlock-prod"
+              ;;
+            "Indorama-PROD-900")
+              TARGET_BRANCH="tenant/indorama-prod-900"
+              ;;
+            "Indorama-PROD-933")
+              TARGET_BRANCH="tenant/indorama-prod-933"
+              ;;
+            "Indorama-QA-233")
+              TARGET_BRANCH="tenant/indorama-qa-233"
+              ;;
+            "Indorama-QA-234")
+              TARGET_BRANCH="tenant/indorama-qa-234"
+              ;;
+          esac
+
+          COMMIT_ID="${{ github.event.client_payload.commit_id }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.commit }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.sha }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.inputs.commit_id }}"
+
+          if [ -z "$COMMIT_ID" ] && [ -n "$TARGET_BRANCH" ]; then
+            COMMIT_ID=$(gh api repos/${{ github.repository }}/commits/$TARGET_BRANCH --jq '.sha' 2>/dev/null | cut -c 1-7)
+          fi
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="N/A"
+
           DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
 
           # 2. Configure Card Header, Color, and Subtitle based on Event Type
           if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
@@ -159,6 +217,7 @@ jobs:
             --arg status "$STATUS_BADGE" \
             --arg job "$RESOURCE_NAME" \
             --arg env_name "$CLEAN_NAME" \
+            --arg commit_id "$COMMIT_ID" \
             --arg time "$TIMESTAMP" \
             --arg dashboard "$DASHBOARD_URL" \
             '{
@@ -204,6 +263,7 @@ jobs:
                       facts: [
                         { title: "Environment", value: $env_name },
                         { title: "SAP CI/CD Job", value: $job },
+                        { title: "CI/CD Commit ID", value: $commit_id },
                         { title: "Timestamp", value: $time }
                       ]
                     }
