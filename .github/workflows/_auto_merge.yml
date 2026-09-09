@@ -193,8 +193,14 @@ jobs:
           PR_NUMBER: ${{ env.pr_number }}
         run: |
           echo "Protected branch requires review from: ${{ inputs.reviewers }}"
-          CLEAN_REVIEWERS=$(echo "${{ inputs.reviewers }}" | tr -d ' ')
-          gh pr edit "$PR_NUMBER" --add-reviewer "$CLEAN_REVIEWERS" 2>/dev/null || true
+          IFS=',' read -ra REV_ARR <<< "${{ inputs.reviewers }}"
+          for rev in "${REV_ARR[@]}"; do
+            TRIMMED_REV=$(echo "$rev" | xargs)
+            if [ -n "$TRIMMED_REV" ]; then
+              echo "Requesting review from: $TRIMMED_REV"
+              gh pr edit "$PR_NUMBER" --add-reviewer "$TRIMMED_REV" 2>/dev/null || true
+            fi
+          done
           gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
           gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned ${{ inputs.reviewers }} as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
