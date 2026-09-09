@@ -3,6 +3,8 @@ name: "Auto-Merge: PR Approval Handler"
 on:
   pull_request_review:
     types: [submitted]
+  pull_request:
+    types: [closed]
 
 concurrency:
   group: pr-approval-${{ github.event.pull_request.number }}
@@ -15,7 +17,7 @@ permissions:
 jobs:
   handle-approval:
     runs-on: ubuntu-latest
-    if: github.event.review.state == 'approved'
+    if: (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,6 +35,12 @@ jobs:
           # 1. Fetch Labels and verify if this is an auto-merge deployment PR
           LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
           echo "PR Labels: $LABELS"
+
+          # Avoid duplicate cards if already processed
+          if echo "$LABELS" | grep -q 'approved and merged'; then
+            echo "PR #$PR_NUMBER has already been processed and marked as 'approved and merged'. Skipping duplicate notification."
+            exit 0
+          fi
 
           IS_AUTO_MERGE="false"
           if echo "$LABELS" | grep -qE '^auto merge|awaiting approval'; then
@@ -99,9 +107,21 @@ jobs:
           TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
           REPO="${{ github.repository }}"
           PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
-          CARD_TITLE="🚀 $DEPLOY_NAME: PR Approved & Deployment Started"
-          CARD_SUBTITLE="PR #$PR_NUMBER was approved by $REVIEWER. PR has been merged and SAP CI/CD deployment has started!"
-          STATUS_TEXT="✅ Approved & Merged • Deployment Started"
+
+          EVENT_NAME="${{ github.event_name }}"
+          REVIEW_STATE="${{ github.event.review.state }}"
+
+          if [ "$EVENT_NAME" = "pull_request_review" ] && [ "$REVIEW_STATE" = "approved" ]; then
+            CARD_TITLE="🚀 $DEPLOY_NAME: PR Approved & Deployment Started"
+            CARD_SUBTITLE="PR #$PR_NUMBER was approved by $REVIEWER. PR has been merged and SAP CI/CD deployment has started!"
+            STATUS_TEXT="✅ Approved & Merged • Deployment Started"
+            REVIEWER_LABEL="Approved By"
+          else
+            CARD_TITLE="🚀 $DEPLOY_NAME: PR Merged & Deployment Started"
+            CARD_SUBTITLE="PR #$PR_NUMBER was merged by $REVIEWER. SAP CI/CD deployment has started!"
+            STATUS_TEXT="✅ Merged • Deployment Started"
+            REVIEWER_LABEL="Merged By"
+          fi
 
           # 6. Build MS Teams Adaptive Card
           PAYLOAD=$(jq -n \
@@ -114,6 +134,7 @@ jobs:
             --arg source "$HEAD_BRANCH" \
             --arg target "$BASE_BRANCH" \
             --arg reviewer "$REVIEWER" \
+            --arg reviewer_label "$REVIEWER_LABEL" \
             --arg commit_id "$MERGE_COMMIT_ID" \
             --arg pr_url "$PR_URL" \
             --arg time "$TIMESTAMP" \
@@ -161,7 +182,7 @@ jobs:
                       type: "FactSet",
                       facts: [
                         { title: "Environment", value: $env },
-                        { title: "Approved By", value: $reviewer },
+                        { title: $reviewer_label, value: $reviewer },
                         { title: "Pull Request", value: $pr },
                         { title: "Source Branch", value: $source },
                         { title: "Target Branch", value: $target },
