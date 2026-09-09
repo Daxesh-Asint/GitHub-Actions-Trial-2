@@ -3,6 +3,8 @@ name: "Auto-Merge: PR Approval Handler"
 on:
   pull_request_review:
     types: [submitted]
+  pull_request:
+    types: [closed]
 
 concurrency:
   group: pr-approval-${{ github.event.pull_request.number }}
@@ -15,7 +17,7 @@ permissions:
 jobs:
   handle-approval:
     runs-on: ubuntu-latest
-    if: github.event.review.state == 'approved' && github.event.pull_request.state == 'open'
+    if: (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -26,7 +28,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
-          REVIEWER: ${{ github.event.review.user.login }}
+          REVIEWER: ${{ github.event.review.user.login || github.actor }}
         run: |
           echo "PR #$PR_NUMBER approved by $REVIEWER."
 
@@ -73,13 +75,18 @@ jobs:
               ;;
           esac
 
-          # 3. Merge the Pull Request
-          echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
-          if gh pr merge "$PR_NUMBER" --merge; then
-            echo "PR #$PR_NUMBER successfully merged!"
+          # 3. Merge the Pull Request (if not already merged)
+          PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
+          if [ "$PR_STATE" = "OPEN" ]; then
+            echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
+            if gh pr merge "$PR_NUMBER" --merge; then
+              echo "PR #$PR_NUMBER successfully merged!"
+            else
+              echo "Failed to merge PR #$PR_NUMBER"
+              exit 1
+            fi
           else
-            echo "Failed to merge PR #$PR_NUMBER"
-            exit 1
+            echo "PR #$PR_NUMBER is already merged ($PR_STATE)."
           fi
 
           # 4. Update PR Labels
