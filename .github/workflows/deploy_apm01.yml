@@ -6,7 +6,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  pre-stop-crawler:
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
+      org: "asint-apm-01"
+      space: "demo"
+      app_name: "crawler-layer-backend"
+      action: "stop"
+    secrets: inherit
+
   merging-process:
+    needs: pre-stop-crawler
     uses: ./.github/workflows/_auto_merge.yml
     permissions:
       contents: write
