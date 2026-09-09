@@ -197,8 +197,6 @@ jobs:
           gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
           gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned @${{ inputs.reviewers }} as reviewer. Once approved, deployment will proceed automatically." 2>/dev/null || true
-          echo "Enabling GitHub native auto-merge upon approval..."
-          gh pr merge "$PR_NUMBER" --auto --merge 2>/dev/null || true
           echo "awaiting_approval=true" >> $GITHUB_ENV
           echo "pr_mergeable=false" >> $GITHUB_ENV
 
