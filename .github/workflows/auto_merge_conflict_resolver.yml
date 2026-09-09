@@ -1,0 +1,360 @@
+name: "Auto-Merge: Conflict Resolution Handler"
+
+on:
+  pull_request:
+    types: [synchronize, closed]
+
+concurrency:
+  group: conflict-resolver-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-conflict-resolution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Inspect PR & Determine Action
+        id: inspect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          EVENT_ACTION: ${{ github.event.action }}
+          IS_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          echo "Inspecting PR #$PR_NUMBER (Base: $BASE_BRANCH, Event: $EVENT_ACTION, Merged: $IS_MERGED)..."
+
+          # 1. Fetch labels
+          LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
+          echo "PR Labels: $LABELS"
+
+          IS_AUTO_MERGE="false"
+          if echo "$LABELS" | grep -qE '^auto merge'; then
+            IS_AUTO_MERGE="true"
+          fi
+
+          HAD_CONFLICTS="false"
+          if echo "$LABELS" | grep -qE 'conflicts detected'; then
+            HAD_CONFLICTS="true"
+          fi
+
+          if [ "$IS_AUTO_MERGE" != "true" ]; then
+            echo "Not an auto-merge deployment PR. Skipping."
+            echo "should_run=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          # 2. Map Base Branch to Environment Metadata
+          DEPLOY_NAME="Unknown"
+          DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+          CF_STOP_APP=""
+          CF_ORG=""
+          CF_SPACE=""
+          CF_API="https://api.cf.eu10-004.hana.ondemand.com"
+
+          case "$BASE_BRANCH" in
+            "tenant/asint-ais-02")
+              DEPLOY_NAME="AIS-02"
+              DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
+              CF_STOP_APP="crawler-layer-backend"
+              CF_ORG="ais-02-eu10-org"
+              CF_SPACE="main"
+              ;;
+            "tenant/asint-apm-01-new")
+              DEPLOY_NAME="APM-01"
+              CF_STOP_APP="crawler-layer-backend"
+              CF_ORG="asint-apm-01"
+              CF_SPACE="demo"
+              ;;
+            "st-env-for-contentfederation")
+              DEPLOY_NAME="ST-ENV"
+              ;;
+            "apm-eiot-temp-copy")
+              DEPLOY_NAME="APM-EIOT"
+              ;;
+            "tenant/hemlock-non-prod")
+              DEPLOY_NAME="HSC-NON-PROD"
+              ;;
+            "tenant/hemlock-prod")
+              DEPLOY_NAME="HSC-PROD"
+              ;;
+            "tenant/asint-irc-temp")
+              DEPLOY_NAME="IRC"
+              ;;
+            "tenant/baystar")
+              DEPLOY_NAME="BAYSTAR"
+              ;;
+            "tenant/indorama-qa-233")
+              DEPLOY_NAME="INDORAMA-QA-233"
+              ;;
+            "tenant/indorama-qa-234")
+              DEPLOY_NAME="INDORAMA-QA-234"
+              ;;
+            "tenant/indorama-prod-900")
+              DEPLOY_NAME="INDORAMA-PROD-900"
+              ;;
+            "tenant/indorama-prod-933")
+              DEPLOY_NAME="INDORAMA-PROD-933"
+              ;;
+            "tenant/asint-demo")
+              DEPLOY_NAME="ASINT-DEMO"
+              ;;
+          esac
+
+          echo "deploy_name=$DEPLOY_NAME" >> $GITHUB_ENV
+          echo "dashboard_url=$DASHBOARD_URL" >> $GITHUB_ENV
+          echo "cf_stop_app=$CF_STOP_APP" >> $GITHUB_ENV
+          echo "cf_org=$CF_ORG" >> $GITHUB_ENV
+          echo "cf_space=$CF_SPACE" >> $GITHUB_ENV
+          echo "cf_api=$CF_API" >> $GITHUB_ENV
+
+          # Case A: Developer manually merged after resolving conflicts
+          if [ "$EVENT_ACTION" = "closed" ] && [ "$IS_MERGED" = "true" ]; then
+            if [ "$HAD_CONFLICTS" = "true" ]; then
+              echo "Developer resolved conflicts and merged PR #$PR_NUMBER manually."
+              echo "should_run=true" >> $GITHUB_ENV
+              echo "need_merge=false" >> $GITHUB_ENV
+              exit 0
+            else
+              echo "PR closed/merged normally without conflict history. Skipping."
+              echo "should_run=false" >> $GITHUB_ENV
+              exit 0
+            fi
+          fi
+
+          # Case B: Developer resolved conflicts and pushed new commit (synchronize), but forgot to merge
+          if [ "$EVENT_ACTION" = "synchronize" ]; then
+            # Wait for GitHub mergeability check
+            echo "Checking if conflicts are resolved..."
+            MERGEABLE="UNKNOWN"
+            for i in {1..12}; do
+              CURRENT_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
+              if [ "$CURRENT_STATE" != "OPEN" ]; then
+                echo "PR #$PR_NUMBER is no longer OPEN ($CURRENT_STATE). Exiting."
+                echo "should_run=false" >> $GITHUB_ENV
+                exit 0
+              fi
+
+              MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable -q .mergeable)
+              echo "Attempt $i: mergeable = '$MERGEABLE'"
+
+              if [ "$MERGEABLE" = "MERGEABLE" ]; then
+                echo "🎉 Conflicts resolved! PR is now MERGEABLE."
+                break
+              fi
+              sleep 5
+            done
+
+            if [ "$MERGEABLE" = "MERGEABLE" ]; then
+              echo "should_run=true" >> $GITHUB_ENV
+              echo "need_merge=true" >> $GITHUB_ENV
+              exit 0
+            else
+              echo "PR still not mergeable (status: $MERGEABLE). Waiting for manual conflict resolution."
+              echo "should_run=false" >> $GITHUB_ENV
+              exit 0
+            fi
+          fi
+
+          echo "should_run=false" >> $GITHUB_ENV
+
+      # ──────────────────────────────────────────────────────────
+      # Stop CF app if required (only if automation is merging)
+      # ──────────────────────────────────────────────────────────
+      - name: Stop CF App Before Auto-Merge
+        if: env.should_run == 'true' && env.need_merge == 'true' && env.cf_stop_app != ''
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          echo "Installing Cloud Foundry CLI..."
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update -qq
+          sudo apt-get install -y cf8-cli
+
+          echo "Logging into Cloud Foundry..."
+          cf login -a "${{ env.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "${{ env.cf_org }}" -s "${{ env.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ env.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ env.cf_space }}" || true
+
+          echo "🛑 Stopping app ${{ env.cf_stop_app }} to free memory quota..."
+          cf stop "${{ env.cf_stop_app }}"
+          echo "app_was_stopped=true" >> $GITHUB_ENV
+
+      # ──────────────────────────────────────────────────────────
+      # Merge PR automatically
+      # ──────────────────────────────────────────────────────────
+      - name: Auto-Merge Resolved PR
+        id: merge
+        if: env.should_run == 'true' && env.need_merge == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Auto-merging PR #$PR_NUMBER..."
+          if gh pr merge "$PR_NUMBER" --merge; then
+            echo "PR #$PR_NUMBER merged successfully!"
+          else
+            echo "Failed to merge PR #$PR_NUMBER"
+            exit 1
+          fi
+
+      # ──────────────────────────────────────────────────────────
+      # Safety Net: Restart App if Merge Fails
+      # ──────────────────────────────────────────────────────────
+      - name: Safety Restart App If Merge Failed
+        if: failure() && env.app_was_stopped == 'true'
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          echo "⚠️ Merge failed after app was stopped! Restarting ${{ env.cf_stop_app }} immediately..."
+          cf login -a "${{ env.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "${{ env.cf_org }}" -s "${{ env.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ env.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ env.cf_space }}" || true
+          cf start "${{ env.cf_stop_app }}"
+
+      # ──────────────────────────────────────────────────────────
+      # Update Labels on PR
+      # ──────────────────────────────────────────────────────────
+      - name: Update PR Labels
+        if: env.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh label create "conflicts resolved" --color "#0e8a16" --description "Merge conflicts were successfully resolved" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --remove-label "conflicts detected" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "conflicts resolved" 2>/dev/null || true
+
+      # ──────────────────────────────────────────────────────────
+      # Send MS Teams Notification: Conflicts Resolved & Deployment Resumed
+      # ──────────────────────────────────────────────────────────
+      - name: Send Conflicts Resolved Teams Card
+        if: env.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_NAME: ${{ env.deploy_name }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          RESOLVER: ${{ github.actor }}
+          DASHBOARD_URL: ${{ env.dashboard_url }}
+        run: |
+          echo "Building Teams Adaptive Card for conflict resolution..."
+
+          # Fetch merge commit ID (short 7 chars)
+          MERGE_COMMIT_ID=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null | cut -c 1-7)
+          [ -z "$MERGE_COMMIT_ID" ] && MERGE_COMMIT_ID="N/A"
+
+          CARD_TITLE="🟢 $DEPLOY_NAME: Merge Conflicts Resolved & PR Merged"
+          CARD_SUBTITLE="Merge conflicts have been successfully resolved. PR #$PR_NUMBER has been merged and the automated deployment process has resumed."
+          STATUS_TEXT="🟢 Conflicts Resolved • Merged • Automation Resumed"
+          REPO="${{ github.repository }}"
+          PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
+          DASHBOARD_TITLE="Open $DEPLOY_NAME SAP CI/CD Dashboard"
+
+          PAYLOAD=$(jq -n \
+            --arg title "$CARD_TITLE" \
+            --arg subtitle "$CARD_SUBTITLE" \
+            --arg status "$STATUS_TEXT" \
+            --arg color "good" \
+            --arg repo "$REPO" \
+            --arg pr "PR #$PR_NUMBER" \
+            --arg source "$HEAD_BRANCH" \
+            --arg target "$BASE_BRANCH" \
+            --arg resolver "$RESOLVER" \
+            --arg commit_id "$MERGE_COMMIT_ID" \
+            --arg pr_url "$PR_URL" \
+            --arg dashboard_url "$DASHBOARD_URL" \
+            --arg dashboard_title "$DASHBOARD_TITLE" \
+            '{
+              type: "message",
+              attachments: [{
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: [
+                    {
+                      type: "TextBlock",
+                      size: "Large",
+                      weight: "Bolder",
+                      text: $title,
+                      wrap: true
+                    },
+                    {
+                      type: "TextBlock",
+                      text: $subtitle,
+                      size: "Medium",
+                      wrap: true,
+                      color: "Good"
+                    },
+                    {
+                      type: "ColumnSet",
+                      columns: [
+                        {
+                          type: "Column",
+                          width: "auto",
+                          items: [{
+                            type: "TextBlock",
+                            text: $status,
+                            weight: "Bolder",
+                            color: $color
+                          }]
+                        }
+                      ]
+                    },
+                    {
+                      type: "FactSet",
+                      facts: [
+                        { title: "Environment", value: "${{ env.deploy_name }}" },
+                        { title: "Repository", value: $repo },
+                        { title: "Resolved By", value: $resolver },
+                        { title: "Pull Request", value: $pr },
+                        { title: "Source Branch", value: $source },
+                        { title: "Target Branch", value: $target },
+                        { title: "CI/CD Commit ID", value: $commit_id },
+                        { title: "Next Step", value: "SAP CI/CD build triggered • App will restart upon completion" }
+                      ]
+                    }
+                  ],
+                  actions: [
+                    {
+                      type: "Action.OpenUrl",
+                      title: "View Merged PR on GitHub",
+                      url: $pr_url
+                    },
+                    {
+                      type: "Action.OpenUrl",
+                      title: $dashboard_title,
+                      url: $dashboard_url
+                    }
+                  ]
+                }
+              }]
+            }')
+
+          # Send to all configured MS Teams webhooks
+          for WEBHOOK_URL in \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+            if [ -n "$WEBHOOK_URL" ]; then
+              echo "Broadcasting card to MS Teams webhook..."
+              curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" || true
+            fi
+          done
+          echo "Teams card successfully sent!"
