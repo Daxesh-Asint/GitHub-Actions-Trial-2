@@ -19,6 +19,26 @@ on:
         required: false
         type: string
         default: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+      cf_stop_app:
+        description: "Optional CF app name to stop before merging (only if new commits exist)"
+        required: false
+        type: string
+        default: ""
+      cf_api:
+        description: "CF API endpoint"
+        required: false
+        type: string
+        default: "https://api.cf.eu10-004.hana.ondemand.com"
+      cf_org:
+        description: "CF Org"
+        required: false
+        type: string
+        default: ""
+      cf_space:
+        description: "CF Space"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   process:
@@ -155,6 +175,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      # ──────────────────────────────────────────────────────────
+      # 🛑 Stop App Just-In-Time (ONLY if PR is mergeable and ready to merge)
+      # ──────────────────────────────────────────────────────────
+      - name: Stop App Before Merge
+        if: env.pr_mergeable == 'true' && inputs.cf_stop_app != ''
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          echo "Installing CF CLI..."
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update -qq
+          sudo apt-get install -y cf8-cli
+
+          echo "Logging into Cloud Foundry..."
+          cf login -a "${{ inputs.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ inputs.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ inputs.cf_space }}" || true
+
+          echo "🛑 Stopping app ${{ inputs.cf_stop_app }} to free memory quota for deployment..."
+          cf stop "${{ inputs.cf_stop_app }}"
+          echo "app_was_stopped=true" >> $GITHUB_ENV
+
       - name: Merge PR
         id: merge-pr
         if: env.pr_mergeable == 'true'
@@ -169,6 +212,20 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      # ──────────────────────────────────────────────────────────
+      # 🛡️ Safety Net: Restart App if Merge Fails
+      # ──────────────────────────────────────────────────────────
+      - name: Safety Restart App If Merge Failed
+        if: failure() && env.app_was_stopped == 'true'
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          echo "⚠️ Merge failed after app was stopped! Restarting ${{ inputs.cf_stop_app }} immediately..."
+          cf login -a "${{ inputs.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ inputs.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ inputs.cf_space }}" || true
+          cf start "${{ inputs.cf_stop_app }}"
 
       # ──────────────────────────────────────────────────────────
       # MS Teams Notification (Adaptive Card format)
