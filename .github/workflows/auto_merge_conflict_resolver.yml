@@ -3,9 +3,15 @@ name: "Auto-Merge: Conflict Resolution Handler"
 on:
   pull_request:
     types: [synchronize, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request Number to handle"
+        required: true
+        default: "1013"
 
 concurrency:
-  group: conflict-resolver-${{ github.event.pull_request.number }}
+  group: conflict-resolver-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: false
 
 permissions:
@@ -23,12 +29,27 @@ jobs:
         id: inspect
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          EVENT_ACTION: ${{ github.event.action }}
-          IS_MERGED: ${{ github.event.pull_request.merged }}
+          INPUT_PR: ${{ inputs.pr_number }}
+          EV_PR: ${{ github.event.pull_request.number }}
+          EV_BASE: ${{ github.event.pull_request.base.ref }}
+          EV_HEAD: ${{ github.event.pull_request.head.ref }}
+          EV_ACTION: ${{ github.event.action }}
+          EV_MERGED: ${{ github.event.pull_request.merged }}
         run: |
-          echo "Inspecting PR #$PR_NUMBER (Base: $BASE_BRANCH, Event: $EVENT_ACTION, Merged: $IS_MERGED)..."
+          PR_NUMBER="${EV_PR:-$INPUT_PR}"
+          BASE_BRANCH="$EV_BASE"
+          [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(gh pr view "$PR_NUMBER" --json baseRefName -q .baseRefName)
+          HEAD_BRANCH="$EV_HEAD"
+          [ -z "$HEAD_BRANCH" ] && HEAD_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)
+          EVENT_ACTION="${EV_ACTION:-synchronize}"
+          IS_MERGED="$EV_MERGED"
+          [ -z "$IS_MERGED" ] && IS_MERGED=$(gh pr view "$PR_NUMBER" --json mergedAt -q 'if .mergedAt then "true" else "false" end')
+
+          echo "Inspecting PR #$PR_NUMBER (Base: $BASE_BRANCH, Head: $HEAD_BRANCH, Event: $EVENT_ACTION, Merged: $IS_MERGED)..."
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
+          echo "base_branch=$BASE_BRANCH" >> $GITHUB_ENV
+          echo "head_branch=$HEAD_BRANCH" >> $GITHUB_ENV
 
           # 1. Fetch labels
           LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
@@ -40,7 +61,7 @@ jobs:
           fi
 
           HAD_CONFLICTS="false"
-          if echo "$LABELS" | grep -qE 'conflicts detected'; then
+          if echo "$LABELS" | grep -qE 'conflicts detected|conflicts resolved'; then
             HAD_CONFLICTS="true"
           fi
 
@@ -148,7 +169,7 @@ jobs:
           # Case B: Developer resolved conflicts and pushed new commit (synchronize)
           if [ "$EVENT_ACTION" = "synchronize" ]; then
             if [ "$HAD_CONFLICTS" != "true" ]; then
-              echo "PR does not have 'conflicts detected' label. Skipping conflict resolution handler."
+              echo "PR does not have conflict history. Skipping conflict resolution handler."
               echo "should_run=false" >> $GITHUB_ENV
               exit 0
             fi
@@ -237,7 +258,7 @@ jobs:
         if: env.should_run == 'true' && env.need_merge == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ env.pr_number }}
         run: |
           echo "Auto-merging PR #$PR_NUMBER..."
           if gh pr merge "$PR_NUMBER" --merge; then
@@ -268,7 +289,7 @@ jobs:
         if: env.should_run == 'true' && env.action_type == 'awaiting_approval'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ env.pr_number }}
           REVIEWERS: ${{ env.reviewers }}
         run: |
           echo "Conflicts resolved! Setting up approval for protected branch..."
@@ -297,17 +318,17 @@ jobs:
         if: env.should_run == 'true' && env.action_type == 'awaiting_approval'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ env.pr_number }}
           DEPLOY_NAME: ${{ env.deploy_name }}
-          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ env.base_branch }}
+          HEAD_BRANCH: ${{ env.head_branch }}
           RESOLVER: ${{ github.actor }}
           DASHBOARD_URL: ${{ env.dashboard_url }}
           REVIEWERS: ${{ env.reviewers }}
         run: |
           echo "Building Teams Adaptive Card for Conflicts Resolved & Awaiting Approval..."
 
-          CARD_TITLE="🟡 $DEPLOY_NAME: Conflicts Resolved — Awaiting Approval"
+          CARD_TITLE="🟡 $DEPLOY_NAME: Merge Conflicts Resolved — Awaiting Approval"
           CARD_SUBTITLE="Merge conflicts for PR #$PR_NUMBER have been successfully resolved. The PR is now mergeable and awaiting 1 peer review approval to auto-merge and resume deployment."
           STATUS_TEXT="🟡 Conflicts Resolved • Awaiting Approval"
           REPO="${{ github.repository }}"
@@ -420,7 +441,7 @@ jobs:
         if: env.should_run == 'true' && env.action_type == 'merged'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ env.pr_number }}
         run: |
           gh label create "conflicts resolved" --color "#0e8a16" --description "Merge conflicts were successfully resolved" 2>/dev/null || true
           gh label create "approved and merged" --color "#0e8a16" --description "Approved by reviewer and merged" 2>/dev/null || true
@@ -436,10 +457,10 @@ jobs:
         if: env.should_run == 'true' && env.action_type == 'merged'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ env.pr_number }}
           DEPLOY_NAME: ${{ env.deploy_name }}
-          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ env.base_branch }}
+          HEAD_BRANCH: ${{ env.head_branch }}
           RESOLVER: ${{ github.actor }}
           DASHBOARD_URL: ${{ env.dashboard_url }}
         run: |
