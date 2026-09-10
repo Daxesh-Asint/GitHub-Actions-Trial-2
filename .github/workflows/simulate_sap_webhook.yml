@@ -45,6 +45,10 @@ on:
         description: "Commit ID (optional, defaults to branch HEAD)"
         required: false
         default: ""
+      app_name:
+        description: "CF App Name (optional, e.g. crawler-layer-backend)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -71,5 +75,6 @@ jobs:
             -F client_payload[status]="${{ inputs.status }}" \
             -F client_payload[resource_name]="${{ inputs.resource_name }}" \
             -F client_payload[commit_id]="${{ inputs.commit_id }}" \
+            -F client_payload[app_name]="${{ inputs.app_name }}" \
             -F client_payload[subject]="$SUBJ"
           echo "✅ Webhook successfully sent!"
