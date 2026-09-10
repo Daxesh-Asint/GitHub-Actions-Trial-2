@@ -68,10 +68,15 @@ jobs:
       resource_name: ${{ steps.process.outputs.resource_name }}
       cf_app_name: ${{ steps.process.outputs.cf_app_name }}
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Process SAP CI/CD Event and Send MS Teams Notification
         id: process
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
           # 1. Determine payload inputs (from repository_dispatch or workflow_dispatch)
           echo "=== RECEIVED CLIENT PAYLOAD ==="
@@ -232,25 +237,91 @@ jobs:
 
           [ -n "$SUBJECT" ] && [ "$SUBJECT" != "null" ] && CARD_SUBTITLE="$SUBJECT"
 
-          CF_APP_NAME="${{ github.event.client_payload.app_name || github.event.inputs.app_name }}"
-          if [ -z "$CF_APP_NAME" ]; then
-            case "$RESOURCE_NAME" in
-              "AsInt-AIS-02")
-                CF_APP_NAME="${{ vars.CF_APP_AIS02 || 'crawler-layer-backend' }}"
-                ;;
-              "AsInt-APM-01")
-                CF_APP_NAME="${{ vars.CF_APP_APM01 || 'crawler-layer-backend' }}"
-                ;;
-            esac
+          # ──────────────────────────────────────────────────────────
+          # ⚙️ Resolve CF App Configuration (from .github/cf-apps.json)
+          # ──────────────────────────────────────────────────────────
+          CONFIG_FILE=".github/cf-apps.json"
+          CF_API=""
+          CF_ORG=""
+          CF_SPACE=""
+          CF_APPS_RAW=""
+
+          if [ -f "$CONFIG_FILE" ]; then
+            CF_ENV_JSON=$(jq -c --arg name "$RESOURCE_NAME" '
+              def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+              .environments as $envs |
+              ([$envs | to_entries[] | select(
+                (.key | norm) == ($name | norm) or
+                ((.value.aliases // [])[] | norm) == ($name | norm)
+              ) | .value] | first) // null
+            ' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+            if [ -n "$CF_ENV_JSON" ] && [ "$CF_ENV_JSON" != "null" ]; then
+              CF_API=$(echo "$CF_ENV_JSON" | jq -r '.api // empty')
+              CF_ORG=$(echo "$CF_ENV_JSON" | jq -r '.org // empty')
+              CF_SPACE=$(echo "$CF_ENV_JSON" | jq -r '.space // empty')
+              CF_APPS_RAW=$(echo "$CF_ENV_JSON" | jq -r '(.apps // [])[]' 2>/dev/null || echo "")
+            fi
           fi
-          echo "cf_app_name=$CF_APP_NAME" >> $GITHUB_OUTPUT
+
+          # Optional override from payload / input if provided
+          PAYLOAD_APP="${{ github.event.client_payload.app_name || github.event.inputs.app_name }}"
+          if [ -n "$PAYLOAD_APP" ]; then
+            CF_APPS_RAW="$PAYLOAD_APP"
+          fi
+
+          CF_APPS_COMMA=""
+          CF_APPS_COUNT=0
+          while IFS= read -r app; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              if [ -z "$CF_APPS_COMMA" ]; then
+                CF_APPS_COMMA="$TRIMMED"
+              else
+                CF_APPS_COMMA="$CF_APPS_COMMA, $TRIMMED"
+              fi
+              CF_APPS_COUNT=$((CF_APPS_COUNT + 1))
+            fi
+          done <<< "$CF_APPS_RAW"
+
+          echo "cf_app_name=$CF_APPS_COMMA" >> $GITHUB_OUTPUT
 
           CF_APP_STATUS=""
-          if [ -n "$CF_APP_NAME" ]; then
+          if [ -n "$CF_APPS_COMMA" ] && [ "$CF_APPS_COUNT" -gt 0 ] 2>/dev/null; then
             if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
-              CF_APP_STATUS="🛑 $CF_APP_NAME stopped (needed more CF runtime memory to get deployment completed)"
+              CF_APP_STATUS="🛑 $CF_APPS_COMMA stopped (needed more CF runtime memory to get deployment completed)"
             elif [ "$EVENT_TYPE" = "sap_cicd_finished" ]; then
-              CF_APP_STATUS="▶️ Restarting $CF_APP_NAME to restore runtime services..."
+              echo "Installing CF CLI to restart apps..."
+              wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add - 2>/dev/null || true
+              echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list > /dev/null
+              sudo apt-get update -qq 2>/dev/null || true
+              sudo apt-get install -y cf8-cli 2>/dev/null || true
+
+              echo "Logging into Cloud Foundry to restart apps..."
+              cf login -a "$CF_API" -u "$CF_USERNAME" -p "$CF_PASSWORD" || true
+              cf target -o "$CF_ORG" -s "$CF_SPACE" || true
+
+              RESTART_FAILED=false
+              IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
+              for app in "${APPS_LIST[@]}"; do
+                TRIMMED=$(echo "$app" | xargs)
+                if [ -n "$TRIMMED" ]; then
+                  echo "▶️ Restarting app $TRIMMED..."
+                  if ! cf start "$TRIMMED"; then
+                    RESTART_FAILED=true
+                  fi
+                fi
+              done
+
+              if [ "$RESTART_FAILED" = "true" ]; then
+                CF_APP_STATUS="⚠️ Attempted to restart $CF_APPS_COMMA (Check CF logs)"
+              else
+                CF_APP_STATUS="▶️ $CF_APPS_COMMA restarted (runtime services restored)"
+              fi
+
+              if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
+                CARD_SUBTITLE="Pipeline build and deployment completed without errors • Restored $CF_APPS_COMMA."
+              fi
             fi
           fi
 
@@ -352,201 +423,5 @@ jobs:
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
                 "$WEBHOOK_URL"
-            fi
-          done
-
-  # ──────────────────────────────────────────────────────────
-  # 🚀 POST-DEPLOY: Automatically Restart crawler-layer-backend
-  # Triggered when AIS-02 or APM-01 build finishes (Success OR Failure)
-  # ──────────────────────────────────────────────────────────
-  post-restart-ais02:
-    needs: notify
-    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-AIS-02' && needs.notify.outputs.cf_app_name != ''
-    uses: ./.github/workflows/_cf_app_control.yml
-    with:
-      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
-      org: "ais-02-eu10-org"
-      space: "main"
-      app_name: ${{ needs.notify.outputs.cf_app_name }}
-      action: "start"
-    secrets: inherit
-
-  notify-restart-ais02:
-    needs: [notify, post-restart-ais02]
-    if: always() && needs.post-restart-ais02.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send AIS-02 App Restarted Teams Card
-        env:
-          APP_NAME: ${{ needs.notify.outputs.cf_app_name || 'crawler-layer-backend' }}
-        run: |
-          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
-          PAYLOAD=$(jq -n \
-            --arg title "🟢 AIS-02: $APP_NAME Restarted Successfully" \
-            --arg subtitle "Post-deployment automation has restarted $APP_NAME in Cloud Foundry (main space)." \
-            --arg status "🟢 Running • Services Restored" \
-            --arg app "$APP_NAME" \
-            --arg time "$TIMESTAMP" \
-            '{
-              type: "message",
-              attachments: [{
-                contentType: "application/vnd.microsoft.card.adaptive",
-                content: {
-                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                  type: "AdaptiveCard",
-                  version: "1.4",
-                  body: [
-                    {
-                      type: "TextBlock",
-                      size: "Large",
-                      weight: "Bolder",
-                      text: $title,
-                      wrap: true
-                    },
-                    {
-                      type: "TextBlock",
-                      text: $subtitle,
-                      size: "Medium",
-                      wrap: true,
-                      color: "Good"
-                    },
-                    {
-                      type: "ColumnSet",
-                      columns: [
-                        {
-                          type: "Column",
-                          width: "auto",
-                          items: [{
-                            type: "TextBlock",
-                            text: $status,
-                            weight: "Bolder",
-                            color: "Good"
-                          }]
-                        }
-                      ]
-                    },
-                    {
-                      type: "FactSet",
-                      facts: [
-                        { title: "Environment", value: "AIS-02" },
-                        { title: "App Name", value: $app },
-                        { title: "CF Space", value: "main" },
-                        { title: "State", value: "▶️ Running" },
-                        { title: "Timestamp", value: $time }
-                      ]
-                    }
-                  ]
-                }
-              }]
-            }')
-
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
-            if [ -n "$WEBHOOK_URL" ]; then
-              curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" || true
-            fi
-          done
-
-  post-restart-apm01:
-    needs: notify
-    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-APM-01' && needs.notify.outputs.cf_app_name != ''
-    uses: ./.github/workflows/_cf_app_control.yml
-    with:
-      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
-      org: "asint-apm-01"
-      space: "demo"
-      app_name: ${{ needs.notify.outputs.cf_app_name }}
-      action: "start"
-    secrets: inherit
-
-  notify-restart-apm01:
-    needs: [notify, post-restart-apm01]
-    if: always() && needs.post-restart-apm01.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send APM-01 App Restarted Teams Card
-        env:
-          APP_NAME: ${{ needs.notify.outputs.cf_app_name || 'crawler-layer-backend' }}
-        run: |
-          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
-          PAYLOAD=$(jq -n \
-            --arg title "🟢 APM-01: $APP_NAME Restarted Successfully" \
-            --arg subtitle "Post-deployment automation has restarted $APP_NAME in Cloud Foundry (demo space)." \
-            --arg status "🟢 Running • Services Restored" \
-            --arg app "$APP_NAME" \
-            --arg time "$TIMESTAMP" \
-            '{
-              type: "message",
-              attachments: [{
-                contentType: "application/vnd.microsoft.card.adaptive",
-                content: {
-                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                  type: "AdaptiveCard",
-                  version: "1.4",
-                  body: [
-                    {
-                      type: "TextBlock",
-                      size: "Large",
-                      weight: "Bolder",
-                      text: $title,
-                      wrap: true
-                    },
-                    {
-                      type: "TextBlock",
-                      text: $subtitle,
-                      size: "Medium",
-                      wrap: true,
-                      color: "Good"
-                    },
-                    {
-                      type: "ColumnSet",
-                      columns: [
-                        {
-                          type: "Column",
-                          width: "auto",
-                          items: [{
-                            type: "TextBlock",
-                            text: $status,
-                            weight: "Bolder",
-                            color: "Good"
-                          }]
-                        }
-                      ]
-                    },
-                    {
-                      type: "FactSet",
-                      facts: [
-                        { title: "Environment", value: "APM-01" },
-                        { title: "App Name", value: $app },
-                        { title: "CF Space", value: "demo" },
-                        { title: "State", value: "▶️ Running" },
-                        { title: "Timestamp", value: $time }
-                      ]
-                    }
-                  ]
-                }
-              }]
-            }')
-
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
-            if [ -n "$WEBHOOK_URL" ]; then
-              curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" || true
             fi
           done

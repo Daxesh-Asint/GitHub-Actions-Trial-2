@@ -142,9 +142,44 @@ jobs:
               ;;
           esac
 
+          # Resolve CF configuration from .github/cf-apps.json
+          CONFIG_FILE=".github/cf-apps.json"
+          if [ -f "$CONFIG_FILE" ]; then
+            CF_ENV_JSON=$(jq -c --arg name "$DEPLOY_NAME" '
+              def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+              .environments as $envs |
+              ([$envs | to_entries[] | select(
+                (.key | norm) == ($name | norm) or
+                ((.value.aliases // [])[] | norm) == ($name | norm)
+              ) | .value] | first) // null
+            ' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+            if [ -n "$CF_ENV_JSON" ] && [ "$CF_ENV_JSON" != "null" ]; then
+              CF_API=$(echo "$CF_ENV_JSON" | jq -r '.api // empty')
+              CF_ORG=$(echo "$CF_ENV_JSON" | jq -r '.org // empty')
+              CF_SPACE=$(echo "$CF_ENV_JSON" | jq -r '.space // empty')
+              CF_APPS_RAW=$(echo "$CF_ENV_JSON" | jq -r '(.apps // [])[]' 2>/dev/null || echo "")
+            fi
+          fi
+
+          CF_APPS_COMMA=""
+          CF_APPS_COUNT=0
+          while IFS= read -r app; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              if [ -z "$CF_APPS_COMMA" ]; then
+                CF_APPS_COMMA="$TRIMMED"
+              else
+                CF_APPS_COMMA="$CF_APPS_COMMA, $TRIMMED"
+              fi
+              CF_APPS_COUNT=$((CF_APPS_COUNT + 1))
+            fi
+          done <<< "$CF_APPS_RAW"
+
           echo "deploy_name=$DEPLOY_NAME" >> $GITHUB_ENV
           echo "dashboard_url=$DASHBOARD_URL" >> $GITHUB_ENV
-          echo "cf_stop_app=$CF_STOP_APP" >> $GITHUB_ENV
+          echo "cf_apps_comma=$CF_APPS_COMMA" >> $GITHUB_ENV
+          echo "cf_apps_count=$CF_APPS_COUNT" >> $GITHUB_ENV
           echo "cf_org=$CF_ORG" >> $GITHUB_ENV
           echo "cf_space=$CF_SPACE" >> $GITHUB_ENV
           echo "cf_api=$CF_API" >> $GITHUB_ENV
@@ -228,10 +263,10 @@ jobs:
           echo "should_run=false" >> $GITHUB_ENV
 
       # ──────────────────────────────────────────────────────────
-      # Stop CF app if required (only if automation is merging)
+      # Stop CF app(s) if required (only if automation is merging)
       # ──────────────────────────────────────────────────────────
       - name: Stop CF App Before Auto-Merge
-        if: env.should_run == 'true' && env.need_merge == 'true' && env.cf_stop_app != ''
+        if: env.should_run == 'true' && env.need_merge == 'true' && env.cf_apps_count != '0'
         env:
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
@@ -246,8 +281,14 @@ jobs:
           cf login -a "${{ env.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
           cf target -o "${{ env.cf_org }}" -s "${{ env.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ env.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ env.cf_space }}" || true
 
-          echo "🛑 Stopping app ${{ env.cf_stop_app }} to free memory quota..."
-          cf stop "${{ env.cf_stop_app }}"
+          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+          for app in "${APPS_LIST[@]}"; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              echo "🛑 Stopping app $TRIMMED to free memory quota..."
+              cf stop "$TRIMMED"
+            fi
+          done
           echo "app_was_stopped=true" >> $GITHUB_ENV
 
       # ──────────────────────────────────────────────────────────
@@ -269,7 +310,7 @@ jobs:
           fi
 
       # ──────────────────────────────────────────────────────────
-      # Safety Net: Restart App if Merge Fails
+      # Safety Net: Restart App if Merge Failed
       # ──────────────────────────────────────────────────────────
       - name: Safety Restart App If Merge Failed
         if: failure() && env.app_was_stopped == 'true'
@@ -277,10 +318,16 @@ jobs:
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
-          echo "⚠️ Merge failed after app was stopped! Restarting ${{ env.cf_stop_app }} immediately..."
+          echo "⚠️ Merge failed after app was stopped! Restarting $cf_apps_comma immediately..."
           cf login -a "${{ env.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
           cf target -o "${{ env.cf_org }}" -s "${{ env.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ env.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ env.cf_space }}" || true
-          cf start "${{ env.cf_stop_app }}"
+          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+          for app in "${APPS_LIST[@]}"; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              cf start "$TRIMMED"
+            fi
+          done
 
       # ──────────────────────────────────────────────────────────
       # Protected Branch Flow: Assign 5 Reviewers & Set Awaiting Approval
@@ -476,8 +523,8 @@ jobs:
           REPO="${{ github.repository }}"
           PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
           CF_APP_NOTE=""
-          if [ -n "${{ env.cf_stop_app }}" ]; then
-            CF_APP_NOTE="🛑 Stopped ${{ env.cf_stop_app }} — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed."
+          if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
+            CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed."
           fi
 
           PAYLOAD=$(jq -n \
