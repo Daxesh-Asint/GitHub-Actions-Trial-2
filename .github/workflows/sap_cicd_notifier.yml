@@ -332,9 +332,92 @@ jobs:
             fi
           fi
 
-          # 3. Check for configured MS Teams Webhook URLs
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
-            echo "No Teams webhook secrets configured. Skipping notification."
+          # 3. Resolve target channel webhook URLs (3 slots per environment + global fallback)
+          NORM_ENV=$(echo "$RESOURCE_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]//g')
+          TARGET_WEBHOOKS=()
+          case "$NORM_ENV" in
+            "ais02"|"asintais02")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
+              ;;
+            "apm01"|"asintapm01")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_3 }}")
+              ;;
+            "apm02"|"asintapm02")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_3 }}")
+              ;;
+            "apmeiot"|"asintapmeiot")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}")
+              ;;
+            "demo"|"asintdemo")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}")
+              ;;
+            "baystar"|"asintbaystar")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}")
+              ;;
+            "hscnonprod"|"hemlocknonprod"|"asinthemlocknonprod")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}")
+              ;;
+            "hscprod"|"hemlockprod"|"asinthemlockprod")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}")
+              ;;
+            "indoramaprod900"|"asintindoramaprod900")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}")
+              ;;
+            "indoramaprod933"|"asintindoramaprod933")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}")
+              ;;
+            "indoramaqa233"|"asintindoramaqa233")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}")
+              ;;
+            "indoramaqa234"|"asintindoramaqa234")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}")
+              ;;
+            "irc"|"asintirc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_3 }}")
+              ;;
+            "stenv"|"asintst"|"st")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}")
+              ;;
+          esac
+
+          # Fallback to Global Webhook URLs if no specific channel webhook is configured
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
+          fi
+
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            echo "ℹ️ No specific or fallback Teams webhook configured for '$RESOURCE_NAME'. Skipping notification."
             exit 0
           fi
 
@@ -414,21 +497,12 @@ jobs:
               }]
             }')
 
-          # 5. Broadcast to all configured Teams Webhooks
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+          # 5. Broadcast to target channel Teams Webhooks
+          for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
-                "$WEBHOOK_URL"
+                "$WEBHOOK_URL" || true
             fi
           done

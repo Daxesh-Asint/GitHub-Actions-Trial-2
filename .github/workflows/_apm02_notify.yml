@@ -327,18 +327,26 @@ jobs:
               }]
             }')
 
-          # Send to all configured webhook URLs (same pattern as _auto_merge.yml)
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_APM02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_APM02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_APM02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_APM02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_APM02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_APM02_6 }}"; do
+          # Resolve APM-02 webhooks (3 slots + existing + global fallback)
+          TARGET_WEBHOOKS=()
+          [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_1 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_3 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_URL_APM02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_APM02 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_URL_APM02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_APM02_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_URL_APM02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_APM02_3 }}")
+
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
+          fi
+
+          for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
-                "$WEBHOOK_URL"
+                "$WEBHOOK_URL" || true
             fi
           done
