@@ -285,6 +285,13 @@ jobs:
           done <<< "$CF_APPS_RAW"
 
           echo "cf_app_name=$CF_APPS_COMMA" >> $GITHUB_OUTPUT
+          echo "=== RESOLVED CF CONFIGURATION ==="
+          echo "Resource: $RESOURCE_NAME"
+          echo "CF API:   $CF_API"
+          echo "CF Org:   $CF_ORG"
+          echo "CF Space: $CF_SPACE"
+          echo "CF Apps:  $CF_APPS_COMMA (Count: $CF_APPS_COUNT)"
+          echo "================================="
 
           CF_APP_STATUS=""
           if [ -n "$CF_APPS_COMMA" ] && [ "$CF_APPS_COUNT" -gt 0 ] 2>/dev/null; then

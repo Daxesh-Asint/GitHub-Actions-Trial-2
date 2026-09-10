@@ -264,6 +264,13 @@ jobs:
           echo "cf_space=$CF_SPACE" >> $GITHUB_ENV
           echo "cf_apps_comma=$CF_APPS_COMMA" >> $GITHUB_ENV
           echo "cf_apps_count=$CF_APPS_COUNT" >> $GITHUB_ENV
+          echo "=== RESOLVED CF CONFIGURATION ==="
+          echo "Deployment: $DEPLOY_NAME"
+          echo "CF API:     $CF_API"
+          echo "CF Org:     $CF_ORG"
+          echo "CF Space:   $CF_SPACE"
+          echo "CF Apps:    $CF_APPS_COMMA (Count: $CF_APPS_COUNT)"
+          echo "================================="
 
       # ──────────────────────────────────────────────────────────
       # 🛑 Stop App(s) Just-In-Time (ONLY if PR is mergeable and apps configured)
