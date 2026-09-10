@@ -332,7 +332,11 @@ jobs:
               MERGE_COLOR="good"
               if [ -n "$DEPLOY_NAME" ]; then
                 CARD_TITLE="🚀 $DEPLOY_NAME Deployment Triggered"
-                CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
+                if [ -n "${{ inputs.cf_stop_app }}" ]; then
+                  CARD_SUBTITLE="Auto-merge completed • Stopped ${{ inputs.cf_stop_app }} (freed CF runtime memory) • SAP CI/CD started"
+                else
+                  CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
+                fi
               else
                 CARD_TITLE="GitHub Auto-Merge Notification"
                 CARD_SUBTITLE=""
@@ -393,6 +397,15 @@ jobs:
             fi
           fi
 
+          CF_APP_NOTE=""
+          if [ -n "${{ inputs.cf_stop_app }}" ]; then
+            if [ "${{ env.app_was_stopped }}" = "true" ] && [ "${{ env.pr_mergeable }}" != "true" ]; then
+              CF_APP_NOTE="▶️ Restarting ${{ inputs.cf_stop_app }} (Deployment merge failed; restoring runtime services)"
+            else
+              CF_APP_NOTE="🛑 Stopped ${{ inputs.cf_stop_app }} — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed."
+            fi
+          fi
+
           DASHBOARD_URL="${{ inputs.dashboard_url }}"
           DASHBOARD_TITLE="Track Deployment in SAP CI/CD Dashboard"
           if [ -n "$DEPLOY_NAME" ]; then
@@ -415,6 +428,7 @@ jobs:
             --arg subtitle "$CARD_SUBTITLE" \
             --arg dashboard_url "$DASHBOARD_URL" \
             --arg dashboard_title "$DASHBOARD_TITLE" \
+            --arg cf_app_note "$CF_APP_NOTE" \
             '{
               type: "message",
               attachments: [{
@@ -460,14 +474,19 @@ jobs:
                       },
                       {
                         type: "FactSet",
-                        facts: [
-                          { title: "Repository", value: $repo },
-                          { title: "Changes By", value: $authors },
-                          { title: "Pull Request", value: $pr },
-                          { title: "Source Branch", value: $source },
-                          { title: "Target Branch", value: $target },
-                          { title: "CI/CD Commit ID", value: $merge_commit }
-                        ]
+                        facts: (
+                          [
+                            { title: "Repository", value: $repo },
+                            { title: "Changes By", value: $authors },
+                            { title: "Pull Request", value: $pr },
+                            { title: "Source Branch", value: $source },
+                            { title: "Target Branch", value: $target },
+                            { title: "CI/CD Commit ID", value: $merge_commit }
+                          ] +
+                          (if $cf_app_note != "" then [
+                            { title: "CF App Control", value: $cf_app_note }
+                          ] else [] end)
+                        )
                       }
                     ]
                   ),
