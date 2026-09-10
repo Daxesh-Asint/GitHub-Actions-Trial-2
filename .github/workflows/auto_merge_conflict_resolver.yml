@@ -328,6 +328,7 @@ jobs:
             --arg pr_url "$PR_URL" \
             --arg dashboard_url "$DASHBOARD_URL" \
             --arg dashboard_title "$DASHBOARD_TITLE" \
+            --arg deploy_name "$DEPLOY_NAME" \
             '{
               type: "message",
               attachments: [{
@@ -369,7 +370,7 @@ jobs:
                     {
                       type: "FactSet",
                       facts: [
-                        { title: "Environment", value: $DEPLOY_NAME },
+                        { title: "Environment", value: $deploy_name },
                         { title: "Repository", value: $repo },
                         { title: "Resolved By", value: $resolver },
                         { title: "Pull Request", value: $pr },
