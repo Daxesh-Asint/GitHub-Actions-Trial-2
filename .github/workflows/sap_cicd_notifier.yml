@@ -62,6 +62,7 @@ jobs:
     outputs:
       event_type: ${{ steps.process.outputs.event_type }}
       resource_name: ${{ steps.process.outputs.resource_name }}
+      cf_app_name: ${{ steps.process.outputs.cf_app_name }}
     steps:
       - name: Process SAP CI/CD Event and Send MS Teams Notification
         id: process
@@ -227,12 +228,20 @@ jobs:
 
           [ -n "$SUBJECT" ] && [ "$SUBJECT" != "null" ] && CARD_SUBTITLE="$SUBJECT"
 
+          CF_APP_NAME=""
+          case "$RESOURCE_NAME" in
+            "AsInt-AIS-02"|"AsInt-APM-01")
+              CF_APP_NAME="crawler-layer-backend"
+              ;;
+          esac
+          echo "cf_app_name=$CF_APP_NAME" >> $GITHUB_OUTPUT
+
           CF_APP_STATUS=""
-          if [ "$RESOURCE_NAME" = "AsInt-AIS-02" ] || [ "$RESOURCE_NAME" = "AsInt-APM-01" ]; then
+          if [ -n "$CF_APP_NAME" ]; then
             if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
-              CF_APP_STATUS="🛑 crawler-layer-backend stopped (needed more CF runtime memory to get deployment completed)"
+              CF_APP_STATUS="🛑 $CF_APP_NAME stopped (needed more CF runtime memory to get deployment completed)"
             elif [ "$EVENT_TYPE" = "sap_cicd_finished" ]; then
-              CF_APP_STATUS="▶️ Restarting crawler-layer-backend to restore runtime services..."
+              CF_APP_STATUS="▶️ Restarting $CF_APP_NAME to restore runtime services..."
             fi
           fi
 
@@ -359,12 +368,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send AIS-02 App Restarted Teams Card
+        env:
+          APP_NAME: ${{ needs.notify.outputs.cf_app_name || 'crawler-layer-backend' }}
         run: |
           TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
           PAYLOAD=$(jq -n \
-            --arg title "🟢 AIS-02: crawler-layer-backend Restarted Successfully" \
-            --arg subtitle "Post-deployment automation has restarted crawler-layer-backend in Cloud Foundry (main space)." \
+            --arg title "🟢 AIS-02: $APP_NAME Restarted Successfully" \
+            --arg subtitle "Post-deployment automation has restarted $APP_NAME in Cloud Foundry (main space)." \
             --arg status "🟢 Running • Services Restored" \
+            --arg app "$APP_NAME" \
             --arg time "$TIMESTAMP" \
             '{
               type: "message",
@@ -408,7 +420,7 @@ jobs:
                       type: "FactSet",
                       facts: [
                         { title: "Environment", value: "AIS-02" },
-                        { title: "App Name", value: "crawler-layer-backend" },
+                        { title: "App Name", value: $app },
                         { title: "CF Space", value: "main" },
                         { title: "State", value: "▶️ Running" },
                         { title: "Timestamp", value: $time }
@@ -452,12 +464,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send APM-01 App Restarted Teams Card
+        env:
+          APP_NAME: ${{ needs.notify.outputs.cf_app_name || 'crawler-layer-backend' }}
         run: |
           TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
           PAYLOAD=$(jq -n \
-            --arg title "🟢 APM-01: crawler-layer-backend Restarted Successfully" \
-            --arg subtitle "Post-deployment automation has restarted crawler-layer-backend in Cloud Foundry (demo space)." \
+            --arg title "🟢 APM-01: $APP_NAME Restarted Successfully" \
+            --arg subtitle "Post-deployment automation has restarted $APP_NAME in Cloud Foundry (demo space)." \
             --arg status "🟢 Running • Services Restored" \
+            --arg app "$APP_NAME" \
             --arg time "$TIMESTAMP" \
             '{
               type: "message",
@@ -501,7 +516,7 @@ jobs:
                       type: "FactSet",
                       facts: [
                         { title: "Environment", value: "APM-01" },
-                        { title: "App Name", value: "crawler-layer-backend" },
+                        { title: "App Name", value: $app },
                         { title: "CF Space", value: "demo" },
                         { title: "State", value: "▶️ Running" },
                         { title: "Timestamp", value: $time }
