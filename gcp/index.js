@@ -4,12 +4,22 @@ const {
   getActiveDeploymentPR,
   triggerWorkflowDispatch
 } = require('./github');
+let envModule;
+try {
+  envModule = require('./environments');
+} catch (e) {
+  try {
+    envModule = require('./environment');
+  } catch (err) {
+    throw e;
+  }
+}
 const {
   ENVIRONMENTS,
   extractChannelName,
   getEnvironmentByChannelName,
   findEnvironmentInText
-} = require('./environments');
+} = envModule;
 const { sendBotResponse, sendHelpCard } = require('./teams');
 const {
   getBlockedExplanation,
