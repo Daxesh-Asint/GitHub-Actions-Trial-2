@@ -48,6 +48,14 @@ on:
         description: "Subject / Description"
         required: false
         default: "Build execution triggered in SAP CI/CD"
+      commit_id:
+        description: "Git Commit ID (optional)"
+        required: false
+        default: ""
+      app_name:
+        description: "CF App Name (optional, defaults to repo var or mapped app)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -58,13 +66,23 @@ jobs:
     outputs:
       event_type: ${{ steps.process.outputs.event_type }}
       resource_name: ${{ steps.process.outputs.resource_name }}
+      cf_app_name: ${{ steps.process.outputs.cf_app_name }}
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Process SAP CI/CD Event and Send MS Teams Notification
         id: process
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
           # 1. Determine payload inputs (from repository_dispatch or workflow_dispatch)
+          echo "=== RECEIVED CLIENT PAYLOAD ==="
+          echo '${{ toJson(github.event.client_payload) }}'
+          echo "================================"
+
           EVENT_TYPE="${{ github.event.action }}"
           [ -z "$EVENT_TYPE" ] && EVENT_TYPE="${{ github.event.inputs.event_type }}"
 
@@ -122,8 +140,82 @@ jobs:
           # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
           CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 
+          # Map Resource Name to Target Branch to determine Commit ID
+          TARGET_BRANCH=""
+          case "$RESOURCE_NAME" in
+            "AsInt-AIS-02"|"AsInt-AIS-02-Safety-Test-DND"|"AsInt-AIS-02-mta-fix")
+              TARGET_BRANCH="tenant/asint-ais-02"
+              ;;
+            "AsInt-APM-01")
+              TARGET_BRANCH="tenant/asint-apm-01-new"
+              ;;
+            "AsInt-APM-EIOT")
+              TARGET_BRANCH="apm-eiot-temp-copy"
+              ;;
+            "AsInt-DEMO")
+              TARGET_BRANCH="tenant/asint-demo"
+              ;;
+            "AsInt-IRC")
+              TARGET_BRANCH="tenant/asint-irc-temp"
+              ;;
+            "AsInt-ST")
+              TARGET_BRANCH="st-env-for-contentfederation"
+              ;;
+            "BAYSTAR")
+              TARGET_BRANCH="tenant/baystar"
+              ;;
+            "Hemlock-NON-PROD")
+              TARGET_BRANCH="tenant/hemlock-non-prod"
+              ;;
+            "Hemlock-PROD")
+              TARGET_BRANCH="tenant/hemlock-prod"
+              ;;
+            "Indorama-PROD-900")
+              TARGET_BRANCH="tenant/indorama-prod-900"
+              ;;
+            "Indorama-PROD-933")
+              TARGET_BRANCH="tenant/indorama-prod-933"
+              ;;
+            "Indorama-QA-233")
+              TARGET_BRANCH="tenant/indorama-qa-233"
+              ;;
+            "Indorama-QA-234")
+              TARGET_BRANCH="tenant/indorama-qa-234"
+              ;;
+          esac
+
+          COMMIT_ID="${{ github.event.client_payload.commit_id }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.commit }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.sha }}"
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.inputs.commit_id }}"
+
+          # If commit_id is an unexpanded template placeholder, clear it
+          case "$COMMIT_ID" in
+            "{"*|*"}"*) COMMIT_ID="" ;;
+          esac
+
+          # Search inside tags or raw payload if commit_id is empty
+          RAW_TAGS="${{ github.event.client_payload.tags }}"
+          [ -z "$RAW_TAGS" ] && RAW_TAGS='${{ toJson(github.event.client_payload) }}'
+          if [ -z "$COMMIT_ID" ]; then
+            TAG_COMMIT=$(echo "$RAW_TAGS" | grep -oE '(commitish|commit|sha)[=:][" ]?[a-f0-9]+' | grep -oE '[a-f0-9]{7,40}' | head -n 1)
+            [ -n "$TAG_COMMIT" ] && COMMIT_ID="$TAG_COMMIT"
+          fi
+
+          # Shorten to 7 characters if a valid commit hash was received
+          if echo "$COMMIT_ID" | grep -qE '^[a-f0-9]{7,40}$'; then
+            COMMIT_ID=$(echo "$COMMIT_ID" | cut -c 1-7)
+          else
+            COMMIT_ID=""
+          fi
+
+          if [ -z "$COMMIT_ID" ] && [ -n "$TARGET_BRANCH" ]; then
+            COMMIT_ID=$(gh api repos/${{ github.repository }}/commits/$TARGET_BRANCH --jq '.sha' 2>/dev/null | cut -c 1-7)
+          fi
+          [ -z "$COMMIT_ID" ] && COMMIT_ID="N/A"
+
           DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
 
           # 2. Configure Card Header, Color, and Subtitle based on Event Type
           if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
@@ -145,9 +237,187 @@ jobs:
 
           [ -n "$SUBJECT" ] && [ "$SUBJECT" != "null" ] && CARD_SUBTITLE="$SUBJECT"
 
-          # 3. Check for configured MS Teams Webhook URLs
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
-            echo "No Teams webhook secrets configured. Skipping notification."
+          # ──────────────────────────────────────────────────────────
+          # ⚙️ Resolve CF App Configuration (from .github/cf-apps.json)
+          # ──────────────────────────────────────────────────────────
+          CONFIG_FILE=".github/cf-apps.json"
+          CF_API=""
+          CF_ORG=""
+          CF_SPACE=""
+          CF_APPS_RAW=""
+
+          if [ -f "$CONFIG_FILE" ]; then
+            CF_ENV_JSON=$(jq -c --arg name "$RESOURCE_NAME" '
+              def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+              .environments as $envs |
+              ([$envs | to_entries[] | select(
+                (.key | norm) == ($name | norm) or
+                ((.value.aliases // [])[] | norm) == ($name | norm)
+              ) | .value] | first) // null
+            ' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+            if [ -n "$CF_ENV_JSON" ] && [ "$CF_ENV_JSON" != "null" ]; then
+              CF_API=$(echo "$CF_ENV_JSON" | jq -r '.api // empty')
+              CF_ORG=$(echo "$CF_ENV_JSON" | jq -r '.org // empty')
+              CF_SPACE=$(echo "$CF_ENV_JSON" | jq -r '.space // empty')
+              CF_APPS_RAW=$(echo "$CF_ENV_JSON" | jq -r '(.apps // [])[]' 2>/dev/null || echo "")
+            fi
+          fi
+
+          # Optional override from payload / input if provided
+          PAYLOAD_APP="${{ github.event.client_payload.app_name || github.event.inputs.app_name }}"
+          if [ -n "$PAYLOAD_APP" ]; then
+            CF_APPS_RAW="$PAYLOAD_APP"
+          fi
+
+          CF_APPS_COMMA=""
+          CF_APPS_COUNT=0
+          while IFS= read -r app; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              if [ -z "$CF_APPS_COMMA" ]; then
+                CF_APPS_COMMA="$TRIMMED"
+              else
+                CF_APPS_COMMA="$CF_APPS_COMMA, $TRIMMED"
+              fi
+              CF_APPS_COUNT=$((CF_APPS_COUNT + 1))
+            fi
+          done <<< "$CF_APPS_RAW"
+
+          echo "cf_app_name=$CF_APPS_COMMA" >> $GITHUB_OUTPUT
+          echo "=== RESOLVED CF CONFIGURATION ==="
+          echo "Resource: $RESOURCE_NAME"
+          echo "CF API:   $CF_API"
+          echo "CF Org:   $CF_ORG"
+          echo "CF Space: $CF_SPACE"
+          echo "CF Apps:  $CF_APPS_COMMA (Count: $CF_APPS_COUNT)"
+          echo "================================="
+
+          CF_APP_STATUS=""
+          if [ -n "$CF_APPS_COMMA" ] && [ "$CF_APPS_COUNT" -gt 0 ] 2>/dev/null; then
+            if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
+              CF_APP_STATUS="🛑 $CF_APPS_COMMA stopped (needed more CF runtime memory to get deployment completed)"
+            elif [ "$EVENT_TYPE" = "sap_cicd_finished" ]; then
+              echo "Installing CF CLI to restart apps..."
+              wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add - 2>/dev/null || true
+              echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list > /dev/null
+              sudo apt-get update -qq 2>/dev/null || true
+              sudo apt-get install -y cf8-cli 2>/dev/null || true
+
+              echo "Logging into Cloud Foundry to restart apps..."
+              cf login -a "$CF_API" -u "$CF_USERNAME" -p "$CF_PASSWORD" || true
+              cf target -o "$CF_ORG" -s "$CF_SPACE" || true
+
+              RESTART_FAILED=false
+              IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
+              for app in "${APPS_LIST[@]}"; do
+                TRIMMED=$(echo "$app" | xargs)
+                if [ -n "$TRIMMED" ]; then
+                  echo "▶️ Restarting app $TRIMMED..."
+                  if ! cf start "$TRIMMED"; then
+                    RESTART_FAILED=true
+                  fi
+                fi
+              done
+
+              if [ "$RESTART_FAILED" = "true" ]; then
+                CF_APP_STATUS="⚠️ Attempted to restart $CF_APPS_COMMA (Check CF logs)"
+              else
+                CF_APP_STATUS="▶️ $CF_APPS_COMMA restarted (runtime services restored)"
+              fi
+
+              if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
+                CARD_SUBTITLE="Pipeline build and deployment completed without errors • Restored $CF_APPS_COMMA."
+              fi
+            fi
+          fi
+
+          # 3. Resolve target channel webhook URLs (3 slots per environment + global fallback)
+          NORM_ENV=$(echo "$RESOURCE_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]//g')
+          TARGET_WEBHOOKS=()
+          case "$NORM_ENV" in
+            "ais02"|"asintais02")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
+              ;;
+            "apm01"|"asintapm01")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_3 }}")
+              ;;
+            "apm02"|"asintapm02")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_3 }}")
+              ;;
+            "apmeiot"|"asintapmeiot")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}")
+              ;;
+            "demo"|"asintdemo")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}")
+              ;;
+            "baystar"|"asintbaystar")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}")
+              ;;
+            "hscnonprod"|"hemlocknonprod"|"asinthemlocknonprod")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}")
+              ;;
+            "hscprod"|"hemlockprod"|"asinthemlockprod")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}")
+              ;;
+            "indoramaprod900"|"asintindoramaprod900")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}")
+              ;;
+            "indoramaprod933"|"asintindoramaprod933")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}")
+              ;;
+            "indoramaqa233"|"asintindoramaqa233")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}")
+              ;;
+            "indoramaqa234"|"asintindoramaqa234")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}")
+              ;;
+            "irc"|"asintirc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_3 }}")
+              ;;
+            "stenv"|"asintst"|"st")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}")
+              ;;
+          esac
+
+          # Fallback to Global Webhook URLs if no specific channel webhook is configured
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
+          fi
+
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            echo "ℹ️ No specific or fallback Teams webhook configured for '$RESOURCE_NAME'. Skipping notification."
             exit 0
           fi
 
@@ -159,8 +429,10 @@ jobs:
             --arg status "$STATUS_BADGE" \
             --arg job "$RESOURCE_NAME" \
             --arg env_name "$CLEAN_NAME" \
+            --arg commit_id "$COMMIT_ID" \
             --arg time "$TIMESTAMP" \
             --arg dashboard "$DASHBOARD_URL" \
+            --arg cf_app_status "$CF_APP_STATUS" \
             '{
               type: "message",
               attachments: [{
@@ -201,11 +473,17 @@ jobs:
                     },
                     {
                       type: "FactSet",
-                      facts: [
-                        { title: "Environment", value: $env_name },
-                        { title: "SAP CI/CD Job", value: $job },
-                        { title: "Timestamp", value: $time }
-                      ]
+                      facts: (
+                        [
+                          { title: "Environment", value: $env_name },
+                          { title: "SAP CI/CD Job", value: $job },
+                          { title: "CI/CD Commit ID", value: $commit_id },
+                          { title: "Timestamp", value: $time }
+                        ] +
+                        (if $cf_app_status != "" then [
+                          { title: "CF App Status", value: $cf_app_status }
+                        ] else [] end)
+                      )
                     }
                   ],
                   actions: [
@@ -219,49 +497,12 @@ jobs:
               }]
             }')
 
-          # 5. Broadcast to all configured Teams Webhooks
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+          # 5. Broadcast to target channel Teams Webhooks
+          for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
-                "$WEBHOOK_URL"
+                "$WEBHOOK_URL" || true
             fi
           done
-
-  # ──────────────────────────────────────────────────────────
-  # 🚀 POST-DEPLOY: Automatically Restart crawler-layer-backend
-  # Triggered when AIS-02 or APM-01 build finishes (Success OR Failure)
-  # ──────────────────────────────────────────────────────────
-  post-restart-ais02:
-    needs: notify
-    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-AIS-02'
-    uses: ./.github/workflows/_cf_app_control.yml
-    with:
-      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
-      org: "ais-02-eu10-org"
-      space: "main"
-      app_name: "crawler-layer-backend"
-      action: "start"
-    secrets: inherit
-
-  post-restart-apm01:
-    needs: notify
-    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-APM-01'
-    uses: ./.github/workflows/_cf_app_control.yml
-    with:
-      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
-      org: "asint-apm-01"
-      space: "demo"
-      app_name: "crawler-layer-backend"
-      action: "start"
-    secrets: inherit
