@@ -73,125 +73,174 @@ function _broadcastCard(urls, cardBodyElements, version, callback) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CARD BUILDER 1:  HELP CARD  ──  Stunning "marriage-invitation" layout
+// CARD BUILDER 1:  HELP CARD
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Builds a fully structured, beautiful Adaptive Card for the help command.
- * Each command gets its own Container block with:
- *   emoji icon  +  large accent command name
- *   monospace syntax line(s)
- *   subtle description text
- *   a visual separator between every command
- */
-function buildHelpCard(botName) {
+function buildHelpCard(botName, channelEnv, allEnvs) {
   const name = botName || 'Jarvis';
-  const commands = [
-    {
-      syntax: `@${name} share snapshot`,
-      desc: `Starts a new snapshot deployment with a default 60m cherry-pick window. You can specify a custom wait time (e.g. @${name} share snapshot 85m).`,
-      color: 'Accent'
-    },
-    {
-      syntax: `@${name} deploy now`,
-      desc: 'Bypasses the remaining wait countdown and immediately merges the snapshot into APM-02 to trigger SAP CI/CD build.',
-      color: 'Good'
-    },
-    {
-      syntax: `@${name} extend`,
-      desc: `Adds 10 minutes to the active cherry-pick countdown. You can specify custom minutes (e.g. @${name} extend 15m).`,
-      color: 'Accent'
-    },
-    {
-      syntax: `@${name} reduce`,
-      desc: `Subtracts 10 minutes from the active cherry-pick countdown. You can specify custom minutes (e.g. @${name} reduce 5m).`,
-      color: 'Warning'
-    },
-    {
-      syntax: `@${name} re-trigger`,
-      desc: 'Restarts the SAP CI/CD pipeline without code changes. Only works when the tracking PR has the APM-02 Failed label (not allowed in IDLE state).',
-      color: 'Attention'
-    },
-    {
-      syntax: `@${name} deployment fix pushed, re-deploy`,
-      desc: 'Re-merges the latest snapshot commits into APM-02 and triggers a new build after pushing a fix. Only works when the tracking PR has the APM-02 Failed label.',
-      color: 'Attention'
-    },
-    {
-      syntax: `@${name} status`,
-      desc: 'Displays the current real-time APM-02 deployment state, active tracking PR link, snapshot branch name, and initiator.',
-      color: 'Good'
-    },
-    {
-      syntax: `@${name} help`,
-      desc: 'Displays this command reference guide.',
-      color: 'Default'
-    }
-  ];
-
   const body = [];
 
-  // ── Clean Header block ──────────────────────────────────────────────────────
+  let headerTitle = `${name} - APM-02 Command Centre`;
+  let headerSubtitle = 'APM-02 Deployment & Snapshot Bot';
+  let commands = [];
+
+  if (channelEnv && channelEnv.isApm02) {
+    headerTitle = `${name} - APM-02 Command Centre`;
+    headerSubtitle = 'APM-02 Cherry-Pick Snapshot Window & CI/CD Bot';
+    commands = [
+      {
+        syntax: `@${name} share snapshot`,
+        desc: `Starts a new snapshot deployment with a default 60m cherry-pick window. Specify custom wait time (e.g. @${name} share snapshot 85m).`,
+        color: 'Accent'
+      },
+      {
+        syntax: `@${name} deploy now`,
+        desc: 'Bypasses the remaining wait countdown and immediately merges the snapshot into APM-02 to trigger SAP CI/CD build.',
+        color: 'Good'
+      },
+      {
+        syntax: `@${name} extend`,
+        desc: `Adds +10 minutes to the active cherry-pick window. Specify custom extension (e.g. @${name} extend 15m).`,
+        color: 'Warning'
+      },
+      {
+        syntax: `@${name} reduce`,
+        desc: `Subtracts -10 minutes from the active cherry-pick window. Specify custom reduction (e.g. @${name} reduce 5m).`,
+        color: 'Warning'
+      },
+      {
+        syntax: `@${name} re-trigger`,
+        desc: 'Restarts SAP CI/CD build without code changes. (Strictly works only when PR has "APM-02 Failed" label).',
+        color: 'Attention'
+      },
+      {
+        syntax: `@${name} deployment fix pushed, re-deploy`,
+        desc: 'Re-merges snapshot into APM-02 after pushing a code fix. (Strictly works only when PR has "APM-02 Failed" label).',
+        color: 'Attention'
+      },
+      {
+        syntax: `@${name} status`,
+        desc: 'Queries real-time APM-02 deployment state and tracking PR status.',
+        color: 'Default'
+      }
+    ];
+  } else if (channelEnv) {
+    headerTitle = `${name} - ${channelEnv.name} Command Centre`;
+    headerSubtitle = `Dedicated deployment channel for ${channelEnv.name}`;
+    commands = [
+      {
+        syntax: `@${name} deploy`,
+        desc: `Immediately triggers deployment for ${channelEnv.name} (merges latest code and starts SAP CI/CD pipeline).`,
+        color: 'Good'
+      },
+      {
+        syntax: `@${name} deploy ${channelEnv.name.toLowerCase()}`,
+        desc: `Explicit syntax to trigger deployment for ${channelEnv.name}.`,
+        color: 'Accent'
+      },
+      {
+        syntax: `@${name} help`,
+        desc: `Displays available deployment commands for this channel.`,
+        color: 'Default'
+      }
+    ];
+  } else {
+    headerTitle = `${name} - Multi-Environment Deployment Bot`;
+    headerSubtitle = 'Automated SAP CI/CD Deployment Bot';
+    commands = (allEnvs || [])
+      .filter((e) => !e.isApm02)
+      .map((e) => ({
+        syntax: `@${name} deploy ${e.name.toLowerCase()}`,
+        desc: `Execute in ${e.channelName} to deploy ${e.name}.`,
+        color: 'Accent'
+      }));
+  }
+
+  // ── Header Banner ──────────────────────────────────────────────────────────
   body.push({
     type: 'Container',
     style: 'emphasis',
     bleed: true,
+    spacing: 'None',
     items: [
       {
-        type: 'TextBlock',
-        text: (botName || 'JARVIS').toUpperCase(),
-        size: 'Large',
-        weight: 'Bolder',
-        color: 'Accent',
-        spacing: 'None'
-      },
-      {
-        type: 'TextBlock',
-        text: 'APM-02 Deployment Command Reference',
-        size: 'Small',
-        isSubtle: true,
-        spacing: 'None',
-        wrap: true
+        type: 'ColumnSet',
+        columns: [
+          {
+            type: 'Column',
+            width: 'auto',
+            verticalContentAlignment: 'Center',
+            items: [
+              {
+                type: 'Image',
+                url: 'https://img.icons8.com/color/96/bot.png',
+                size: 'Small',
+                style: 'Person'
+              }
+            ]
+          },
+          {
+            type: 'Column',
+            width: 'stretch',
+            verticalContentAlignment: 'Center',
+            items: [
+              {
+                type: 'TextBlock',
+                text: headerTitle,
+                size: 'Large',
+                weight: 'Bolder',
+                color: 'Accent',
+                spacing: 'None',
+                wrap: true
+              },
+              {
+                type: 'TextBlock',
+                text: headerSubtitle,
+                size: 'Small',
+                isSubtle: true,
+                spacing: 'None',
+                wrap: true
+              }
+            ]
+          }
+        ]
       }
     ]
   });
 
   // ── One Container per command ───────────────────────────────────────────────
   commands.forEach((cmd, idx) => {
-    const items = [];
-
-    // Prominent, readable command syntax
-    items.push({
-      type: 'TextBlock',
-      text: `${idx + 1}.  ${cmd.syntax}`,
-      size: 'Medium',
-      weight: 'Bolder',
-      color: cmd.color,
-      spacing: 'None',
-      wrap: true
-    });
-
-    // Complete, clear description
-    items.push({
-      type: 'TextBlock',
-      text: cmd.desc,
-      size: 'Small',
-      isSubtle: true,
-      wrap: true,
-      spacing: 'Small'
-    });
-
     body.push({
       type: 'Container',
       separator: true,
       spacing: 'Medium',
-      items: items
+      items: [
+        {
+          type: 'TextBlock',
+          text: `${idx + 1}.  ${cmd.syntax}`,
+          size: 'Medium',
+          weight: 'Bolder',
+          color: cmd.color,
+          spacing: 'None',
+          wrap: true
+        },
+        {
+          type: 'TextBlock',
+          text: cmd.desc,
+          size: 'Small',
+          isSubtle: true,
+          wrap: true,
+          spacing: 'Small'
+        }
+      ]
     });
   });
 
   // ── Clean Footer ───────────────────────────────────────────────────────────
   body.push({
     type: 'TextBlock',
-    text: 'Type any command above and press Enter to execute.',
+    text: channelEnv
+      ? `🔒 Commands are isolated: Only ${channelEnv.name} actions can run in this channel.`
+      : 'Type any command above and press Enter to execute.',
     size: 'Small',
     isSubtle: true,
     wrap: true,
@@ -203,18 +252,8 @@ function buildHelpCard(botName) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CARD BUILDER 2:  GENERIC CARD  ──  For status / blocked / confirmation cards
+// CARD BUILDER 2:  GENERIC CARD
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Converts a plain-text message string into a structured, properly-spaced
- * Adaptive Card body.
- *
- * Layout rules:
- *  • cardTitle      → Large bold accent header + separator line below
- *  • paragraphs (\n\n) → Medium spacing between blocks
- *  • lines (\n)     → Small spacing between lines
- *  • "* " prefix    → rendered as "• " bullet
- */
 function buildGenericCard(messageText, cardTitle) {
   const body = [];
 
@@ -231,7 +270,7 @@ function buildGenericCard(messageText, cardTitle) {
     body.push({ type: 'TextBlock', text: ' ', spacing: 'Small', separator: true });
   }
 
-  const paragraphs = messageText.split(/\n\n+/);
+  const paragraphs = (messageText || '').split(/\n\n+/);
   let firstParagraph = true;
 
   for (const paragraph of paragraphs) {
@@ -266,7 +305,7 @@ function buildGenericCard(messageText, cardTitle) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC: postToTeamsWebhook  ──  generic webhook broadcast
+// PUBLIC: postToTeamsWebhook
 // ─────────────────────────────────────────────────────────────────────────────
 function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
   const cardBody = buildGenericCard(messageText, cardTitle);
@@ -274,49 +313,75 @@ function postToTeamsWebhook(urls, messageText, cardTitle, callback) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC: sendBotResponse  ──  generic response (status / blocked / confirm)
+// PUBLIC: sendBotResponse
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Posts a generic card to the Teams main feed via Incoming Webhook.
- * Falls back to a thread reply if no webhook URL is configured.
- */
-function sendBotResponse(res, messageText, cardTitle) {
-  if (config.TEAMS_WEBHOOK_URL) {
-    postToTeamsWebhook(config.TEAMS_WEBHOOK_URL, messageText, cardTitle, (err) => {
+function sendBotResponse(res, messageText, cardTitle, targetWebhookUrl) {
+  const webhookUrl = targetWebhookUrl || config.TEAMS_WEBHOOK_URL;
+  const cardBody = buildGenericCard(messageText, cardTitle);
+
+  if (webhookUrl) {
+    postToTeamsWebhook(webhookUrl, messageText, cardTitle, (err) => {
       if (err) {
-        console.error('Failed to post to Teams webhook, falling back to thread reply:', err);
+        console.error('Failed to post to Teams webhook, falling back to response:', err);
         return res.status(200).json({
           type: 'message',
-          text: (cardTitle ? '### ' + cardTitle + '\n\n' : '') + messageText
+          attachments: [
+            {
+              contentType: 'application/vnd.microsoft.card.adaptive',
+              content: {
+                $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+                type: 'AdaptiveCard',
+                version: '1.4',
+                body: cardBody
+              }
+            }
+          ]
         });
       }
-      // HTTP 204 → Teams creates ZERO collapsed reply threads
       return res.status(204).end();
     });
   } else {
     return res.status(200).json({
       type: 'message',
-      text: (cardTitle ? '### ' + cardTitle + '\n\n' : '') + messageText
+      attachments: [
+        {
+          contentType: 'application/vnd.microsoft.card.adaptive',
+          content: {
+            $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+            type: 'AdaptiveCard',
+            version: '1.4',
+            body: cardBody
+          }
+        }
+      ]
     });
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC: sendHelpCard  ──  the stunning structured help card
+// PUBLIC: sendHelpCard
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Posts the rich, eye-catching help card to the Teams main feed.
- * Falls back to a minimal thread reply if no webhook URL is configured.
- */
-function sendHelpCard(res, botName) {
-  if (config.TEAMS_WEBHOOK_URL) {
-    const cardBody = buildHelpCard(botName);
-    _broadcastCard(config.TEAMS_WEBHOOK_URL, cardBody, '1.4', (err) => {
+function sendHelpCard(res, botName, channelEnv, allEnvs, targetWebhookUrl) {
+  const webhookUrl = targetWebhookUrl || config.TEAMS_WEBHOOK_URL;
+  const cardBody = buildHelpCard(botName, channelEnv, allEnvs);
+
+  if (webhookUrl) {
+    _broadcastCard(webhookUrl, cardBody, '1.4', (err) => {
       if (err) {
         console.error('Failed to post help card to Teams webhook, falling back:', err);
         return res.status(200).json({
           type: 'message',
-          text: '### ⚡ ' + botName + ' – APM-02 Command Centre\n\nType `@' + botName + ' help` to see available commands.'
+          attachments: [
+            {
+              contentType: 'application/vnd.microsoft.card.adaptive',
+              content: {
+                $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+                type: 'AdaptiveCard',
+                version: '1.4',
+                body: cardBody
+              }
+            }
+          ]
         });
       }
       return res.status(204).end();
@@ -324,12 +389,24 @@ function sendHelpCard(res, botName) {
   } else {
     return res.status(200).json({
       type: 'message',
-      text: '### ⚡ ' + botName + ' – APM-02 Command Centre\n\nType `@' + botName + ' help` to see available commands.'
+      attachments: [
+        {
+          contentType: 'application/vnd.microsoft.card.adaptive',
+          content: {
+            $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+            type: 'AdaptiveCard',
+            version: '1.4',
+            body: cardBody
+          }
+        }
+      ]
     });
   }
 }
 
 module.exports = {
+  buildHelpCard,
+  buildGenericCard,
   postToTeamsWebhook,
   sendBotResponse,
   sendHelpCard
