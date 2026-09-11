@@ -65,7 +65,35 @@ function getBlockedExplanation(activePr, botName) {
 }
 
 /**
- * Generates formatted Help guide with detailed rules for each command
+ * Message when a command is executed in the wrong channel
+ */
+function getChannelMismatchMessage(currentChannelName, requestedEnvName, targetChannelName) {
+  return {
+    title: `⚠️ Command Restricted to ${targetChannelName || requestedEnvName}`,
+    body:
+      `You are currently in the **${currentChannelName || 'different'}** channel.\n\n` +
+      `* Commands for **${requestedEnvName}** can only be executed in **${targetChannelName || requestedEnvName + ' Deployment POC'}**.\n\n` +
+      `👉 *Please navigate to the **${targetChannelName || requestedEnvName}** channel to trigger this deployment.*`
+  };
+}
+
+/**
+ * Message when a deployment is successfully triggered
+ */
+function getDeployInitiatedMessage(envName, user) {
+  const userName = user ? `@${user}` : 'User';
+  return {
+    title: `🚀 Deployment Initiated for ${envName}!`,
+    body:
+      `* **Environment:** \`${envName}\`\n\n` +
+      `* **Triggered By:** ${userName}\n\n` +
+      `* **Status:** GitHub Actions workflow has been dispatched. Auto-merge and SAP CI/CD deployment are starting.\n\n` +
+      `📢 *Live deployment progress cards will be delivered to this channel shortly.*`
+  };
+}
+
+/**
+ * Generates formatted Help guide for APM-02 (cherry-pick snapshot window)
  */
 function getHelpMessage(botName) {
   return {
@@ -89,6 +117,44 @@ function getHelpMessage(botName) {
       `  Check real-time APM-02 deployment status & active tracking PR.\n\n` +
       `* **\`@${botName} help\`**\n\n` +
       `  Display this command reference guide.`
+  };
+}
+
+/**
+ * Context-aware Help guide based on the channel
+ */
+function getChannelHelpMessage(channelEnv, botName, allEnvs) {
+  const name = botName || 'Jarvis';
+
+  if (channelEnv && channelEnv.isApm02) {
+    return getHelpMessage(name);
+  }
+
+  if (channelEnv) {
+    return {
+      title: `⚡ ${name} - ${channelEnv.name} Deployment Commands`,
+      body:
+        `* **\`@${name} deploy\`** *(or \`@${name} deploy ${channelEnv.name.toLowerCase()}\`)*\n\n` +
+        `  Immediately triggers deployment for **${channelEnv.name}** (merges latest code into tenant branch and initiates SAP CI/CD pipeline).\n\n` +
+        `* **\`@${name} help\`**\n\n` +
+        `  Displays available deployment commands for this channel.\n\n` +
+        `🔒 *Note: Only ${channelEnv.name} deployment commands can be executed in this channel.*`
+    };
+  }
+
+  // Fallback if no specific channel detected
+  const envList = (allEnvs || [])
+    .filter((e) => !e.isApm02)
+    .map((e) => `* **\`@${name} deploy ${e.name.toLowerCase()}\`** → Deploy to ${e.name}`)
+    .join('\n');
+
+  return {
+    title: `⚡ ${name} - Deployment Command Centre`,
+    body:
+      `Each environment has its own dedicated MS Teams channel where deployment commands run.\n\n` +
+      `**Available Direct Deploy Commands:**\n\n` +
+      `${envList}\n\n` +
+      `* **\`@${name} share snapshot\`** *(APM-02 Deployment POC channel only)*`
   };
 }
 
@@ -118,6 +184,9 @@ function getStatusMessage(activePr) {
 
 module.exports = {
   getBlockedExplanation,
+  getChannelMismatchMessage,
+  getDeployInitiatedMessage,
   getHelpMessage,
+  getChannelHelpMessage,
   getStatusMessage
 };
