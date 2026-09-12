@@ -17,6 +17,7 @@ try {
 const {
   ENVIRONMENTS,
   extractChannelName,
+  getEnvironmentById,
   getEnvironmentByChannelName,
   findEnvironmentInText
 } = envModule;
@@ -63,17 +64,22 @@ exports.deployBot = (req, res) => {
         : 'Team Member';
 
     // 4. Detect MS Teams Channel & Environment context
+    //    Priority: ?channel= query param → channelData.channel.name → conversation.name
+    const queryChannel = req.query && (req.query.channel || req.query.env) ? (req.query.channel || req.query.env) : null;
     const channelName = extractChannelName(req);
-    const currentChannelEnv = getEnvironmentByChannelName(channelName);
+    const currentChannelEnv = queryChannel
+      ? getEnvironmentById(queryChannel)       // Most reliable: ?channel=apm02
+      : getEnvironmentByChannelName(channelName); // Fallback: Teams payload
     const targetWebhookUrl = config.getChannelWebhookUrl(currentChannelEnv);
 
     // 🔍 DEBUG: Log channel detection for troubleshooting boundary issues
     console.log('[Channel Detection]', JSON.stringify({
+      queryChannel: queryChannel || '(none)',
       detectedChannelName: channelName || '(empty)',
       resolvedEnv: currentChannelEnv ? currentChannelEnv.id : '(none)',
+      resolvedVia: queryChannel ? 'query-param' : (currentChannelEnv ? 'payload' : 'undetected'),
       channelData: req.body && req.body.channelData ? req.body.channelData : '(missing)',
-      conversationName: req.body && req.body.conversation && req.body.conversation.name ? req.body.conversation.name : '(missing)',
-      queryParams: req.query || '(none)'
+      conversationName: req.body && req.body.conversation && req.body.conversation.name ? req.body.conversation.name : '(missing)'
     }));
 
     // 5. Clean user input (strip HTML tags like <at>Jarvis</at>)
