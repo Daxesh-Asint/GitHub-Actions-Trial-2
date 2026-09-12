@@ -67,6 +67,15 @@ exports.deployBot = (req, res) => {
     const currentChannelEnv = getEnvironmentByChannelName(channelName);
     const targetWebhookUrl = config.getChannelWebhookUrl(currentChannelEnv);
 
+    // 🔍 DEBUG: Log channel detection for troubleshooting boundary issues
+    console.log('[Channel Detection]', JSON.stringify({
+      detectedChannelName: channelName || '(empty)',
+      resolvedEnv: currentChannelEnv ? currentChannelEnv.id : '(none)',
+      channelData: req.body && req.body.channelData ? req.body.channelData : '(missing)',
+      conversationName: req.body && req.body.conversation && req.body.conversation.name ? req.body.conversation.name : '(missing)',
+      queryParams: req.query || '(none)'
+    }));
+
     // 5. Clean user input (strip HTML tags like <at>Jarvis</at>)
     const rawText = (req.body && typeof req.body.text === 'string') ? req.body.text : '';
     const cleanText = rawText.replace(/<[^>]*>/g, '').trim().toLowerCase();
@@ -110,11 +119,54 @@ exports.deployBot = (req, res) => {
     }
 
     // =======================================================================
+    // 🔒 FAIL-CLOSED: Block deploy commands when channel is UNDETECTED
+    // =======================================================================
+    // If channel name could not be determined, block deploy commands targeting
+    // non-APM-02 environments. APM-02-exclusive commands (share snapshot, etc.)
+    // are exempt — they're handled by the APM-02 section below.
+    if (!currentChannelEnv && targetEnvInText) {
+      if (cleanText.includes('deploy')) {
+        console.warn('[SECURITY] Deploy command blocked — channel not detected.', {
+          rawText: rawText.substring(0, 200),
+          targetEnv: targetEnvInText.name,
+          channelName: channelName || '(empty)'
+        });
+        return sendBotResponse(
+          res,
+          `🔒 **Channel Not Detected**\n\n` +
+          `Your deploy command for **${targetEnvInText.name}** was blocked because the bot could not verify which Teams channel you're in.\n\n` +
+          `**How to fix:**\n` +
+          `* Use this command from the dedicated **${targetEnvInText.channelName}** channel\n` +
+          `* Make sure the bot is properly installed in the channel\n\n` +
+          `💡 *This is a security measure to prevent cross-environment deployments.*`,
+          `🛡️ Channel Verification Failed`,
+          targetWebhookUrl
+        );
+      }
+    }
+
+    // =======================================================================
     // 🤖 APM-02 SPECIFIC LOGIC (For APM-02 Deployment POC)
     // =======================================================================
+    // APM-02-exclusive commands that no other environment uses.
+    // When these are detected, we know the user intends APM-02 regardless of
+    // channel detection (restores pre-refactor behavior).
+    const isApm02ExclusiveCommand =
+      cleanText.includes('share snapshot') ||
+      cleanText.includes('deploy now') ||
+      cleanText.includes('force start') ||
+      cleanText.includes('re-trigger') ||
+      cleanText.includes('retrigger') ||
+      cleanText.includes('deployment fix pushed') ||
+      cleanText.includes('fix pushed') ||
+      cleanText.includes('re-deploy fix') ||
+      cleanText.includes('redeploy fix') ||
+      /(?:extend|reduce|decrease)\s+\d+/.test(cleanText);
+
     const isApm02Context =
       (currentChannelEnv && currentChannelEnv.isApm02) ||
-      (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02);
+      (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02) ||
+      isApm02ExclusiveCommand;
 
     if (isApm02Context) {
       // ---------------------------------------------------------------------
