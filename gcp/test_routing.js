@@ -58,7 +58,37 @@ const detectedChannel = extractChannelName(mockReqFromTeams);
 assert.strictEqual(detectedChannel, 'AIS-02 Deployment POC');
 const detectedEnv = getEnvironmentByChannelName(detectedChannel);
 assert.strictEqual(detectedEnv.name, 'AIS-02');
-console.log(`  ✅ Successfully detected "${detectedEnv.name}" from channelData`);
+console.log(`  ✅ Successfully detected "${detectedEnv.name}" from channelData.name`);
+
+// Test 2b: Real Teams Outgoing Webhook payload (using teamsChannelId without channel name)
+console.log('\nTest 2b: Testing channel ID detection from Teams Outgoing Webhook payload...');
+const realApm02TeamsReq = {
+  body: {
+    channelData: {
+      teamsChannelId: '19:lSAZ2F1bhcVqFh6zoLafU-RovkCK6uhoMM4sBBaQMcY1@thread.tacv2',
+      channel: {
+        id: '19:lSAZ2F1bhcVqFh6zoLafU-RovkCK6uhoMM4sBBaQMcY1@thread.tacv2'
+      }
+    }
+  }
+};
+const detectedApm02Id = extractChannelName(realApm02TeamsReq);
+const detectedApm02Env = getEnvironmentByChannelName(detectedApm02Id);
+assert(detectedApm02Env, 'Should find APM-02 from real Teams channelData ID');
+assert.strictEqual(detectedApm02Env.id, 'apm02', 'Should resolve to APM-02');
+assert.strictEqual(detectedApm02Env.isApm02, true, 'Should have isApm02 flag');
+console.log(`  ✅ Successfully detected APM-02 from real teamsChannelId!`);
+
+// Test 2c: Verify all 14 channels resolve correctly from their channelId
+console.log('\nTest 2c: Verifying all 14 channel IDs resolve to their environments...');
+for (const env of ENVIRONMENTS) {
+  assert(env.channelId, `Environment ${env.name} must have channelId`);
+  const req = { body: { channelData: { teamsChannelId: env.channelId } } };
+  const resolved = getEnvironmentByChannelName(extractChannelName(req));
+  assert(resolved, `Failed to resolve ${env.name} from ID ${env.channelId}`);
+  assert.strictEqual(resolved.id, env.id, `ID mismatch for ${env.name}`);
+  console.log(`  ✅ ${env.name} (${env.channelId.substring(0, 20)}...) → ${resolved.name}`);
+}
 
 // Test 3: Detecting environment aliases in command text
 console.log('\nTest 3: Testing environment detection in text...');
