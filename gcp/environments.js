@@ -148,6 +148,20 @@ function extractChannelName(req) {
 }
 
 /**
+ * Finds environment by its ID or alias (used for ?channel= query param resolution)
+ * Accepts: env id (e.g. 'apm02'), env name (e.g. 'APM-02'), or any alias
+ */
+function getEnvironmentById(idOrAlias) {
+  if (!idOrAlias) return null;
+  const norm = normalizeString(idOrAlias);
+  return ENVIRONMENTS.find((env) => {
+    if (normalizeString(env.id) === norm) return true;
+    if (normalizeString(env.name) === norm) return true;
+    return env.aliases.some((alias) => normalizeString(alias) === norm);
+  }) || null;
+}
+
+/**
  * Finds environment by its Teams Channel Name
  */
 function getEnvironmentByChannelName(channelName) {
@@ -193,6 +207,7 @@ module.exports = {
   ENVIRONMENTS,
   normalizeString,
   extractChannelName,
+  getEnvironmentById,
   getEnvironmentByChannelName,
   findEnvironmentInText
 };
