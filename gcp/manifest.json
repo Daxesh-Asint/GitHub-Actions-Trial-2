@@ -1,0 +1,75 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "c6a2d9b2-3e28-4e94-9842-deploybot001",
+  "packageName": "com.asint.deploybot.jarvis",
+  "developer": {
+    "name": "AsInt",
+    "websiteUrl": "https://asint.net",
+    "privacyUrl": "https://asint.net/privacy",
+    "termsOfUseUrl": "https://asint.net/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Jarvis",
+    "full": "Jarvis APM-02 Deployment Bot"
+  },
+  "description": {
+    "short": "APM-02 Deployment & Snapshot Bot",
+    "full": "Automated deployment bot for APM-02 snapshots, cherry-pick windows, and CI/CD retries."
+  },
+  "accentColor": "#0078D4",
+  "bots": [
+    {
+      "botId": "YOUR_BOT_APP_ID_HERE",
+      "scopes": ["team", "personal", "groupChat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["team", "groupChat"],
+          "commands": [
+            {
+              "title": "share snapshot",
+              "description": "Default 60m wait, or specify custom wait time e.g. share snapshot 85m"
+            },
+            {
+              "title": "deploy now",
+              "description": "Bypass waiting countdown and deploy snapshot to APM-02 immediately"
+            },
+            {
+              "title": "extend",
+              "description": "Add minutes to countdown (default: +10m, or specify e.g. extend 15m)"
+            },
+            {
+              "title": "reduce",
+              "description": "Subtract minutes from countdown (default: -10m, or specify e.g. reduce 5m)"
+            },
+            {
+              "title": "re-trigger",
+              "description": "Restart pipeline without code changes (only when APM-02 Failed; idle won't work)"
+            },
+            {
+              "title": "deployment fix pushed, re-deploy",
+              "description": "Re-deploy after pushing fix to snapshot branch (only when APM-02 Failed; idle won't work)"
+            },
+            {
+              "title": "status",
+              "description": "Query real-time APM-02 deployment status & active tracking PR"
+            },
+            {
+              "title": "help",
+              "description": "Display complete command guide and rules"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["deploybot-apm02-poc-1030431607563.us-central1.run.app"]
+}

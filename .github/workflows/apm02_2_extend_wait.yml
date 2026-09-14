@@ -6,27 +6,27 @@ name: "APM-02: 2. Extend Wait Window"
 on:
   repository_dispatch:
     types: [adjust_apm02_wait]
-  workflow_dispatch:
-    inputs:
-      deploy_now:
-        description: "Deploy Immediately (skip remaining wait)"
-        type: boolean
-        required: false
-        default: false
-      adjust_minutes:
-        description: "How many minutes to adjust? (+ for extend, - for decrease)"
-        required: true
-        default: "10"
-        type: choice
-        options:
-          - "-30"
-          - "-20"
-          - "-10"
-          - "-5"
-          - "5"
-          - "10"
-          - "20"
-          - "30"
+#  workflow_dispatch:
+#    inputs:
+#      deploy_now:
+#        description: "Deploy Immediately (skip remaining wait)"
+#        type: boolean
+#        required: false
+#        default: false
+#      adjust_minutes:
+#        description: "How many minutes to adjust? (+ for extend, - for decrease)"
+#        required: true
+#        default: "10"
+#        type: choice
+#        options:
+#          - "-30"
+#          - "-20"
+#          - "-10"
+#          - "-5"
+#          - "5"
+#          - "10"
+#          - "20"
+#          - "30"
 
 jobs:
   # ─────────────────────────────────────────────

@@ -1,0 +1,15 @@
+{
+  "name": "gcp-teams-deploy-bot",
+  "version": "1.0.0",
+  "description": "Microsoft Teams deployment bot for APM-02 and AIS-02 environments hosted on GCP Cloud Functions / Cloud Run",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "AsInt",
+  "license": "ISC"
+}
