@@ -327,7 +327,7 @@ jobs:
               fi
 
               if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
-                CARD_SUBTITLE="Pipeline build and deployment completed without errors • Restored $CF_APPS_COMMA."
+                CARD_SUBTITLE="Pipeline build and deployment completed without errors."
               fi
             fi
           fi
@@ -473,17 +473,12 @@ jobs:
                     },
                     {
                       type: "FactSet",
-                      facts: (
-                        [
-                          { title: "Environment", value: $env_name },
-                          { title: "SAP CI/CD Job", value: $job },
-                          { title: "CI/CD Commit ID", value: $commit_id },
-                          { title: "Timestamp", value: $time }
-                        ] +
-                        (if $cf_app_status != "" then [
-                          { title: "CF App Status", value: $cf_app_status }
-                        ] else [] end)
-                      )
+                      facts: [
+                        { title: "Environment", value: $env_name },
+                        { title: "SAP CI/CD Job", value: $job },
+                        { title: "CI/CD Commit ID", value: $commit_id },
+                        { title: "Timestamp", value: $time }
+                      ]
                     }
                   ],
                   actions: [

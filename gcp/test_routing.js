@@ -245,4 +245,69 @@ const genericCardText = JSON.stringify(genericHelpCard);
 assert(genericCardText.includes('Multi-Environment'), 'Generic help should say Multi-Environment');
 console.log('  ✅ Generic help card shows multi-environment list');
 
-console.log('\n🎉 ALL TESTS PASSED! Multi-environment channel routing is 100% verified.');
+// Test 9: Status message verification across all PR states
+console.log('\nTest 9: APM-02 Status card message verification across all states...');
+const { getStatusMessage } = require('./messages');
+
+// 9a. IDLE state (no active PR)
+const idleStatus = getStatusMessage(null);
+assert(idleStatus.title.includes('IDLE'), 'Should indicate IDLE state');
+assert(idleStatus.body.includes('share snapshot'), 'Should suggest share snapshot');
+console.log('  ✅ IDLE state status message verified');
+
+// 9b. APM-02 Active (Cherry-pick window)
+const activePr = {
+  number: 101,
+  html_url: 'https://github.com/org/repo/pull/101',
+  labels: [{ name: 'APM-02 Active' }],
+  body: 'snapshot/main-2026-09-14-1200',
+  user: { login: 'daxesh' }
+};
+const activeStatus = getStatusMessage(activePr);
+assert(activeStatus.title.includes('Waiting for Cherry-Picks'), 'Active title mismatch');
+assert(activeStatus.body.includes('Active snapshot branch is available & waiting for cherry-picks'), 'Active status body mismatch');
+assert(activeStatus.body.includes('deploy now'), 'Should suggest deploy now');
+console.log('  ✅ APM-02 Active status message verified');
+
+// 9c. APM-02 Deploying
+const deployingPr = {
+  number: 102,
+  html_url: 'https://github.com/org/repo/pull/102',
+  labels: [{ name: 'APM-02 Deploying' }],
+  body: 'snapshot/main-2026-09-14-1200',
+  user: { login: 'daxesh' }
+};
+const deployingStatus = getStatusMessage(deployingPr);
+assert(deployingStatus.title.includes('Deployment in Progress'), 'Deploying title mismatch');
+assert(deployingStatus.body.includes('Deployment is in progress'), 'Deploying body mismatch');
+console.log('  ✅ APM-02 Deploying status message verified');
+
+// 9d. APM-02 Failed
+const failedPr = {
+  number: 103,
+  html_url: 'https://github.com/org/repo/pull/103',
+  labels: [{ name: 'APM-02 Failed' }],
+  body: 'snapshot/main-2026-09-14-1200',
+  user: { login: 'daxesh' }
+};
+const failedStatus = getStatusMessage(failedPr);
+assert(failedStatus.title.includes('Deployment Failed'), 'Failed title mismatch');
+assert(failedStatus.body.includes('SAP CI/CD pipeline failed'), 'Failed body mismatch');
+assert(failedStatus.body.includes('re-trigger'), 'Should mention re-trigger');
+assert(failedStatus.body.includes('deployment fix pushed, re-deploy'), 'Should mention deployment fix pushed');
+console.log('  ✅ APM-02 Failed status message verified');
+
+// 9e. APM-02 Blocked (Conflicts)
+const blockedPr = {
+  number: 104,
+  html_url: 'https://github.com/org/repo/pull/104',
+  labels: [{ name: 'APM-02 Blocked' }],
+  body: 'snapshot/main-2026-09-14-1200',
+  user: { login: 'daxesh' }
+};
+const blockedStatus = getStatusMessage(blockedPr);
+assert(blockedStatus.title.includes('Blocked by Conflicts'), 'Blocked title mismatch');
+assert(blockedStatus.body.includes('Merge conflicts detected'), 'Blocked body mismatch');
+console.log('  ✅ APM-02 Blocked status message verified');
+
+console.log('\n🎉 ALL TESTS PASSED! Multi-environment channel routing and Status messages are 100% verified.');
