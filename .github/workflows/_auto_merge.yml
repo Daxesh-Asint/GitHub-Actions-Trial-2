@@ -48,6 +48,9 @@ on:
 jobs:
   process:
     runs-on: ubuntu-latest
+    concurrency:
+      group: auto-merge-${{ inputs.base }}
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -306,8 +309,13 @@ jobs:
         if: env.pr_mergeable == 'true'
         run: |
           PR_NUMBER="${{ env.pr_number }}"
+          DEPLOYING_LABEL="${{ inputs.deployment_name }} Deploying"
+          [ -z "${{ inputs.deployment_name }}" ] && DEPLOYING_LABEL="Deploying"
+          gh label create "$DEPLOYING_LABEL" --color "#1d76db" --description "Deployment is in progress" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "$DEPLOYING_LABEL" 2>/dev/null || true
+
           if gh pr merge "$PR_NUMBER" --merge; then
-            echo "Pull request '$PR_NUMBER' merged successfully"
+            echo "Pull request '$PR_NUMBER' merged successfully into ${{ inputs.base }}"
           else
             gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step. Please check the workflow logs."
             echo "Failed to merge pull request '$PR_NUMBER'"
@@ -563,7 +571,7 @@ jobs:
             if [ "$app_was_stopped" = "true" ] && [ "$pr_mergeable" != "true" ]; then
               CF_APP_NOTE="▶️ Restarting $cf_apps_comma (Deployment merge failed; restoring runtime services)"
             else
-              CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed."
+              CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed. Once deployment is completed, the app will be restarted automatically."
             fi
           fi
 
