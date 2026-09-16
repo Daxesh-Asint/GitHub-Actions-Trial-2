@@ -66,6 +66,34 @@ function getActiveDeploymentPR(callback) {
 }
 
 /**
+ * Checks GitHub for an active deployment PR for any environment (e.g. AIS-02, APM-01)
+ */
+function checkActiveEnvironmentDeployment(env, callback) {
+  if (!env) return callback(null, null);
+
+  if (env.isApm02) {
+    return getActiveDeploymentPR(callback);
+  }
+
+  // Check for active deploying label or auto-merge PR for this environment
+  const labels = [
+    `auto merge for ${env.name}`,
+    `${env.name} Deploying`
+  ];
+  const labelQuery = labels.map((l) => `label:"${l}"`).join(',');
+  const query = encodeURIComponent(`repo:${config.GITHUB_REPO} is:pr is:open ${labelQuery}`);
+
+  callGitHubAPI(`/search/issues?q=${query}`, 'GET', null, (err, statusCode, res) => {
+    if (err) return callback(err);
+    if (!res || !Array.isArray(res.items)) {
+      return callback(null, null);
+    }
+    const activePr = res.items.length > 0 ? res.items[0] : null;
+    callback(null, activePr);
+  });
+}
+
+/**
  * Extracts the snapshot branch name from PR labels or body
  */
 function extractSnapshotBranch(activePr) {
@@ -90,6 +118,7 @@ function triggerWorkflowDispatch(eventType, clientPayload, callback) {
 module.exports = {
   callGitHubAPI,
   getActiveDeploymentPR,
+  checkActiveEnvironmentDeployment,
   extractSnapshotBranch,
   triggerWorkflowDispatch
 };

@@ -93,6 +93,25 @@ function getDeployInitiatedMessage(envName, user) {
 }
 
 /**
+ * Message when a deployment is blocked because another is already in progress
+ */
+function getDeploymentInProgressMessage(envName, activePr, botName) {
+  const name = botName || 'Jarvis';
+  const prInfo = activePr
+    ? `\n\n* **Active PR:** [PR #${activePr.number}](${activePr.html_url})`
+    : '';
+
+  return {
+    title: `⏳ ${envName} Deployment Already in Progress!`,
+    body:
+      `**🚫 A deployment for ${envName} is currently running.**\n\n` +
+      `Auto-merge or SAP CI/CD is currently compiling and deploying for this environment.${prInfo}\n\n` +
+      `* Please wait until the current deployment completes before triggering a new one.\n\n` +
+      `💡 *Type* \`@${name} status\` *to check the real-time status of this deployment.*`
+  };
+}
+
+/**
  * Generates formatted Help guide for APM-02 (cherry-pick snapshot window)
  */
 function getHelpMessage(botName) {
@@ -232,6 +251,7 @@ module.exports = {
   getBlockedExplanation,
   getChannelMismatchMessage,
   getDeployInitiatedMessage,
+  getDeploymentInProgressMessage,
   getHelpMessage,
   getChannelHelpMessage,
   getStatusMessage

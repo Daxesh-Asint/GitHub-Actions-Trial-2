@@ -2,6 +2,7 @@ const config = require('./config');
 const {
   callGitHubAPI,
   getActiveDeploymentPR,
+  checkActiveEnvironmentDeployment,
   triggerWorkflowDispatch
 } = require('./github');
 let envModule;
@@ -26,6 +27,7 @@ const {
   getBlockedExplanation,
   getChannelMismatchMessage,
   getDeployInitiatedMessage,
+  getDeploymentInProgressMessage,
   getHelpMessage,
   getChannelHelpMessage,
   getStatusMessage
@@ -519,23 +521,35 @@ exports.deployBot = (req, res) => {
         );
       }
 
-      // Engage anti-spam lock
-      lastDirectDeployTimes[targetDeployEnv.id] = now;
-
-      // Trigger GitHub Actions repository_dispatch event
-      triggerWorkflowDispatch(targetDeployEnv.dispatchEvent, null, (err, statusCode) => {
-        if (err || (statusCode !== 204 && statusCode !== 200)) {
-          delete lastDirectDeployTimes[targetDeployEnv.id];
-          return sendBotResponse(
-            res,
-            `❌ **Failed to trigger ${targetDeployEnv.name} deployment.** GitHub status: ${statusCode || err.message}`,
-            `❌ Deployment Trigger Failed`,
-            targetWebhookUrl
-          );
+      // Check if an existing deployment is already active for this environment
+      checkActiveEnvironmentDeployment(targetDeployEnv, (err, activePr) => {
+        if (err) {
+          console.warn(`[Deployment Check] Error querying active PR for ${targetDeployEnv.name}:`, err.message);
         }
 
-        const confirmation = getDeployInitiatedMessage(targetDeployEnv.name, senderName);
-        sendBotResponse(res, confirmation.body, confirmation.title, targetWebhookUrl);
+        if (activePr) {
+          const inProgressMsg = getDeploymentInProgressMessage(targetDeployEnv.name, activePr, botName);
+          return sendBotResponse(res, inProgressMsg.body, inProgressMsg.title, targetWebhookUrl);
+        }
+
+        // Engage anti-spam lock
+        lastDirectDeployTimes[targetDeployEnv.id] = now;
+
+        // Trigger GitHub Actions repository_dispatch event
+        triggerWorkflowDispatch(targetDeployEnv.dispatchEvent, null, (dispatchErr, statusCode) => {
+          if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
+            delete lastDirectDeployTimes[targetDeployEnv.id];
+            return sendBotResponse(
+              res,
+              `❌ **Failed to trigger ${targetDeployEnv.name} deployment.** GitHub status: ${statusCode || dispatchErr.message}`,
+              `❌ Deployment Trigger Failed`,
+              targetWebhookUrl
+            );
+          }
+
+          const confirmation = getDeployInitiatedMessage(targetDeployEnv.name, senderName);
+          sendBotResponse(res, confirmation.body, confirmation.title, targetWebhookUrl);
+        });
       });
       return;
     }

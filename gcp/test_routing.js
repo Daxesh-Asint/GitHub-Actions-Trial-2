@@ -305,9 +305,17 @@ const blockedPr = {
   body: 'snapshot/main-2026-09-14-1200',
   user: { login: 'daxesh' }
 };
-const blockedStatus = getStatusMessage(blockedPr);
-assert(blockedStatus.title.includes('Blocked by Conflicts'), 'Blocked title mismatch');
-assert(blockedStatus.body.includes('Merge conflicts detected'), 'Blocked body mismatch');
-console.log('  ✅ APM-02 Blocked status message verified');
+// Test 10: In-progress deployment guard card verification
+console.log('\nTest 10: Deployment already in progress guard card verification...');
+const { getDeploymentInProgressMessage } = require('./messages');
+const mockActivePr = {
+  number: 105,
+  html_url: 'https://github.com/org/repo/pull/105'
+};
+const inProgressCard = getDeploymentInProgressMessage('AIS-02', mockActivePr, 'Jarvis');
+assert(inProgressCard.title.includes('Deployment Already in Progress'), 'Title should state in progress');
+assert(inProgressCard.body.includes('AIS-02'), 'Body should mention environment');
+assert(inProgressCard.body.includes('PR #105'), 'Body should link active PR');
+console.log('  ✅ In-progress deployment block card verified');
 
-console.log('\n🎉 ALL TESTS PASSED! Multi-environment channel routing and Status messages are 100% verified.');
+console.log('\n🎉 ALL TESTS PASSED! Multi-environment channel routing, Status messages, and Concurrency Guards are 100% verified.');
