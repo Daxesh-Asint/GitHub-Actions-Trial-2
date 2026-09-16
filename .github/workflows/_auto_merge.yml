@@ -208,10 +208,75 @@ jobs:
           echo "pr_mergeable=false" >> $GITHUB_ENV
 
       # ──────────────────────────────────────────────────────────
-      # 🛑 Stop App Just-In-Time (ONLY if PR is mergeable and ready to merge)
+      # ⚙️ Resolve CF App Configuration (from .github/cf-apps.json or inputs)
+      # ──────────────────────────────────────────────────────────
+      - name: Resolve CF App Configuration
+        run: |
+          CONFIG_FILE=".github/cf-apps.json"
+          DEPLOY_NAME="${{ inputs.deployment_name }}"
+          CF_API=""
+          CF_ORG=""
+          CF_SPACE=""
+          CF_APPS_RAW=""
+
+          if [ -f "$CONFIG_FILE" ]; then
+            CF_ENV_JSON=$(jq -c --arg name "$DEPLOY_NAME" '
+              def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+              .environments as $envs |
+              ([$envs | to_entries[] | select(
+                (.key | norm) == ($name | norm) or
+                ((.value.aliases // [])[] | norm) == ($name | norm)
+              ) | .value] | first) // null
+            ' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+            if [ -n "$CF_ENV_JSON" ] && [ "$CF_ENV_JSON" != "null" ]; then
+              CF_API=$(echo "$CF_ENV_JSON" | jq -r '.api // empty')
+              CF_ORG=$(echo "$CF_ENV_JSON" | jq -r '.org // empty')
+              CF_SPACE=$(echo "$CF_ENV_JSON" | jq -r '.space // empty')
+              CF_APPS_RAW=$(echo "$CF_ENV_JSON" | jq -r '(.apps // [])[]' 2>/dev/null || echo "")
+            fi
+          fi
+
+          # Fallback to direct inputs if not found in cf-apps.json
+          [ -z "$CF_API" ] && CF_API="${{ inputs.cf_api }}"
+          [ -z "$CF_ORG" ] && CF_ORG="${{ inputs.cf_org }}"
+          [ -z "$CF_SPACE" ] && CF_SPACE="${{ inputs.cf_space }}"
+          if [ -z "$CF_APPS_RAW" ] && [ -n "${{ inputs.cf_stop_app }}" ]; then
+            CF_APPS_RAW="${{ inputs.cf_stop_app }}"
+          fi
+
+          CF_APPS_COMMA=""
+          CF_APPS_COUNT=0
+          while IFS= read -r app; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              if [ -z "$CF_APPS_COMMA" ]; then
+                CF_APPS_COMMA="$TRIMMED"
+              else
+                CF_APPS_COMMA="$CF_APPS_COMMA, $TRIMMED"
+              fi
+              CF_APPS_COUNT=$((CF_APPS_COUNT + 1))
+            fi
+          done <<< "$CF_APPS_RAW"
+
+          echo "cf_api=$CF_API" >> $GITHUB_ENV
+          echo "cf_org=$CF_ORG" >> $GITHUB_ENV
+          echo "cf_space=$CF_SPACE" >> $GITHUB_ENV
+          echo "cf_apps_comma=$CF_APPS_COMMA" >> $GITHUB_ENV
+          echo "cf_apps_count=$CF_APPS_COUNT" >> $GITHUB_ENV
+          echo "=== RESOLVED CF CONFIGURATION ==="
+          echo "Deployment: $DEPLOY_NAME"
+          echo "CF API:     $CF_API"
+          echo "CF Org:     $CF_ORG"
+          echo "CF Space:   $CF_SPACE"
+          echo "CF Apps:    $CF_APPS_COMMA (Count: $CF_APPS_COUNT)"
+          echo "================================="
+
+      # ──────────────────────────────────────────────────────────
+      # 🛑 Stop App(s) Just-In-Time (ONLY if PR is mergeable and apps configured)
       # ──────────────────────────────────────────────────────────
       - name: Stop App Before Merge
-        if: env.pr_mergeable == 'true' && inputs.cf_stop_app != ''
+        if: env.pr_mergeable == 'true' && env.cf_apps_count != '0'
         env:
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
@@ -223,11 +288,17 @@ jobs:
           sudo apt-get install -y cf8-cli
 
           echo "Logging into Cloud Foundry..."
-          cf login -a "${{ inputs.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
-          cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ inputs.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ inputs.cf_space }}" || true
+          cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "$cf_org" -s "$cf_space" || true
 
-          echo "🛑 Stopping app ${{ inputs.cf_stop_app }} to free memory quota for deployment..."
-          cf stop "${{ inputs.cf_stop_app }}"
+          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+          for app in "${APPS_LIST[@]}"; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              echo "🛑 Stopping app $TRIMMED to free memory quota for deployment..."
+              cf stop "$TRIMMED"
+            fi
+          done
           echo "app_was_stopped=true" >> $GITHUB_ENV
 
       - name: Merge PR
@@ -246,7 +317,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       # ──────────────────────────────────────────────────────────
-      # 🛡️ Safety Net: Restart App if Merge Fails
+      # 🛡️ Safety Net: Restart App(s) if Merge Fails
       # ──────────────────────────────────────────────────────────
       - name: Safety Restart App If Merge Failed
         if: failure() && env.app_was_stopped == 'true'
@@ -254,10 +325,17 @@ jobs:
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
-          echo "⚠️ Merge failed after app was stopped! Restarting ${{ inputs.cf_stop_app }} immediately..."
-          cf login -a "${{ inputs.cf_api }}" -u "$CF_USERNAME" -p "$CF_PASSWORD"
-          cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}" || cf target -o "0f54752b-a45b-49e0-9426-27cc38ee2dec" -s "${{ inputs.cf_space }}" || cf target -o "d3189c73-7adc-4cc0-afa6-22d3ac41bd9e" -s "${{ inputs.cf_space }}" || true
-          cf start "${{ inputs.cf_stop_app }}"
+          echo "⚠️ Merge failed after app was stopped! Restarting $cf_apps_comma immediately..."
+          cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+          cf target -o "$cf_org" -s "$cf_space" || true
+          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+          for app in "${APPS_LIST[@]}"; do
+            TRIMMED=$(echo "$app" | xargs)
+            if [ -n "$TRIMMED" ]; then
+              echo "▶️ Restarting app $TRIMMED..."
+              cf start "$TRIMMED"
+            fi
+          done
 
       # ──────────────────────────────────────────────────────────
       # MS Teams Notification (Adaptive Card format)
@@ -291,9 +369,92 @@ jobs:
             AUTHORS="${{ github.actor }}"
           fi
 
-          # Check if at least one webhook URL is set
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
-            echo "No Teams webhook secrets are set, skipping notification."
+          # Resolve target channel webhook URLs (3 slots per environment + global fallback)
+          NORM_ENV=$(echo "$DEPLOY_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]//g')
+          TARGET_WEBHOOKS=()
+          case "$NORM_ENV" in
+            "ais02"|"asintais02")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
+              ;;
+            "apm01"|"asintapm01")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_3 }}")
+              ;;
+            "apm02"|"asintapm02")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_3 }}")
+              ;;
+            "apmeiot"|"asintapmeiot")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}")
+              ;;
+            "demo"|"asintdemo")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}")
+              ;;
+            "baystar"|"asintbaystar")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}")
+              ;;
+            "hscnonprod"|"hemlocknonprod"|"asinthemlocknonprod")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}")
+              ;;
+            "hscprod"|"hemlockprod"|"asinthemlockprod")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}")
+              ;;
+            "indoramaprod900"|"asintindoramaprod900")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}")
+              ;;
+            "indoramaprod933"|"asintindoramaprod933")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}")
+              ;;
+            "indoramaqa233"|"asintindoramaqa233")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}")
+              ;;
+            "indoramaqa234"|"asintindoramaqa234")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}")
+              ;;
+            "irc"|"asintirc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_3 }}")
+              ;;
+            "stenv"|"asintst"|"st")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}")
+              ;;
+          esac
+
+          # Fallback to Global Webhook URLs if no specific channel webhook is configured
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
+          fi
+
+          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
+            echo "ℹ️ No specific or fallback Teams webhook configured for '$DEPLOY_NAME'. Skipping notification."
             exit 0
           fi
 
@@ -332,7 +493,11 @@ jobs:
               MERGE_COLOR="good"
               if [ -n "$DEPLOY_NAME" ]; then
                 CARD_TITLE="🚀 $DEPLOY_NAME Deployment Triggered"
-                CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
+                if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
+                  CARD_SUBTITLE="Auto-merge completed • Stopped $cf_apps_comma (freed CF runtime memory) • SAP CI/CD started"
+                else
+                  CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
+                fi
               else
                 CARD_TITLE="GitHub Auto-Merge Notification"
                 CARD_SUBTITLE=""
@@ -393,6 +558,15 @@ jobs:
             fi
           fi
 
+          CF_APP_NOTE=""
+          if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
+            if [ "$app_was_stopped" = "true" ] && [ "$pr_mergeable" != "true" ]; then
+              CF_APP_NOTE="▶️ Restarting $cf_apps_comma (Deployment merge failed; restoring runtime services)"
+            else
+              CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed."
+            fi
+          fi
+
           DASHBOARD_URL="${{ inputs.dashboard_url }}"
           DASHBOARD_TITLE="Track Deployment in SAP CI/CD Dashboard"
           if [ -n "$DEPLOY_NAME" ]; then
@@ -415,6 +589,7 @@ jobs:
             --arg subtitle "$CARD_SUBTITLE" \
             --arg dashboard_url "$DASHBOARD_URL" \
             --arg dashboard_title "$DASHBOARD_TITLE" \
+            --arg cf_app_note "$CF_APP_NOTE" \
             '{
               type: "message",
               attachments: [{
@@ -460,14 +635,19 @@ jobs:
                       },
                       {
                         type: "FactSet",
-                        facts: [
-                          { title: "Repository", value: $repo },
-                          { title: "Changes By", value: $authors },
-                          { title: "Pull Request", value: $pr },
-                          { title: "Source Branch", value: $source },
-                          { title: "Target Branch", value: $target },
-                          { title: "CI/CD Commit ID", value: $merge_commit }
-                        ]
+                        facts: (
+                          [
+                            { title: "Repository", value: $repo },
+                            { title: "Changes By", value: $authors },
+                            { title: "Pull Request", value: $pr },
+                            { title: "Source Branch", value: $source },
+                            { title: "Target Branch", value: $target },
+                            { title: "CI/CD Commit ID", value: $merge_commit }
+                          ] +
+                          (if $cf_app_note != "" then [
+                            { title: "CF App Control", value: $cf_app_note }
+                          ] else [] end)
+                        )
                       }
                     ]
                   ),
@@ -491,22 +671,13 @@ jobs:
               }]
             }')
 
-          # Send to all MS Teams webhooks
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+          # Send to target channel MS Teams webhooks
+          for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
-                "$WEBHOOK_URL"
+                "$WEBHOOK_URL" || true
             fi
           done
         env:

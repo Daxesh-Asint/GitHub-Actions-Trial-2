@@ -65,7 +65,35 @@ function getBlockedExplanation(activePr, botName) {
 }
 
 /**
- * Generates formatted Help guide with detailed rules for each command
+ * Message when a command is executed in the wrong channel
+ */
+function getChannelMismatchMessage(currentChannelName, requestedEnvName, targetChannelName) {
+  return {
+    title: `⚠️ Command Restricted to ${targetChannelName || requestedEnvName}`,
+    body:
+      `You are currently in the **${currentChannelName || 'different'}** channel.\n\n` +
+      `* Commands for **${requestedEnvName}** can only be executed in **${targetChannelName || requestedEnvName + ' Deployment POC'}**.\n\n` +
+      `👉 *Please navigate to the **${targetChannelName || requestedEnvName}** channel to trigger this deployment.*`
+  };
+}
+
+/**
+ * Message when a deployment is successfully triggered
+ */
+function getDeployInitiatedMessage(envName, user) {
+  const userName = user ? `@${user}` : 'User';
+  return {
+    title: `🚀 Deployment Initiated for ${envName}!`,
+    body:
+      `* **Environment:** \`${envName}\`\n\n` +
+      `* **Triggered By:** ${userName}\n\n` +
+      `* **Status:** GitHub Actions workflow has been dispatched. Auto-merge and SAP CI/CD deployment are starting.\n\n` +
+      `📢 *Live deployment progress cards will be delivered to this channel shortly.*`
+  };
+}
+
+/**
+ * Generates formatted Help guide for APM-02 (cherry-pick snapshot window)
  */
 function getHelpMessage(botName) {
   return {
@@ -93,31 +121,118 @@ function getHelpMessage(botName) {
 }
 
 /**
+ * Context-aware Help guide based on the channel
+ */
+function getChannelHelpMessage(channelEnv, botName, allEnvs) {
+  const name = botName || 'Jarvis';
+
+  if (channelEnv && channelEnv.isApm02) {
+    return getHelpMessage(name);
+  }
+
+  if (channelEnv) {
+    return {
+      title: `⚡ ${name} - ${channelEnv.name} Deployment Commands`,
+      body:
+        `* **\`@${name} deploy\`** *(or \`@${name} deploy ${channelEnv.name.toLowerCase()}\`)*\n\n` +
+        `  Immediately triggers deployment for **${channelEnv.name}** (merges latest code into tenant branch and initiates SAP CI/CD pipeline).\n\n` +
+        `* **\`@${name} help\`**\n\n` +
+        `  Displays available deployment commands for this channel.\n\n` +
+        `🔒 *Note: Only ${channelEnv.name} deployment commands can be executed in this channel.*`
+    };
+  }
+
+  // Fallback if no specific channel detected
+  const envList = (allEnvs || [])
+    .filter((e) => !e.isApm02)
+    .map((e) => `* **\`@${name} deploy ${e.name.toLowerCase()}\`** → Deploy to ${e.name}`)
+    .join('\n');
+
+  return {
+    title: `⚡ ${name} - Deployment Command Centre`,
+    body:
+      `Each environment has its own dedicated MS Teams channel where deployment commands run.\n\n` +
+      `**Available Direct Deploy Commands:**\n\n` +
+      `${envList}\n\n` +
+      `* **\`@${name} share snapshot\`** *(APM-02 Deployment POC channel only)*`
+  };
+}
+
+/**
  * Generates Status message for active PR
  */
 function getStatusMessage(activePr) {
   if (!activePr) {
     return {
       title: '🟢 System Status: IDLE',
-      body: 'No APM-02 deployment is currently active. You can start a new snapshot anytime using `@Jarvis share snapshot`.'
+      body:
+        `* **Status:** 🟢 All previous deployments are completed. No active deployment in progress.\n\n` +
+        `💡 *You can start a new snapshot deployment anytime by typing* \`@Jarvis share snapshot\` *(or custom time e.g.* \`@Jarvis share snapshot 85m\`*).*`
     };
   }
 
-  const labels = (activePr.labels || []).map((l) => l.name).join(', ');
+  const labelNames = (activePr.labels || []).map((l) => l.name);
   const snapshotBranch = extractSnapshotBranch(activePr);
+  const initiatedBy = activePr.user ? activePr.user.login : 'github-actions';
 
+  // 1️⃣ State: APM-02 Deploying (SAP CI/CD Running)
+  if (labelNames.some((l) => /APM-02 Deploying/i.test(l))) {
+    return {
+      title: '🚀 APM-02 Deployment in Progress',
+      body:
+        `* **Status:** 🔵 Deployment is in progress. Merged snapshot into tenant branch and building in SAP CI/CD.\n\n` +
+        `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
+        `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
+        `* **Initiated By:** @${initiatedBy}\n\n` +
+        `⏱️ *Build typically takes ~50–60 minutes. Please wait for the current cycle to complete.*`
+    };
+  }
+
+  // 2️⃣ State: APM-02 Failed (Build/Deploy Failed)
+  if (labelNames.some((l) => /APM-02 Failed/i.test(l))) {
+    return {
+      title: '❌ APM-02 Deployment Failed',
+      body:
+        `* **Status:** 🔴 SAP CI/CD pipeline failed. Snapshot was **not** merged into \`main\`.\n\n` +
+        `* **Failed PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
+        `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
+        `* **Initiated By:** @${initiatedBy}\n\n` +
+        `🛠️ **Recovery Options:**\n\n` +
+        `1. **If timeout / transient failure (no code changes):** Type \`@Jarvis re-trigger\`\n\n` +
+        `2. **If code fix is needed:** Push fix commit to \`${snapshotBranch}\`, then type \`@Jarvis deployment fix pushed, re-deploy\``
+    };
+  }
+
+  // 3️⃣ State: APM-02 Blocked (Merge Conflicts)
+  if (labelNames.some((l) => /APM-02 Blocked|Pre-Deploy Blocked|Conflicts/i.test(l))) {
+    return {
+      title: '⚠️ APM-02 Deployment Blocked by Conflicts',
+      body:
+        `* **Status:** 🟠 Merge conflicts detected between snapshot branch and target branch.\n\n` +
+        `* **Conflicting PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
+        `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
+        `* **Initiated By:** @${initiatedBy}\n\n` +
+        `👉 *Action Required: Developers must resolve conflicts in the PR before deployment can continue.*`
+    };
+  }
+
+  // 4️⃣ State: APM-02 Active (Cherry-Pick Window Open)
   return {
-    title: '🔵 Active Deployment in Progress',
+    title: '⏳ Active Snapshot Waiting for Cherry-Picks',
     body:
+      `* **Status:** 🌿 Active snapshot branch is available & waiting for cherry-picks\n\n` +
       `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
       `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
-      `* **Current State:** \`${labels}\`\n\n` +
-      `* **Initiated by:** @${activePr.user ? activePr.user.login : 'github-actions'}`
+      `* **Initiated By:** @${initiatedBy}\n\n` +
+      `💡 *Developers can cherry-pick their PRs into this snapshot branch. To deploy immediately, type* \`@Jarvis deploy now\`*, or wait for the countdown to finish.*`
   };
 }
 
 module.exports = {
   getBlockedExplanation,
+  getChannelMismatchMessage,
+  getDeployInitiatedMessage,
   getHelpMessage,
+  getChannelHelpMessage,
   getStatusMessage
 };
