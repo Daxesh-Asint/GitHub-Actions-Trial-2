@@ -54,6 +54,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      workflows: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -322,7 +323,8 @@ jobs:
             exit 1
           fi
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
 
       # ──────────────────────────────────────────────────────────
       # 🛡️ Safety Net: Restart App(s) if Merge Fails
@@ -567,9 +569,9 @@ jobs:
           fi
 
           CF_APP_NOTE=""
-          if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
-            if [ "$app_was_stopped" = "true" ] && [ "$pr_mergeable" != "true" ]; then
-              CF_APP_NOTE="▶️ Restarting $cf_apps_comma (Deployment merge failed; restoring runtime services)"
+          if [ "$app_was_stopped" = "true" ] && [ -n "$cf_apps_comma" ]; then
+            if [ "${{ job.status }}" != "success" ]; then
+              CF_APP_NOTE="▶️ Restarted $cf_apps_comma (Merge did not complete; app restored automatically)"
             else
               CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed. Once deployment is completed, the app will be restarted automatically."
             fi
