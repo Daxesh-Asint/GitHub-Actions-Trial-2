@@ -307,7 +307,7 @@ const blockedPr = {
 };
 // Test 10: In-progress deployment guard card verification
 console.log('\nTest 10: Deployment already in progress guard card verification...');
-const { getDeploymentInProgressMessage } = require('./messages');
+const { getDeploymentInProgressMessage, getRetriggerInitiatedMessage } = require('./messages');
 const mockActivePr = {
   number: 105,
   html_url: 'https://github.com/org/repo/pull/105'
@@ -318,4 +318,18 @@ assert(inProgressCard.body.includes('AIS-02'), 'Body should mention environment'
 assert(inProgressCard.body.includes('PR #105'), 'Body should link active PR');
 console.log('  ✅ In-progress deployment block card verified');
 
-console.log('\n🎉 ALL TESTS PASSED! Multi-environment channel routing, Status messages, and Concurrency Guards are 100% verified.');
+// Test 11: Re-trigger message and tenantBranch verification for all 14 environments
+console.log('\nTest 11: Re-trigger message & tenant branch verification across all environments...');
+for (const env of ENVIRONMENTS) {
+  assert(env.tenantBranch, `Environment ${env.name} must have a tenantBranch defined`);
+}
+console.log('  ✅ All 14 environments have tenantBranch configured');
+
+const retriggerCard = getRetriggerInitiatedMessage('AIS-02', 'tenant/asint-ais-02', '71404107b55b636680e6a298425c4de6c0d09bb7', 'daxesh');
+assert(retriggerCard.title.includes('Re-trigger Initiated for AIS-02'), 'Title should mention Re-trigger Initiated');
+assert(retriggerCard.body.includes('tenant/asint-ais-02'), 'Body should mention tenant branch');
+assert(retriggerCard.body.includes('7140410'), 'Body should include short SHA');
+assert(retriggerCard.body.includes('@daxesh'), 'Body should mention user');
+console.log('  ✅ Re-trigger confirmation message verified');
+
+console.log('\n🎉 ALL TESTS PASSED! Multi-environment channel routing, Status messages, Concurrency Guards, and Re-trigger are 100% verified.');

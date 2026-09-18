@@ -9,6 +9,7 @@ const ENVIRONMENTS = [
     channelId: '19:6940084ed04d48b79fd11e47d7801dd7@thread.tacv2',
     channelName: 'AIS-02 Deployment POC',
     dispatchEvent: 'trigger_ais02_deployment',
+    tenantBranch: 'tenant/asint-ais-02',
     aliases: ['ais-02', 'ais02', 'ais', 'asint-ais-02'],
     webhookEnvVar: 'TEAMS_WEBHOOK_AIS02_1'
   },
@@ -18,6 +19,7 @@ const ENVIRONMENTS = [
     channelId: '19:d9b3cf62547548908f82dbff737d5add@thread.tacv2',
     channelName: 'APM-01 Deployment POC',
     dispatchEvent: 'trigger_apm01_deployment',
+    tenantBranch: 'tenant/asint-apm-01-new',
     aliases: ['apm-01', 'apm01', 'asint-apm-01'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APM01_1'
   },
@@ -28,6 +30,7 @@ const ENVIRONMENTS = [
     channelName: 'APM-02 Deployment POC',
     isApm02: true,
     dispatchEvent: 'trigger_apm02_deployment',
+    tenantBranch: 'tenant/asint-apm-02-v2',
     aliases: ['apm-02', 'apm02', 'asint-apm-02'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APM02_1'
   },
@@ -37,6 +40,7 @@ const ENVIRONMENTS = [
     channelId: '19:79f3f9070bc9427ea854206ae633b721@thread.tacv2',
     channelName: 'APM-EIOT Deployment POC',
     dispatchEvent: 'trigger_apm_eiot_deployment',
+    tenantBranch: 'apm-eiot-temp-copy',
     aliases: ['apm-eiot', 'apmeiot', 'eiot', 'asint-apm-eiot'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APMEIOT_1'
   },
@@ -46,6 +50,7 @@ const ENVIRONMENTS = [
     channelId: '19:cca98dbf2ab94b3f99e143110e998c6d@thread.tacv2',
     channelName: 'AsInt Demo Deployment POC',
     dispatchEvent: 'trigger_asint_demo_deployment',
+    tenantBranch: 'tenant/asint-demo',
     aliases: ['asint demo', 'demo', 'asintdemo'],
     webhookEnvVar: 'TEAMS_WEBHOOK_DEMO_1'
   },
@@ -55,6 +60,7 @@ const ENVIRONMENTS = [
     channelId: '19:1389d10242a3438681fde9ae77861661@thread.tacv2',
     channelName: 'BAYSTAR Deployment POC',
     dispatchEvent: 'trigger_baystar_deployment',
+    tenantBranch: 'tenant/baystar',
     aliases: ['baystar', 'asint-baystar'],
     webhookEnvVar: 'TEAMS_WEBHOOK_BAYSTAR_1'
   },
@@ -64,6 +70,7 @@ const ENVIRONMENTS = [
     channelId: '19:b40e6b67fd6e476299c862f5fe834f72@thread.tacv2',
     channelName: 'HSC Non-Prod Deployment POC',
     dispatchEvent: 'trigger_hsc_non_prod_deployment',
+    tenantBranch: 'tenant/hemlock-non-prod',
     aliases: ['hsc non-prod', 'hsc non prod', 'hscnonprod', 'hemlock non-prod', 'hemlock non prod', 'hsc-non-prod'],
     webhookEnvVar: 'TEAMS_WEBHOOK_HSC_NON_PROD_1'
   },
@@ -73,6 +80,7 @@ const ENVIRONMENTS = [
     channelId: '19:6af52681e4fa4610bb8bf75d622bbbbf@thread.tacv2',
     channelName: 'HSC Prod Deployment POC',
     dispatchEvent: 'trigger_hsc_prod_deployment',
+    tenantBranch: 'tenant/hemlock-prod',
     aliases: ['hsc prod', 'hscprod', 'hemlock prod', 'hemlockprod', 'hsc-prod'],
     webhookEnvVar: 'TEAMS_WEBHOOK_HSC_PROD_1'
   },
@@ -82,6 +90,7 @@ const ENVIRONMENTS = [
     channelId: '19:3a5753030bd64fcda34f6958adeadb95@thread.tacv2',
     channelName: 'Indorama Prod 900 Deployment POC',
     dispatchEvent: 'trigger_indorama_prod_900_deployment',
+    tenantBranch: 'tenant/indorama-prod-900',
     aliases: ['indorama prod 900', 'indorama 900', 'indoramaprod900', 'prod 900', 'prod900', '900'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_PROD_900_1'
   },
@@ -91,6 +100,7 @@ const ENVIRONMENTS = [
     channelId: '19:a18bcd98d0364070b1dcf79a9068a718@thread.tacv2',
     channelName: 'Indorama Prod 933 Deployment POC',
     dispatchEvent: 'trigger_indorama_prod_933_deployment',
+    tenantBranch: 'tenant/indorama-prod-933',
     aliases: ['indorama prod 933', 'indorama 933', 'indoramaprod933', 'prod 933', 'prod933', '933'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_PROD_933_1'
   },
@@ -100,6 +110,7 @@ const ENVIRONMENTS = [
     channelId: '19:6f5a4f7ad9c2421287523647750d67f2@thread.tacv2',
     channelName: 'Indorama QA 233 Deployment POC',
     dispatchEvent: 'trigger_indorama_qa_233_deployment',
+    tenantBranch: 'tenant/indorama-qa-233',
     aliases: ['indorama qa 233', 'indorama 233', 'indoramaqa233', 'qa 233', 'qa233', '233'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_QA_233_1'
   },
@@ -109,6 +120,7 @@ const ENVIRONMENTS = [
     channelId: '19:827ca67584574137b1732016390486bb@thread.tacv2',
     channelName: 'Indorama QA 234 Deployment POC',
     dispatchEvent: 'trigger_indorama_qa_234_deployment',
+    tenantBranch: 'tenant/indorama-qa-234',
     aliases: ['indorama qa 234', 'indorama 234', 'indoramaqa234', 'qa 234', 'qa234', '234'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_QA_234_1'
   },
@@ -118,6 +130,7 @@ const ENVIRONMENTS = [
     channelId: '19:e2f2bc56c8c94077a769ee1f7c44a29e@thread.tacv2',
     channelName: 'IRC Deployment POC',
     dispatchEvent: 'trigger_irc_deployment',
+    tenantBranch: 'tenant/asint-irc-temp',
     aliases: ['irc', 'asint-irc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_IRC_1'
   },
@@ -127,6 +140,7 @@ const ENVIRONMENTS = [
     channelId: '19:d3a97522e5f44dcea3e45bf4d48dc97b@thread.tacv2',
     channelName: 'ST-ENV Deployment POC',
     dispatchEvent: 'trigger_st_env_deployment',
+    tenantBranch: 'st-env-for-contentfederation',
     aliases: ['st-env', 'st env', 'stenv', 'st', 'asint-st'],
     webhookEnvVar: 'TEAMS_WEBHOOK_ST_ENV_1'
   }
