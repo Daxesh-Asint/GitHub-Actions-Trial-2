@@ -115,10 +115,57 @@ function triggerWorkflowDispatch(eventType, clientPayload, callback) {
   callGitHubAPI(`/repos/${config.GITHUB_REPO}/dispatches`, 'POST', data, callback);
 }
 
+/**
+ * Creates an empty commit on a target branch directly via GitHub Git Data API to re-trigger deployments
+ */
+function createEmptyCommitOnBranch(branch, commitMessage, callback) {
+  const refPath = `/repos/${config.GITHUB_REPO}/git/ref/heads/${branch}`;
+
+  // 1. Get current branch commit SHA
+  callGitHubAPI(refPath, 'GET', null, (err, statusCode, refData) => {
+    if (err || statusCode !== 200 || !refData.object) {
+      return callback(new Error(`Failed to get ref for branch '${branch}': ${err ? err.message : statusCode}`));
+    }
+    const parentSha = refData.object.sha;
+
+    // 2. Get tree SHA of the current commit
+    callGitHubAPI(`/repos/${config.GITHUB_REPO}/git/commits/${parentSha}`, 'GET', null, (commitErr, commitStatus, commitData) => {
+      if (commitErr || commitStatus !== 200 || !commitData.tree) {
+        return callback(new Error(`Failed to get tree for commit '${parentSha}': ${commitErr ? commitErr.message : commitStatus}`));
+      }
+      const treeSha = commitData.tree.sha;
+
+      // 3. Create a new commit with the same tree (an empty commit)
+      const newCommitPayload = {
+        message: commitMessage || `chore(re-trigger): re-trigger deployment on ${branch}`,
+        tree: treeSha,
+        parents: [parentSha]
+      };
+
+      callGitHubAPI(`/repos/${config.GITHUB_REPO}/git/commits`, 'POST', newCommitPayload, (createErr, createStatus, createdCommit) => {
+        if (createErr || (createStatus !== 201 && createStatus !== 200) || !createdCommit.sha) {
+          return callback(new Error(`Failed to create empty commit: ${createErr ? createErr.message : createStatus}`));
+        }
+        const newCommitSha = createdCommit.sha;
+
+        // 4. Update the branch ref to point to the new commit
+        callGitHubAPI(refPath, 'PATCH', { sha: newCommitSha, force: false }, (updateErr, updateStatus, updatedRef) => {
+          if (updateErr || updateStatus !== 200) {
+            return callback(new Error(`Failed to update ref for branch '${branch}': ${updateErr ? updateErr.message : updateStatus}`));
+          }
+          callback(null, newCommitSha);
+        });
+      });
+    });
+  });
+}
+
 module.exports = {
   callGitHubAPI,
   getActiveDeploymentPR,
   checkActiveEnvironmentDeployment,
   extractSnapshotBranch,
-  triggerWorkflowDispatch
+  triggerWorkflowDispatch,
+  createEmptyCommitOnBranch
 };
+

@@ -93,6 +93,22 @@ function getDeployInitiatedMessage(envName, user) {
 }
 
 /**
+ * Message when a re-trigger is initiated without code changes
+ */
+function getRetriggerInitiatedMessage(envName, branch, commitSha, user) {
+  const userName = user ? `@${user}` : 'User';
+  const shortSha = commitSha ? commitSha.substring(0, 7) : 'latest';
+  return {
+    title: `🔁 Re-trigger Initiated for ${envName}!`,
+    body:
+      `* **Environment:** \`${envName}\`\n\n` +
+      `* **Triggered By:** ${userName}\n\n` +
+      `* **Action:** Re-triggering SAP CI/CD pipeline without code changes (empty sync commit \`${shortSha}\` on \`${branch}\`).\n\n` +
+      `📢 *Deployment status cards will appear in this channel once the build begins.*`
+  };
+}
+
+/**
  * Message when a deployment is blocked because another is already in progress
  */
 function getDeploymentInProgressMessage(envName, activePr, botName) {
@@ -116,7 +132,7 @@ function getDeploymentInProgressMessage(envName, activePr, botName) {
  */
 function getHelpMessage(botName) {
   return {
-    title: `⚡ ${botName} - APM-02 Deployment Commands`,
+    title: `⚡ ${botName} - APM-02 Command Centre`,
     body:
       `* **\`@${botName} share snapshot\`** *(or custom e.g. \`@${botName} share snapshot 85m\`)*\n\n` +
       `  Starts snapshot deployment with default **60m** window, or specify any custom wait time as per your choice (e.g. \`85m\`, \`45m\`, \`30m\`).\n\n` +
@@ -155,6 +171,8 @@ function getChannelHelpMessage(channelEnv, botName, allEnvs) {
       body:
         `* **\`@${name} deploy\`** *(or \`@${name} deploy ${channelEnv.name.toLowerCase()}\`)*\n\n` +
         `  Immediately triggers deployment for **${channelEnv.name}** (merges latest code into tenant branch and initiates SAP CI/CD pipeline).\n\n` +
+        `* **\`@${name} re-trigger\`** *(or \`@${name} retrigger\`)*\n\n` +
+        `  Re-triggers the SAP CI/CD pipeline without any code changes (via an empty sync commit on \`${channelEnv.tenantBranch || 'tenant branch'}\`).\n\n` +
         `* **\`@${name} help\`**\n\n` +
         `  Displays available deployment commands for this channel.\n\n` +
         `🔒 *Note: Only ${channelEnv.name} deployment commands can be executed in this channel.*`
@@ -251,6 +269,7 @@ module.exports = {
   getBlockedExplanation,
   getChannelMismatchMessage,
   getDeployInitiatedMessage,
+  getRetriggerInitiatedMessage,
   getDeploymentInProgressMessage,
   getHelpMessage,
   getChannelHelpMessage,
