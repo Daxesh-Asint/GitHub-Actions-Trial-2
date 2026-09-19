@@ -57,6 +57,8 @@ jobs:
           CF_ORG=""
           CF_SPACE=""
           CF_API="https://api.cf.eu10-004.hana.ondemand.com"
+          IS_PROTECTED="false"
+          REVIEWERS=""
 
           case "$BASE_BRANCH" in
             "tenant/asint-ais-02")
@@ -79,10 +81,14 @@ jobs:
               DEPLOY_NAME="APM-EIOT"
               ;;
             "tenant/hemlock-non-prod")
-              DEPLOY_NAME="HSC-NON-PROD"
+              DEPLOY_NAME="HSC Non-Prod"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             "tenant/hemlock-prod")
-              DEPLOY_NAME="HSC-PROD"
+              DEPLOY_NAME="HSC Prod"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             "tenant/asint-irc-temp")
               DEPLOY_NAME="IRC"
@@ -91,16 +97,24 @@ jobs:
               DEPLOY_NAME="BAYSTAR"
               ;;
             "tenant/indorama-qa-233")
-              DEPLOY_NAME="INDORAMA-QA-233"
+              DEPLOY_NAME="Indorama QA 233"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             "tenant/indorama-qa-234")
-              DEPLOY_NAME="INDORAMA-QA-234"
+              DEPLOY_NAME="Indorama QA 234"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             "tenant/indorama-prod-900")
-              DEPLOY_NAME="INDORAMA-PROD-900"
+              DEPLOY_NAME="Indorama Prod 900"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             "tenant/indorama-prod-933")
-              DEPLOY_NAME="INDORAMA-PROD-933"
+              DEPLOY_NAME="Indorama Prod 933"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             "tenant/asint-demo")
               DEPLOY_NAME="ASINT-DEMO"
@@ -113,12 +127,15 @@ jobs:
           echo "cf_org=$CF_ORG" >> $GITHUB_ENV
           echo "cf_space=$CF_SPACE" >> $GITHUB_ENV
           echo "cf_api=$CF_API" >> $GITHUB_ENV
+          echo "is_protected=$IS_PROTECTED" >> $GITHUB_ENV
+          echo "reviewers=$REVIEWERS" >> $GITHUB_ENV
 
           # Case A: Developer manually merged after resolving conflicts
           if [ "$EVENT_ACTION" = "closed" ] && [ "$IS_MERGED" = "true" ]; then
             if [ "$HAD_CONFLICTS" = "true" ]; then
               echo "Developer resolved conflicts and merged PR #$PR_NUMBER manually."
               echo "should_run=true" >> $GITHUB_ENV
+              echo "action_type=merged" >> $GITHUB_ENV
               echo "need_merge=false" >> $GITHUB_ENV
               exit 0
             else
@@ -128,8 +145,14 @@ jobs:
             fi
           fi
 
-          # Case B: Developer resolved conflicts and pushed new commit (synchronize), but forgot to merge
+          # Case B: Developer resolved conflicts and pushed new commit (synchronize)
           if [ "$EVENT_ACTION" = "synchronize" ]; then
+            if [ "$HAD_CONFLICTS" != "true" ]; then
+              echo "PR does not have 'conflicts detected' label. Skipping conflict resolution handler."
+              echo "should_run=false" >> $GITHUB_ENV
+              exit 0
+            fi
+
             # Wait for GitHub mergeability check
             echo "Checking if conflicts are resolved..."
             MERGEABLE="UNKNOWN"
@@ -153,7 +176,26 @@ jobs:
 
             if [ "$MERGEABLE" = "MERGEABLE" ]; then
               echo "should_run=true" >> $GITHUB_ENV
-              echo "need_merge=true" >> $GITHUB_ENV
+
+              if [ "$IS_PROTECTED" = "true" ]; then
+                # Check if PR already has an approved review
+                HAS_APPROVAL=$(gh pr view "$PR_NUMBER" --json reviews -q '[.reviews[] | select(.state=="APPROVED")] | length')
+                echo "Approved reviews count: $HAS_APPROVAL"
+
+                if [ "$HAS_APPROVAL" -gt 0 ] 2>/dev/null; then
+                  echo "Protected branch PR is already approved. Proceeding to auto-merge."
+                  echo "action_type=merged" >> $GITHUB_ENV
+                  echo "need_merge=true" >> $GITHUB_ENV
+                else
+                  echo "Protected branch PR requires approval. Requesting reviewers."
+                  echo "action_type=awaiting_approval" >> $GITHUB_ENV
+                  echo "need_merge=false" >> $GITHUB_ENV
+                fi
+              else
+                # Unprotected branch: auto-merge directly
+                echo "action_type=merged" >> $GITHUB_ENV
+                echo "need_merge=true" >> $GITHUB_ENV
+              fi
               exit 0
             else
               echo "PR still not mergeable (status: $MERGEABLE). Waiting for manual conflict resolution."
@@ -188,7 +230,7 @@ jobs:
           echo "app_was_stopped=true" >> $GITHUB_ENV
 
       # ──────────────────────────────────────────────────────────
-      # Merge PR automatically
+      # Merge PR automatically (for unprotected branches or pre-approved PRs)
       # ──────────────────────────────────────────────────────────
       - name: Auto-Merge Resolved PR
         id: merge
@@ -220,23 +262,177 @@ jobs:
           cf start "${{ env.cf_stop_app }}"
 
       # ──────────────────────────────────────────────────────────
-      # Update Labels on PR
+      # Protected Branch Flow: Assign 5 Reviewers & Set Awaiting Approval
       # ──────────────────────────────────────────────────────────
-      - name: Update PR Labels
-        if: env.should_run == 'true'
+      - name: Assign Reviewers & Request Approval
+        if: env.should_run == 'true' && env.action_type == 'awaiting_approval'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEWERS: ${{ env.reviewers }}
+        run: |
+          echo "Conflicts resolved! Setting up approval for protected branch..."
+          gh label create "conflicts resolved" --color "#0e8a16" --description "Merge conflicts were successfully resolved" 2>/dev/null || true
+          gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --remove-label "conflicts detected" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "conflicts resolved" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
+
+          # Request review from each reviewer
+          IFS=',' read -ra REV_ARR <<< "$REVIEWERS"
+          for rev in "${REV_ARR[@]}"; do
+            TRIMMED_REV=$(echo "$rev" | xargs)
+            if [ -n "$TRIMMED_REV" ]; then
+              echo "Requesting review from: $TRIMMED_REV"
+              gh pr edit "$PR_NUMBER" --add-reviewer "$TRIMMED_REV" 2>/dev/null || true
+            fi
+          done
+
+          gh pr comment "$PR_NUMBER" --body "🟡 **Conflicts Resolved & Awaiting Approval:** Merge conflicts have been resolved and the PR is now mergeable! Assigned reviewers: \`$REVIEWERS\`. Once approved by any 1 reviewer, the PR will be automatically merged and deployment will resume." 2>/dev/null || true
+
+      # ──────────────────────────────────────────────────────────
+      # Send Teams Card: Conflicts Resolved — Awaiting Approval
+      # ──────────────────────────────────────────────────────────
+      - name: Send Teams Card - Awaiting Approval
+        if: env.should_run == 'true' && env.action_type == 'awaiting_approval'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_NAME: ${{ env.deploy_name }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          RESOLVER: ${{ github.actor }}
+          DASHBOARD_URL: ${{ env.dashboard_url }}
+          REVIEWERS: ${{ env.reviewers }}
+        run: |
+          echo "Building Teams Adaptive Card for Conflicts Resolved & Awaiting Approval..."
+
+          CARD_TITLE="🟡 $DEPLOY_NAME: Conflicts Resolved — Awaiting Approval"
+          CARD_SUBTITLE="Merge conflicts for PR #$PR_NUMBER have been successfully resolved. The PR is now mergeable and awaiting 1 peer review approval to auto-merge and resume deployment."
+          STATUS_TEXT="🟡 Conflicts Resolved • Awaiting Approval"
+          REPO="${{ github.repository }}"
+          PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
+          DASHBOARD_TITLE="Open $DEPLOY_NAME SAP CI/CD Dashboard"
+
+          PAYLOAD=$(jq -n \
+            --arg title "$CARD_TITLE" \
+            --arg subtitle "$CARD_SUBTITLE" \
+            --arg status "$STATUS_TEXT" \
+            --arg color "warning" \
+            --arg repo "$REPO" \
+            --arg pr "PR #$PR_NUMBER" \
+            --arg source "$HEAD_BRANCH" \
+            --arg target "$BASE_BRANCH" \
+            --arg resolver "$RESOLVER" \
+            --arg reviewers "$REVIEWERS" \
+            --arg pr_url "$PR_URL" \
+            --arg dashboard_url "$DASHBOARD_URL" \
+            --arg dashboard_title "$DASHBOARD_TITLE" \
+            '{
+              type: "message",
+              attachments: [{
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: [
+                    {
+                      type: "TextBlock",
+                      size: "Large",
+                      weight: "Bolder",
+                      text: $title,
+                      wrap: true
+                    },
+                    {
+                      type: "TextBlock",
+                      text: $subtitle,
+                      size: "Medium",
+                      wrap: true,
+                      color: "Warning"
+                    },
+                    {
+                      type: "ColumnSet",
+                      columns: [
+                        {
+                          type: "Column",
+                          width: "auto",
+                          items: [{
+                            type: "TextBlock",
+                            text: $status,
+                            weight: "Bolder",
+                            color: "Warning"
+                          }]
+                        }
+                      ]
+                    },
+                    {
+                      type: "FactSet",
+                      facts: [
+                        { title: "Environment", value: $DEPLOY_NAME },
+                        { title: "Repository", value: $repo },
+                        { title: "Resolved By", value: $resolver },
+                        { title: "Pull Request", value: $pr },
+                        { title: "Source Branch", value: $source },
+                        { title: "Target Branch", value: $target },
+                        { title: "Reviewers Assigned", value: $reviewers },
+                        { title: "Next Step", value: "Auto-merge will trigger once any 1 reviewer approves" }
+                      ]
+                    }
+                  ],
+                  actions: [
+                    {
+                      type: "Action.OpenUrl",
+                      title: "View PR & Approve on GitHub",
+                      url: $pr_url
+                    },
+                    {
+                      type: "Action.OpenUrl",
+                      title: $dashboard_title,
+                      url: $dashboard_url
+                    }
+                  ]
+                }
+              }]
+            }')
+
+          for WEBHOOK_URL in \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
+            if [ -n "$WEBHOOK_URL" ]; then
+              curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" || true
+            fi
+          done
+          echo "Teams card successfully sent!"
+
+      # ──────────────────────────────────────────────────────────
+      # Update Labels on Merged PR
+      # ──────────────────────────────────────────────────────────
+      - name: Update PR Labels on Merge
+        if: env.should_run == 'true' && env.action_type == 'merged'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           gh label create "conflicts resolved" --color "#0e8a16" --description "Merge conflicts were successfully resolved" 2>/dev/null || true
+          gh label create "approved and merged" --color "#0e8a16" --description "Approved by reviewer and merged" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --remove-label "conflicts detected" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --remove-label "awaiting approval" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --add-label "conflicts resolved" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "approved and merged" 2>/dev/null || true
 
       # ──────────────────────────────────────────────────────────
-      # Send MS Teams Notification: Conflicts Resolved & Deployment Resumed
+      # Send MS Teams Notification: Conflicts Resolved & Merged
       # ──────────────────────────────────────────────────────────
       - name: Send Conflicts Resolved Teams Card
-        if: env.should_run == 'true'
+        if: env.should_run == 'true' && env.action_type == 'merged'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -246,7 +442,7 @@ jobs:
           RESOLVER: ${{ github.actor }}
           DASHBOARD_URL: ${{ env.dashboard_url }}
         run: |
-          echo "Building Teams Adaptive Card for conflict resolution..."
+          echo "Building Teams Adaptive Card for conflict resolution & merged..."
 
           # Fetch merge commit ID (short 7 chars)
           MERGE_COMMIT_ID=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null | cut -c 1-7)
@@ -273,6 +469,7 @@ jobs:
             --arg pr_url "$PR_URL" \
             --arg dashboard_url "$DASHBOARD_URL" \
             --arg dashboard_title "$DASHBOARD_TITLE" \
+            --arg deploy_name "$DEPLOY_NAME" \
             '{
               type: "message",
               attachments: [{
@@ -314,7 +511,7 @@ jobs:
                     {
                       type: "FactSet",
                       facts: [
-                        { title: "Environment", value: "${{ env.deploy_name }}" },
+                        { title: "Environment", value: $deploy_name },
                         { title: "Repository", value: $repo },
                         { title: "Resolved By", value: $resolver },
                         { title: "Pull Request", value: $pr },
