@@ -32,6 +32,7 @@ on:
           - "AsInt-AIS-02-Safety-Test-DND"
           - "AsInt-AIS-02-mta-fix"
           - "AsInt-APM-01"
+          - "AsInt-APM-02"
           - "AsInt-APM-EIOT"
           - "AsInt-DEMO"
           - "AsInt-IRC"
@@ -52,9 +53,13 @@ on:
         description: "Git Commit ID (optional)"
         required: false
         default: ""
+      app_name:
+        description: "CF App Name (optional, defaults to repo var or mapped app)"
+        required: false
+        default: ""
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   notify:
@@ -62,290 +67,80 @@ jobs:
     outputs:
       event_type: ${{ steps.process.outputs.event_type }}
       resource_name: ${{ steps.process.outputs.resource_name }}
+      cf_app_name: ${{ steps.process.outputs.cf_app_name }}
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Process SAP CI/CD Event and Send MS Teams Notification
         id: process
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+          CLIENT_PAYLOAD_JSON: ${{ toJson(github.event.client_payload) }}
+          EVENT_TYPE: ${{ github.event.action }}
+          INPUT_EVENT_TYPE: ${{ github.event.inputs.event_type }}
+          RESOURCE_NAME: ${{ github.event.client_payload.resource_name }}
+          INPUT_RESOURCE_NAME: ${{ github.event.inputs.resource_name }}
+          PAYLOAD_STATUS: ${{ github.event.client_payload.status }}
+          INPUT_STATUS: ${{ github.event.inputs.status }}
+          PAYLOAD_SUBJECT: ${{ github.event.client_payload.subject }}
+          INPUT_SUBJECT: ${{ github.event.inputs.subject }}
+          PAYLOAD_BODY: ${{ github.event.client_payload.body }}
+          PAYLOAD_CATEGORY: ${{ github.event.client_payload.category }}
+          PAYLOAD_COMMIT_ID: ${{ github.event.client_payload.commit_id }}
+          PAYLOAD_COMMIT: ${{ github.event.client_payload.commit }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          INPUT_COMMIT_ID: ${{ github.event.inputs.commit_id }}
+          PAYLOAD_TAGS: ${{ github.event.client_payload.tags }}
+          PAYLOAD_APP_NAME: ${{ github.event.client_payload.app_name }}
+          INPUT_APP_NAME: ${{ github.event.inputs.app_name }}
+          TEAMS_WEBHOOK_AIS02_1: ${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}
+          TEAMS_WEBHOOK_AIS02_2: ${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}
+          TEAMS_WEBHOOK_AIS02_3: ${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}
+          TEAMS_WEBHOOK_APM01_1: ${{ secrets.TEAMS_WEBHOOK_APM01_1 }}
+          TEAMS_WEBHOOK_APM01_2: ${{ secrets.TEAMS_WEBHOOK_APM01_2 }}
+          TEAMS_WEBHOOK_APM01_3: ${{ secrets.TEAMS_WEBHOOK_APM01_3 }}
+          TEAMS_WEBHOOK_APM02_1: ${{ secrets.TEAMS_WEBHOOK_APM02_1 }}
+          TEAMS_WEBHOOK_APM02_2: ${{ secrets.TEAMS_WEBHOOK_APM02_2 }}
+          TEAMS_WEBHOOK_APM02_3: ${{ secrets.TEAMS_WEBHOOK_APM02_3 }}
+          TEAMS_WEBHOOK_APMEIOT_1: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_1 }}
+          TEAMS_WEBHOOK_APMEIOT_2: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_2 }}
+          TEAMS_WEBHOOK_APMEIOT_3: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_3 }}
+          TEAMS_WEBHOOK_DEMO_1: ${{ secrets.TEAMS_WEBHOOK_DEMO_1 }}
+          TEAMS_WEBHOOK_DEMO_2: ${{ secrets.TEAMS_WEBHOOK_DEMO_2 }}
+          TEAMS_WEBHOOK_DEMO_3: ${{ secrets.TEAMS_WEBHOOK_DEMO_3 }}
+          TEAMS_WEBHOOK_BAYSTAR_1: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_1 }}
+          TEAMS_WEBHOOK_BAYSTAR_2: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_2 }}
+          TEAMS_WEBHOOK_BAYSTAR_3: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_3 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_1: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_1 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_2: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_2 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_3: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_3 }}
+          TEAMS_WEBHOOK_HSC_PROD_1: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_1 }}
+          TEAMS_WEBHOOK_HSC_PROD_2: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_2 }}
+          TEAMS_WEBHOOK_HSC_PROD_3: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_3 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_1 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_2 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_3 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_1 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_2 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_3 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_1 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_2 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_3 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_1 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_2 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_3 }}
+          TEAMS_WEBHOOK_IRC_1: ${{ secrets.TEAMS_WEBHOOK_IRC_1 }}
+          TEAMS_WEBHOOK_IRC_2: ${{ secrets.TEAMS_WEBHOOK_IRC_2 }}
+          TEAMS_WEBHOOK_IRC_3: ${{ secrets.TEAMS_WEBHOOK_IRC_3 }}
+          TEAMS_WEBHOOK_ST_ENV_1: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}
+          TEAMS_WEBHOOK_ST_ENV_2: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}
+          TEAMS_WEBHOOK_ST_ENV_3: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}
+          TEAMS_WEBHOOK_GLOBAL_1: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}
+          TEAMS_WEBHOOK_GLOBAL_2: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}
+          TEAMS_WEBHOOK_GLOBAL_3: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}
         run: |
-          # 1. Determine payload inputs (from repository_dispatch or workflow_dispatch)
-          echo "=== RECEIVED CLIENT PAYLOAD ==="
-          echo '${{ toJson(github.event.client_payload) }}'
-          echo "================================"
-
-          EVENT_TYPE="${{ github.event.action }}"
-          [ -z "$EVENT_TYPE" ] && EVENT_TYPE="${{ github.event.inputs.event_type }}"
-
-          RESOURCE_NAME="${{ github.event.client_payload.resource_name }}"
-          [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="${{ github.event.inputs.resource_name }}"
-          [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="SAP CI/CD Pipeline"
-
-          # ──────────────────────────────────────────────────────────
-          # 🛡️ WHITELIST FILTER: Only process approved tenant jobs
-          # ──────────────────────────────────────────────────────────
-          ALLOWED_JOBS=(
-            "AsInt-AIS-02"
-            "AsInt-AIS-02-Safety-Test-DND"
-            "AsInt-AIS-02-mta-fix"
-            "AsInt-APM-01"
-            "AsInt-APM-EIOT"
-            "AsInt-DEMO"
-            "AsInt-IRC"
-            "AsInt-ST"
-            "BAYSTAR"
-            "Hemlock-NON-PROD"
-            "Hemlock-PROD"
-            "Indorama-PROD-900"
-            "Indorama-PROD-933"
-            "Indorama-QA-233"
-            "Indorama-QA-234"
-          )
-
-          IS_ALLOWED=false
-          for job in "${ALLOWED_JOBS[@]}"; do
-            if [ "$RESOURCE_NAME" = "$job" ]; then
-              IS_ALLOWED=true
-              break
-            fi
-          done
-
-          if [ "$IS_ALLOWED" != "true" ]; then
-            echo "🚫 Job '$RESOURCE_NAME' is not in the allowed notification whitelist. Skipping notification."
-            exit 0
-          fi
-
-          echo "event_type=$EVENT_TYPE" >> $GITHUB_OUTPUT
-          echo "resource_name=$RESOURCE_NAME" >> $GITHUB_OUTPUT
-
-          STATUS="${{ github.event.client_payload.status }}"
-          [ -z "$STATUS" ] && STATUS="${{ github.event.inputs.status }}"
-          [ -z "$STATUS" ] && STATUS="INFO"
-
-          SUBJECT="${{ github.event.client_payload.subject }}"
-          [ -z "$SUBJECT" ] && SUBJECT="${{ github.event.inputs.subject }}"
-
-          BODY="${{ github.event.client_payload.body }}"
-          CATEGORY="${{ github.event.client_payload.category }}"
-          
-          # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
-          CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
-
-          # Map Resource Name to Target Branch to determine Commit ID
-          TARGET_BRANCH=""
-          case "$RESOURCE_NAME" in
-            "AsInt-AIS-02"|"AsInt-AIS-02-Safety-Test-DND"|"AsInt-AIS-02-mta-fix")
-              TARGET_BRANCH="tenant/asint-ais-02"
-              ;;
-            "AsInt-APM-01")
-              TARGET_BRANCH="tenant/asint-apm-01-new"
-              ;;
-            "AsInt-APM-EIOT")
-              TARGET_BRANCH="apm-eiot-temp-copy"
-              ;;
-            "AsInt-DEMO")
-              TARGET_BRANCH="tenant/asint-demo"
-              ;;
-            "AsInt-IRC")
-              TARGET_BRANCH="tenant/asint-irc-temp"
-              ;;
-            "AsInt-ST")
-              TARGET_BRANCH="st-env-for-contentfederation"
-              ;;
-            "BAYSTAR")
-              TARGET_BRANCH="tenant/baystar"
-              ;;
-            "Hemlock-NON-PROD")
-              TARGET_BRANCH="tenant/hemlock-non-prod"
-              ;;
-            "Hemlock-PROD")
-              TARGET_BRANCH="tenant/hemlock-prod"
-              ;;
-            "Indorama-PROD-900")
-              TARGET_BRANCH="tenant/indorama-prod-900"
-              ;;
-            "Indorama-PROD-933")
-              TARGET_BRANCH="tenant/indorama-prod-933"
-              ;;
-            "Indorama-QA-233")
-              TARGET_BRANCH="tenant/indorama-qa-233"
-              ;;
-            "Indorama-QA-234")
-              TARGET_BRANCH="tenant/indorama-qa-234"
-              ;;
-          esac
-
-          COMMIT_ID="${{ github.event.client_payload.commit_id }}"
-          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.commit }}"
-          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.client_payload.sha }}"
-          [ -z "$COMMIT_ID" ] && COMMIT_ID="${{ github.event.inputs.commit_id }}"
-
-          # If commit_id is an unexpanded template placeholder, clear it
-          case "$COMMIT_ID" in
-            "{"*|*"}"*) COMMIT_ID="" ;;
-          esac
-
-          # Search inside tags or raw payload if commit_id is empty
-          RAW_TAGS="${{ github.event.client_payload.tags }}"
-          [ -z "$RAW_TAGS" ] && RAW_TAGS='${{ toJson(github.event.client_payload) }}'
-          if [ -z "$COMMIT_ID" ]; then
-            TAG_COMMIT=$(echo "$RAW_TAGS" | grep -oE '(commitish|commit|sha)[=:][" ]?[a-f0-9]+' | grep -oE '[a-f0-9]{7,40}' | head -n 1)
-            [ -n "$TAG_COMMIT" ] && COMMIT_ID="$TAG_COMMIT"
-          fi
-
-          # Shorten to 7 characters if a valid commit hash was received
-          if echo "$COMMIT_ID" | grep -qE '^[a-f0-9]{7,40}$'; then
-            COMMIT_ID=$(echo "$COMMIT_ID" | cut -c 1-7)
-          else
-            COMMIT_ID=""
-          fi
-
-          if [ -z "$COMMIT_ID" ] && [ -n "$TARGET_BRANCH" ]; then
-            COMMIT_ID=$(gh api repos/${{ github.repository }}/commits/$TARGET_BRANCH --jq '.sha' 2>/dev/null | cut -c 1-7)
-          fi
-          [ -z "$COMMIT_ID" ] && COMMIT_ID="N/A"
-
-          DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-          TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
-
-          # 2. Configure Card Header, Color, and Subtitle based on Event Type
-          if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
-            CARD_TITLE="🟡 SAP CI/CD Pipeline Started"
-            CARD_COLOR="warning"
-            STATUS_BADGE="⏳ Running Build & Deployment"
-            CARD_SUBTITLE="Build execution is now in progress for $CLEAN_NAME."
-          elif [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
-            CARD_TITLE="✅ SAP CI/CD Deployment Succeeded"
-            CARD_COLOR="good"
-            STATUS_BADGE="🚀 Deployed Successfully"
-            CARD_SUBTITLE="Pipeline build and deployment completed without errors."
-          else
-            CARD_TITLE="❌ SAP CI/CD Deployment Failed"
-            CARD_COLOR="attention"
-            STATUS_BADGE="⚠️ Build / Deployment Failed"
-            CARD_SUBTITLE="Pipeline execution encountered an error. Please inspect logs."
-          fi
-
-          [ -n "$SUBJECT" ] && [ "$SUBJECT" != "null" ] && CARD_SUBTITLE="$SUBJECT"
-
-          # 3. Check for configured MS Teams Webhook URLs
-          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && [ -z "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ]; then
-            echo "No Teams webhook secrets configured. Skipping notification."
-            exit 0
-          fi
-
-          # 4. Construct MS Teams Adaptive Card Payload
-          PAYLOAD=$(jq -n \
-            --arg title "$CARD_TITLE" \
-            --arg color "$CARD_COLOR" \
-            --arg subtitle "$CARD_SUBTITLE" \
-            --arg status "$STATUS_BADGE" \
-            --arg job "$RESOURCE_NAME" \
-            --arg env_name "$CLEAN_NAME" \
-            --arg commit_id "$COMMIT_ID" \
-            --arg time "$TIMESTAMP" \
-            --arg dashboard "$DASHBOARD_URL" \
-            '{
-              type: "message",
-              attachments: [{
-                contentType: "application/vnd.microsoft.card.adaptive",
-                content: {
-                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                  type: "AdaptiveCard",
-                  version: "1.4",
-                  body: [
-                    {
-                      type: "TextBlock",
-                      size: "Large",
-                      weight: "Bolder",
-                      text: $title,
-                      wrap: true
-                    },
-                    {
-                      type: "TextBlock",
-                      text: $subtitle,
-                      size: "Small",
-                      isSubtle: true,
-                      wrap: true
-                    },
-                    {
-                      type: "ColumnSet",
-                      columns: [
-                        {
-                          type: "Column",
-                          width: "auto",
-                          items: [{
-                            type: "TextBlock",
-                            text: $status,
-                            weight: "Bolder",
-                            color: $color
-                          }]
-                        }
-                      ]
-                    },
-                    {
-                      type: "FactSet",
-                      facts: [
-                        { title: "Environment", value: $env_name },
-                        { title: "SAP CI/CD Job", value: $job },
-                        { title: "CI/CD Commit ID", value: $commit_id },
-                        { title: "Timestamp", value: $time }
-                      ]
-                    }
-                  ],
-                  actions: [
-                    {
-                      type: "Action.OpenUrl",
-                      title: "Open SAP CI/CD Dashboard",
-                      url: $dashboard
-                    }
-                  ]
-                }
-              }]
-            }')
-
-          # 5. Broadcast to all configured Teams Webhooks
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_4 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_5 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_URL_AIS02_6 }}"; do
-            if [ -n "$WEBHOOK_URL" ]; then
-              curl -s -X POST \
-                -H "Content-Type: application/json" \
-                -d "$PAYLOAD" \
-                "$WEBHOOK_URL"
-            fi
-          done
-
-  # ──────────────────────────────────────────────────────────
-  # 🚀 POST-DEPLOY: Automatically Restart crawler-layer-backend
-  # Triggered when AIS-02 or APM-01 build finishes (Success OR Failure)
-  # ──────────────────────────────────────────────────────────
-  post-restart-ais02:
-    needs: notify
-    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-AIS-02'
-    uses: ./.github/workflows/_cf_app_control.yml
-    with:
-      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
-      org: "ais-02-eu10-org"
-      space: "main"
-      app_name: "crawler-layer-backend"
-      action: "start"
-    secrets: inherit
-
-  post-restart-apm01:
-    needs: notify
-    if: always() && needs.notify.outputs.event_type == 'sap_cicd_finished' && needs.notify.outputs.resource_name == 'AsInt-APM-01'
-    uses: ./.github/workflows/_cf_app_control.yml
-    with:
-      api_endpoint: "https://api.cf.eu10-004.hana.ondemand.com"
-      org: "asint-apm-01"
-      space: "demo"
-      app_name: "crawler-layer-backend"
-      action: "start"
-    secrets: inherit
+          chmod +x .github/scripts/notify_sap_event.sh
+          ./.github/scripts/notify_sap_event.sh
