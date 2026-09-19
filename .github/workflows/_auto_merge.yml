@@ -276,33 +276,33 @@ jobs:
           echo "================================="
 
       # ──────────────────────────────────────────────────────────
-      # 🛑 Stop App(s) Just-In-Time (ONLY if PR is mergeable and apps configured)
+      # 🛑 Stop App(s) Just-In-Time (COMMENTED OUT - Stopped/Started via SAP CI/CD lifecycle)
       # ──────────────────────────────────────────────────────────
-      - name: Stop App Before Merge
-        if: env.pr_mergeable == 'true' && env.cf_apps_count != '0'
-        env:
-          CF_USERNAME: ${{ secrets.CF_USERNAME }}
-          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-        run: |
-          echo "Installing CF CLI..."
-          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
-          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
-          sudo apt-get update -qq
-          sudo apt-get install -y cf8-cli
-
-          echo "Logging into Cloud Foundry..."
-          cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
-          cf target -o "$cf_org" -s "$cf_space" || true
-
-          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
-          for app in "${APPS_LIST[@]}"; do
-            TRIMMED=$(echo "$app" | xargs)
-            if [ -n "$TRIMMED" ]; then
-              echo "🛑 Stopping app $TRIMMED to free memory quota for deployment..."
-              cf stop "$TRIMMED"
-            fi
-          done
-          echo "app_was_stopped=true" >> $GITHUB_ENV
+      # - name: Stop App Before Merge
+      #   if: env.pr_mergeable == 'true' && env.cf_apps_count != '0'
+      #   env:
+      #     CF_USERNAME: ${{ secrets.CF_USERNAME }}
+      #     CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+      #   run: |
+      #     echo "Installing CF CLI..."
+      #     wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+      #     echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+      #     sudo apt-get update -qq
+      #     sudo apt-get install -y cf8-cli
+      #
+      #     echo "Logging into Cloud Foundry..."
+      #     cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+      #     cf target -o "$cf_org" -s "$cf_space" || true
+      #
+      #     IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+      #     for app in "${APPS_LIST[@]}"; do
+      #       TRIMMED=$(echo "$app" | xargs)
+      #       if [ -n "$TRIMMED" ]; then
+      #         echo "🛑 Stopping app $TRIMMED to free memory quota for deployment..."
+      #         cf stop "$TRIMMED"
+      #       fi
+      #     done
+      #     echo "app_was_stopped=true" >> $GITHUB_ENV
 
       - name: Merge PR
         id: merge-pr
@@ -326,25 +326,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
 
       # ──────────────────────────────────────────────────────────
-      # 🛡️ Safety Net: Restart App(s) if Merge Fails
+      # 🛡️ Safety Net: Restart App(s) if Merge Fails (COMMENTED OUT)
       # ──────────────────────────────────────────────────────────
-      - name: Safety Restart App If Merge Failed
-        if: failure() && env.app_was_stopped == 'true'
-        env:
-          CF_USERNAME: ${{ secrets.CF_USERNAME }}
-          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-        run: |
-          echo "⚠️ Merge failed after app was stopped! Restarting $cf_apps_comma immediately..."
-          cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
-          cf target -o "$cf_org" -s "$cf_space" || true
-          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
-          for app in "${APPS_LIST[@]}"; do
-            TRIMMED=$(echo "$app" | xargs)
-            if [ -n "$TRIMMED" ]; then
-              echo "▶️ Restarting app $TRIMMED..."
-              cf start "$TRIMMED"
-            fi
-          done
+      # - name: Safety Restart App If Merge Failed
+      #   if: failure() && env.app_was_stopped == 'true'
+      #   env:
+      #     CF_USERNAME: ${{ secrets.CF_USERNAME }}
+      #     CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+      #   run: |
+      #     echo "⚠️ Merge failed after app was stopped! Restarting $cf_apps_comma immediately..."
+      #     cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+      #     cf target -o "$cf_org" -s "$cf_space" || true
+      #     IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+      #     for app in "${APPS_LIST[@]}"; do
+      #       TRIMMED=$(echo "$app" | xargs)
+      #       if [ -n "$TRIMMED" ]; then
+      #         echo "▶️ Restarting app $TRIMMED..."
+      #         cf start "$TRIMMED"
+      #       fi
+      #     done
 
       # ──────────────────────────────────────────────────────────
       # MS Teams Notification (Adaptive Card format)
@@ -502,11 +502,7 @@ jobs:
               MERGE_COLOR="good"
               if [ -n "$DEPLOY_NAME" ]; then
                 CARD_TITLE="🚀 $DEPLOY_NAME Deployment Triggered"
-                if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
-                  CARD_SUBTITLE="Auto-merge completed • Stopped $cf_apps_comma (freed CF runtime memory) • SAP CI/CD started"
-                else
-                  CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
-                fi
+                CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
               else
                 CARD_TITLE="GitHub Auto-Merge Notification"
                 CARD_SUBTITLE=""
