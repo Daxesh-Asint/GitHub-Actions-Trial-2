@@ -327,11 +327,14 @@ jobs:
               }]
             }')
 
-          # Send to all configured webhook URLs (same pattern as _auto_merge.yml)
+          # Send to all configured webhook URLs (channel webhooks + global webhooks)
           for WEBHOOK_URL in \
             "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" \
             "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}"; do
+            "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" \
+            "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
