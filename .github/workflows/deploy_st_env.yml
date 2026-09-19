@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      workflows: write
     with:
       base: "st-env-for-contentfederation"
       compare: "dev"
