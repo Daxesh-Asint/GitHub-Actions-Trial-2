@@ -58,7 +58,7 @@ on:
         default: ""
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   notify:
@@ -241,6 +241,7 @@ jobs:
           # ⚙️ Resolve CF App Configuration (from .github/cf-apps.json)
           # ──────────────────────────────────────────────────────────
           CONFIG_FILE=".github/cf-apps.json"
+          CF_ENV_NAME=""
           CF_API=""
           CF_ORG=""
           CF_SPACE=""
@@ -253,15 +254,23 @@ jobs:
               ([$envs | to_entries[] | select(
                 (.key | norm) == ($name | norm) or
                 ((.value.aliases // [])[] | norm) == ($name | norm)
-              ) | .value] | first) // null
+              ) | {key: .key, value: .value}] | first) // null
             ' "$CONFIG_FILE" 2>/dev/null || echo "")
 
             if [ -n "$CF_ENV_JSON" ] && [ "$CF_ENV_JSON" != "null" ]; then
-              CF_API=$(echo "$CF_ENV_JSON" | jq -r '.api // empty')
-              CF_ORG=$(echo "$CF_ENV_JSON" | jq -r '.org // empty')
-              CF_SPACE=$(echo "$CF_ENV_JSON" | jq -r '.space // empty')
-              CF_APPS_RAW=$(echo "$CF_ENV_JSON" | jq -r '(.apps // [])[]' 2>/dev/null || echo "")
+              CF_ENV_NAME=$(echo "$CF_ENV_JSON" | jq -r '.key // empty')
+              CF_API=$(echo "$CF_ENV_JSON" | jq -r '.value.api // empty')
+              CF_ORG=$(echo "$CF_ENV_JSON" | jq -r '.value.org // empty')
+              CF_SPACE=$(echo "$CF_ENV_JSON" | jq -r '.value.space // empty')
+              CF_APPS_RAW=$(echo "$CF_ENV_JSON" | jq -r '(.value.apps // [])[]' 2>/dev/null || echo "")
             fi
+          fi
+
+          # Normalized environment key used for concurrency tracking (e.g. ais02, apm01)
+          if [ -n "$CF_ENV_NAME" ]; then
+            ENV_TAG_KEY=$(echo "$CF_ENV_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]//g')
+          else
+            ENV_TAG_KEY=$(echo "$RESOURCE_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]//g')
           fi
 
           # Optional override from payload / input if provided
@@ -287,6 +296,7 @@ jobs:
           echo "cf_app_name=$CF_APPS_COMMA" >> $GITHUB_OUTPUT
           echo "=== RESOLVED CF CONFIGURATION ==="
           echo "Resource: $RESOURCE_NAME"
+          echo "Env Key:  ${CF_ENV_NAME:-$ENV_TAG_KEY}"
           echo "CF API:   $CF_API"
           echo "CF Org:   $CF_ORG"
           echo "CF Space: $CF_SPACE"
@@ -295,6 +305,9 @@ jobs:
 
           CF_APP_STATUS=""
           if [ -n "$CF_APPS_COMMA" ] && [ "$CF_APPS_COUNT" -gt 0 ] 2>/dev/null; then
+            RUN_ID="${{ github.run_id }}"
+            CURRENT_SHA="${{ github.sha }}"
+
             echo "Installing CF CLI..."
             wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add - 2>/dev/null || true
             echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list > /dev/null
@@ -306,6 +319,17 @@ jobs:
             cf target -o "$CF_ORG" -s "$CF_SPACE" || true
 
             if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
+              # 1. Register this build as active for this environment
+              echo "📝 Registering active build marker: refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}"
+              gh api -X POST "repos/${{ github.repository }}/git/refs" \
+                -f ref="refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}" \
+                -f sha="$CURRENT_SHA" 2>/dev/null || true
+
+              # Count active concurrent builds for this environment
+              ACTIVE_COUNT=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/active-build-${ENV_TAG_KEY}-" --jq 'length' 2>/dev/null || echo "1")
+              [ -z "$ACTIVE_COUNT" ] || [ "$ACTIVE_COUNT" -lt 1 ] 2>/dev/null && ACTIVE_COUNT=1
+              echo "📊 Active concurrent builds for ${ENV_TAG_KEY}: $ACTIVE_COUNT"
+
               STOP_FAILED=false
               IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
               for app in "${APPS_LIST[@]}"; do
@@ -320,26 +344,81 @@ jobs:
 
               if [ "$STOP_FAILED" = "true" ]; then
                 CF_APP_STATUS="⚠️ Attempted to stop $CF_APPS_COMMA (Check CF logs)"
+              elif [ "$ACTIVE_COUNT" -gt 1 ]; then
+                CF_APP_STATUS="🛑 $CF_APPS_COMMA kept stopped (Concurrent build in progress; active builds: $ACTIVE_COUNT)"
               else
                 CF_APP_STATUS="🛑 $CF_APPS_COMMA stopped (needed more CF runtime memory to get deployment completed)"
               fi
             elif [ "$EVENT_TYPE" = "sap_cicd_finished" ]; then
-              RESTART_FAILED=false
-              IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
-              for app in "${APPS_LIST[@]}"; do
-                TRIMMED=$(echo "$app" | xargs)
-                if [ -n "$TRIMMED" ]; then
-                  echo "▶️ Restarting app $TRIMMED..."
-                  if ! cf start "$TRIMMED"; then
-                    RESTART_FAILED=true
-                  fi
-                fi
-              done
+              # 1. Remove active build marker for this run
+              echo "🗑️ Removing active build marker: refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}"
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}" 2>/dev/null || true
 
-              if [ "$RESTART_FAILED" = "true" ]; then
-                CF_APP_STATUS="⚠️ Attempted to restart $CF_APPS_COMMA (Check CF logs)"
+              # 2. Check how many other builds are still active for this environment
+              REMAINING_COUNT=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/active-build-${ENV_TAG_KEY}-" --jq 'length' 2>/dev/null || echo "0")
+              [ -z "$REMAINING_COUNT" ] && REMAINING_COUNT=0
+              echo "📊 Remaining active builds for ${ENV_TAG_KEY}: $REMAINING_COUNT"
+
+              if [ "$REMAINING_COUNT" -gt 0 ]; then
+                echo "🛑 Remaining active build(s) ($REMAINING_COUNT) detected for ${ENV_TAG_KEY}. Keeping $CF_APPS_COMMA stopped to protect active deployments."
+                CF_APP_STATUS="🛑 $CF_APPS_COMMA kept stopped ($REMAINING_COUNT other build(s) still in progress)"
               else
-                CF_APP_STATUS="▶️ $CF_APPS_COMMA restarted (runtime services restored)"
+                echo "✅ All active builds for ${ENV_TAG_KEY} completed. Starting $CF_APPS_COMMA..."
+                START_FAILED=false
+                IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
+                for app in "${APPS_LIST[@]}"; do
+                  TRIMMED=$(echo "$app" | xargs)
+                  if [ -n "$TRIMMED" ]; then
+                    echo "🔍 Resolving App GUID and state for $TRIMMED..."
+                    APP_GUID=$(cf app "$TRIMMED" --guid 2>/dev/null | tr -d '[:space:]' || echo "")
+                    echo "App: $TRIMMED, GUID: ${APP_GUID:-unknown}"
+
+                    STARTED=false
+                    if [ -n "$APP_GUID" ]; then
+                      for attempt in 1 2 3; do
+                        echo "▶️ Sending direct Start action to CF v3 API for $TRIMMED (attempt $attempt of 3)..."
+                        START_RESP=$(cf curl "/v3/apps/$APP_GUID/actions/start" -X POST 2>&1 || true)
+                        echo "Response: $START_RESP"
+
+                        # Check if start request succeeded (HTTP 200/state: STARTED)
+                        if echo "$START_RESP" | grep -qiE '"state":\s*"STARTED"'; then
+                          echo "Waiting up to 30s for $TRIMMED instances to be running..."
+                          for poll in {1..6}; do
+                            sleep 5
+                            CURRENT_STATE=$(cf app "$TRIMMED" 2>/dev/null | grep -iE 'requested state:' | awk '{print tolower($3)}' || echo "")
+                            if [ "$CURRENT_STATE" = "started" ]; then
+                              STARTED=true
+                              echo "✅ App $TRIMMED is started and running!"
+                              break 2
+                            fi
+                          done
+                        else
+                          echo "⚠️ Direct start request failed or returned unexpected response. Waiting 10s before retry..."
+                          sleep 10
+                        fi
+                      done
+                    fi
+
+                    # Fallback to cf start if direct API did not achieve started state
+                    if [ "$STARTED" != "true" ]; then
+                      echo "⚠️ Direct v3 API start was unsuccessful. Attempting standard 'cf start $TRIMMED' as fallback..."
+                      if cf start "$TRIMMED"; then
+                        STARTED=true
+                        echo "✅ App $TRIMMED started successfully via fallback!"
+                      else
+                        START_FAILED=true
+                        echo "❌ Failed to start $TRIMMED. Fetching recent logs..."
+                        cf logs "$TRIMMED" --recent || true
+                      fi
+                    fi
+                  fi
+                done
+
+                if [ "$START_FAILED" = "true" ]; then
+                  CF_APP_STATUS="⚠️ Attempted to start $CF_APPS_COMMA (Check CF logs)"
+                else
+                  CF_APP_STATUS="▶️ $CF_APPS_COMMA started (runtime services restored)"
+                fi
               fi
 
               if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
