@@ -236,17 +236,6 @@ if [ -n "$CF_APPS_COMMA" ] && [ "$CF_APPS_COUNT" -gt 0 ] 2>/dev/null; then
   cf target -o "$CF_ORG" -s "$CF_SPACE" || true
 
   if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
-    # 1. Register this build as active for this environment
-    echo "📝 Registering active build marker: refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}"
-    gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
-      -f ref="refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}" \
-      -f sha="$CURRENT_SHA" 2>/dev/null || true
-
-    # Count active concurrent builds for this environment
-    ACTIVE_COUNT=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/active-build-${ENV_TAG_KEY}-" --jq 'length' 2>/dev/null || echo "1")
-    [ -z "$ACTIVE_COUNT" ] || [ "$ACTIVE_COUNT" -lt 1 ] 2>/dev/null && ACTIVE_COUNT=1
-    echo "📊 Active concurrent builds for ${ENV_TAG_KEY}: $ACTIVE_COUNT"
-
     STOP_FAILED=false
     IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
     for app in "${APPS_LIST[@]}"; do
@@ -261,81 +250,64 @@ if [ -n "$CF_APPS_COMMA" ] && [ "$CF_APPS_COUNT" -gt 0 ] 2>/dev/null; then
 
     if [ "$STOP_FAILED" = "true" ]; then
       CF_APP_STATUS="⚠️ Attempted to stop $CF_APPS_COMMA (Check CF logs)"
-    elif [ "$ACTIVE_COUNT" -gt 1 ]; then
-      CF_APP_STATUS="🛑 $CF_APPS_COMMA kept stopped (Concurrent build in progress; active builds: $ACTIVE_COUNT)"
     else
       CF_APP_STATUS="🛑 $CF_APPS_COMMA stopped (needed more CF runtime memory to get deployment completed)"
     fi
   elif [ "$EVENT_TYPE" = "sap_cicd_finished" ]; then
-    # 1. Remove active build marker for this run
-    echo "🗑️ Removing active build marker: refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}"
-    gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/active-build-${ENV_TAG_KEY}-${RUN_ID}" 2>/dev/null || true
+    START_FAILED=false
+    IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
+    for app in "${APPS_LIST[@]}"; do
+      TRIMMED=$(echo "$app" | xargs)
+      if [ -n "$TRIMMED" ]; then
+        echo "🔍 Resolving App GUID and state for $TRIMMED..."
+        APP_GUID=$(cf app "$TRIMMED" --guid 2>/dev/null | tr -d '[:space:]' || echo "")
+        echo "App: $TRIMMED, GUID: ${APP_GUID:-unknown}"
 
-    # 2. Check how many other builds are still active for this environment
-    REMAINING_COUNT=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/active-build-${ENV_TAG_KEY}-" --jq 'length' 2>/dev/null || echo "0")
-    [ -z "$REMAINING_COUNT" ] && REMAINING_COUNT=0
-    echo "📊 Remaining active builds for ${ENV_TAG_KEY}: $REMAINING_COUNT"
+        STARTED=false
+        if [ -n "$APP_GUID" ]; then
+          for attempt in 1 2 3; do
+            echo "▶️ Sending direct Start action to CF v3 API for $TRIMMED (attempt $attempt of 3)..."
+            START_RESP=$(cf curl "/v3/apps/$APP_GUID/actions/start" -X POST 2>&1 || true)
+            echo "Response: $START_RESP"
 
-    if [ "$REMAINING_COUNT" -gt 0 ]; then
-      echo "🛑 Remaining active build(s) ($REMAINING_COUNT) detected for ${ENV_TAG_KEY}. Keeping $CF_APPS_COMMA stopped to protect active deployments."
-      CF_APP_STATUS="🛑 $CF_APPS_COMMA kept stopped ($REMAINING_COUNT other build(s) still in progress)"
-    else
-      echo "✅ All active builds for ${ENV_TAG_KEY} completed. Starting $CF_APPS_COMMA..."
-      START_FAILED=false
-      IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
-      for app in "${APPS_LIST[@]}"; do
-        TRIMMED=$(echo "$app" | xargs)
-        if [ -n "$TRIMMED" ]; then
-          echo "🔍 Resolving App GUID and state for $TRIMMED..."
-          APP_GUID=$(cf app "$TRIMMED" --guid 2>/dev/null | tr -d '[:space:]' || echo "")
-          echo "App: $TRIMMED, GUID: ${APP_GUID:-unknown}"
-
-          STARTED=false
-          if [ -n "$APP_GUID" ]; then
-            for attempt in 1 2 3; do
-              echo "▶️ Sending direct Start action to CF v3 API for $TRIMMED (attempt $attempt of 3)..."
-              START_RESP=$(cf curl "/v3/apps/$APP_GUID/actions/start" -X POST 2>&1 || true)
-              echo "Response: $START_RESP"
-
-              # Check if start request succeeded (HTTP 200/state: STARTED)
-              if echo "$START_RESP" | grep -qiE '"state":\s*"STARTED"'; then
-                echo "Waiting up to 30s for $TRIMMED instances to be running..."
-                for poll in {1..6}; do
-                  sleep 5
-                  CURRENT_STATE=$(cf app "$TRIMMED" 2>/dev/null | grep -iE 'requested state:' | awk '{print tolower($3)}' || echo "")
-                  if [ "$CURRENT_STATE" = "started" ]; then
-                    STARTED=true
-                    echo "✅ App $TRIMMED is started and running!"
-                    break 2
-                  fi
-                done
-              else
-                echo "⚠️ Direct start request failed or returned unexpected response. Waiting 10s before retry..."
-                sleep 10
-              fi
-            done
-          fi
-
-          # Fallback to cf start if direct API did not achieve started state
-          if [ "$STARTED" != "true" ]; then
-            echo "⚠️ Direct v3 API start was unsuccessful. Attempting standard 'cf start $TRIMMED' as fallback..."
-            if cf start "$TRIMMED"; then
-              STARTED=true
-              echo "✅ App $TRIMMED started successfully via fallback!"
+            # Check if start request succeeded (HTTP 200/state: STARTED)
+            if echo "$START_RESP" | grep -qiE '"state":\s*"STARTED"'; then
+              echo "Waiting up to 30s for $TRIMMED instances to be running..."
+              for poll in {1..6}; do
+                sleep 5
+                CURRENT_STATE=$(cf app "$TRIMMED" 2>/dev/null | grep -iE 'requested state:' | awk '{print tolower($3)}' || echo "")
+                if [ "$CURRENT_STATE" = "started" ]; then
+                  STARTED=true
+                  echo "✅ App $TRIMMED is started and running!"
+                  break 2
+                fi
+              done
             else
-              START_FAILED=true
-              echo "❌ Failed to start $TRIMMED. Fetching recent logs..."
-              cf logs "$TRIMMED" --recent || true
+              echo "⚠️ Direct start request failed or returned unexpected response. Waiting 10s before retry..."
+              sleep 10
             fi
+          done
+        fi
+
+        # Fallback to cf start if direct API did not achieve started state
+        if [ "$STARTED" != "true" ]; then
+          echo "⚠️ Direct v3 API start was unsuccessful. Attempting standard 'cf start $TRIMMED' as fallback..."
+          if cf start "$TRIMMED"; then
+            STARTED=true
+            echo "✅ App $TRIMMED started successfully via fallback!"
+          else
+            START_FAILED=true
+            echo "❌ Failed to start $TRIMMED. Fetching recent logs..."
+            cf logs "$TRIMMED" --recent || true
           fi
         fi
-      done
-
-      if [ "$START_FAILED" = "true" ]; then
-        CF_APP_STATUS="⚠️ Attempted to start $CF_APPS_COMMA (Check CF logs)"
-      else
-        CF_APP_STATUS="▶️ $CF_APPS_COMMA started (runtime services restored)"
       fi
+    done
+
+    if [ "$START_FAILED" = "true" ]; then
+      CF_APP_STATUS="⚠️ Attempted to start $CF_APPS_COMMA (Check CF logs)"
+    else
+      CF_APP_STATUS="▶️ $CF_APPS_COMMA started (runtime services restored)"
     fi
 
     if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
