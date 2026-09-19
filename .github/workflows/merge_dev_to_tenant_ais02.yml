@@ -16,6 +16,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      workflows: write
     with:
       base: "tenant/asint-ais-02"
       compare: "dev"
