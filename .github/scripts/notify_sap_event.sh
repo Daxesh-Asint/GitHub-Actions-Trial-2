@@ -15,6 +15,7 @@ ALLOWED_JOBS=(
   "AsInt-AIS-02-Safety-Test-DND"
   "AsInt-AIS-02-mta-fix"
   "AsInt-APM-01"
+  "AsInt-APM-02"
   "AsInt-APM-EIOT"
   "AsInt-DEMO"
   "AsInt-IRC"
@@ -65,6 +66,9 @@ case "$RESOURCE_NAME" in
     ;;
   "AsInt-APM-01")
     TARGET_BRANCH="tenant/asint-apm-01-new"
+    ;;
+  "AsInt-APM-02")
+    TARGET_BRANCH="tenant/asint-apm-02-v2"
     ;;
   "AsInt-APM-EIOT")
     TARGET_BRANCH="apm-eiot-temp-copy"
