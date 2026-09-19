@@ -324,22 +324,40 @@ jobs:
                 CF_APP_STATUS="🛑 $CF_APPS_COMMA stopped (needed more CF runtime memory to get deployment completed)"
               fi
             elif [ "$EVENT_TYPE" = "sap_cicd_finished" ]; then
-              RESTART_FAILED=false
+              START_FAILED=false
               IFS=',' read -ra APPS_LIST <<< "$CF_APPS_COMMA"
               for app in "${APPS_LIST[@]}"; do
                 TRIMMED=$(echo "$app" | xargs)
                 if [ -n "$TRIMMED" ]; then
-                  echo "▶️ Restarting app $TRIMMED..."
-                  if ! cf start "$TRIMMED"; then
-                    RESTART_FAILED=true
+                  echo "🔍 Checking state of app $TRIMMED..."
+                  APP_STATE=$(cf app "$TRIMMED" 2>/dev/null | grep -iE 'requested state:' | awk '{print tolower($3)}' || echo "")
+                  echo "Current requested state: ${APP_STATE:-unknown}"
+
+                  STARTED=false
+                  for attempt in 1 2 3; do
+                    echo "▶️ Starting app $TRIMMED (attempt $attempt of 3)..."
+                    if cf start "$TRIMMED"; then
+                      STARTED=true
+                      echo "✅ App $TRIMMED started successfully!"
+                      break
+                    else
+                      echo "⚠️ Start attempt $attempt failed for $TRIMMED. Waiting 10 seconds before retry..."
+                      sleep 10
+                    fi
+                  done
+
+                  if [ "$STARTED" != "true" ]; then
+                    START_FAILED=true
+                    echo "❌ Failed to start $TRIMMED after 3 attempts. Fetching recent logs..."
+                    cf logs "$TRIMMED" --recent || true
                   fi
                 fi
               done
 
-              if [ "$RESTART_FAILED" = "true" ]; then
-                CF_APP_STATUS="⚠️ Attempted to restart $CF_APPS_COMMA (Check CF logs)"
+              if [ "$START_FAILED" = "true" ]; then
+                CF_APP_STATUS="⚠️ Attempted to start $CF_APPS_COMMA (Check CF logs)"
               else
-                CF_APP_STATUS="▶️ $CF_APPS_COMMA restarted (runtime services restored)"
+                CF_APP_STATUS="▶️ $CF_APPS_COMMA started (runtime services restored)"
               fi
 
               if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
