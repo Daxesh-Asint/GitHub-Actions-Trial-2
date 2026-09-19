@@ -68,6 +68,9 @@ jobs:
       event_type: ${{ steps.process.outputs.event_type }}
       resource_name: ${{ steps.process.outputs.resource_name }}
       cf_app_name: ${{ steps.process.outputs.cf_app_name }}
+      commit_id: ${{ steps.process.outputs.commit_id }}
+      status: ${{ steps.process.outputs.status }}
+      clean_name: ${{ steps.process.outputs.clean_name }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -144,3 +147,52 @@ jobs:
         run: |
           chmod +x .github/scripts/notify_sap_event.sh
           ./.github/scripts/notify_sap_event.sh
+
+      # ──────────────────────────────────────────────────────────
+      # 📖 Global Wiki Deployment History Update
+      # ──────────────────────────────────────────────────────────
+      - name: Checkout Wiki
+        if: always()
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Setup Node.js for Wiki
+        if: always()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Global Wiki Deployment History (SAP Event)
+        if: always()
+        run: |
+          if [ -d "wiki" ] && [ -n "${{ steps.process.outputs.resource_name }}" ]; then
+            EVENT_ACT="${{ steps.process.outputs.event_type }}"
+            WIKI_ACT="sap_finish"
+            if [ "$EVENT_ACT" = "sap_cicd_started" ]; then
+              WIKI_ACT="sap_start"
+            fi
+
+            export WIKI_PAYLOAD=$(jq -n \
+              --arg env "${{ steps.process.outputs.clean_name || steps.process.outputs.resource_name }}" \
+              --arg action "$WIKI_ACT" \
+              --arg commit "${{ steps.process.outputs.commit_id }}" \
+              --arg status "${{ steps.process.outputs.status }}" \
+              '{
+                environment: $env,
+                action: $action,
+                commit_id: $commit,
+                status: $status
+              }')
+
+            node .github/scripts/update_wiki_global.js || echo "Global wiki update warning: script finished with error"
+          else
+            echo "Skipping wiki update: Wiki dir or resource_name not available."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+

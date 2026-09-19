@@ -303,9 +303,11 @@ jobs:
         run: |
           echo "Auto-merging PR #$PR_NUMBER..."
           if gh pr merge "$PR_NUMBER" --merge; then
-            echo "PR #$PR_NUMBER merged successfully!"
+            echo "PR #$PR_NUMBER merged successfully using standard merge!"
+          elif gh pr merge "$PR_NUMBER" --squash; then
+            echo "Standard merge disallowed; PR #$PR_NUMBER merged successfully using squash merge!"
           else
-            echo "Failed to merge PR #$PR_NUMBER"
+            echo "Failed to merge PR #$PR_NUMBER (both standard and squash merge failed)"
             exit 1
           fi
 
@@ -777,3 +779,60 @@ jobs:
             fi
           done
           echo "Teams card successfully sent!"
+
+      # ──────────────────────────────────────────────────────────
+      # 📖 Global Wiki Deployment History Update
+      # ──────────────────────────────────────────────────────────
+      - name: Checkout Wiki
+        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Setup Node.js for Wiki
+        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Global Wiki Deployment History
+        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        run: |
+          if [ -d "wiki" ]; then
+            PR_NUM="${{ env.pr_number }}"
+            COMMIT_ID=""
+            if [ -n "$PR_NUM" ]; then
+              COMMIT_ID=$(gh pr view "$PR_NUM" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null || true)
+            fi
+
+            export WIKI_PAYLOAD=$(jq -n \
+              --arg env "${{ env.deploy_name || env.base_branch }}" \
+              --arg action "conflict_merge" \
+              --arg pr "$PR_NUM" \
+              --arg commit "$COMMIT_ID" \
+              --arg source "${{ env.head_branch }}" \
+              --arg target "${{ env.base_branch }}" \
+              --arg actor "${{ github.actor }}" \
+              --arg status "Conflicts Resolved & Merged" \
+              '{
+                environment: $env,
+                action: $action,
+                pr_number: $pr,
+                commit_id: $commit,
+                source_branch: $source,
+                target_branch: $target,
+                actor: $actor,
+                status: $status
+              }')
+
+            node .github/scripts/update_wiki_global.js || echo "Global wiki update warning: script finished with error"
+          else
+            echo "Wiki repository not found. Skipping wiki update."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
