@@ -87,14 +87,32 @@ jobs:
           # 3. Merge the Pull Request (if not already merged)
           PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
           if [ "$PR_STATE" = "OPEN" ]; then
-            echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
-            if gh pr merge "$PR_NUMBER" --merge; then
-              echo "PR #$PR_NUMBER successfully merged using standard merge!"
-            elif gh pr merge "$PR_NUMBER" --squash; then
-              echo "Standard merge disallowed; PR #$PR_NUMBER successfully merged using squash merge!"
+            # Check if target branch requires squash merge (Indorama & HSC branches)
+            USE_SQUASH_ONLY="false"
+            case "$BASE_BRANCH" in
+              *"hemlock"*|*"indorama"*)
+                USE_SQUASH_ONLY="true"
+                ;;
+            esac
+
+            if [ "$USE_SQUASH_ONLY" = "true" ]; then
+              echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH using squash merge only..."
+              if gh pr merge "$PR_NUMBER" --squash; then
+                echo "PR #$PR_NUMBER successfully merged using squash merge!"
+              else
+                echo "Failed to squash merge PR #$PR_NUMBER"
+                exit 1
+              fi
             else
-              echo "Failed to merge PR #$PR_NUMBER (both standard and squash merge failed)"
-              exit 1
+              echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
+              if gh pr merge "$PR_NUMBER" --merge; then
+                echo "PR #$PR_NUMBER successfully merged using standard merge!"
+              elif gh pr merge "$PR_NUMBER" --squash; then
+                echo "Standard merge disallowed; PR #$PR_NUMBER successfully merged using squash merge!"
+              else
+                echo "Failed to merge PR #$PR_NUMBER (both standard and squash merge failed)"
+                exit 1
+              fi
             fi
           else
             echo "PR #$PR_NUMBER is already merged ($PR_STATE)."
