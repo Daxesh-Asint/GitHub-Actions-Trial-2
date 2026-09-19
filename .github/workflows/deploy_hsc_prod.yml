@@ -3,7 +3,6 @@ name: "Deploy: HSC Prod"
 on:
   repository_dispatch:
     types: [trigger_hsc_prod_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
