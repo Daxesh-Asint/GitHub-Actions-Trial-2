@@ -337,14 +337,34 @@ jobs:
           gh label create "$DEPLOYING_LABEL" --color "#1d76db" --description "Deployment is in progress" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --add-label "$DEPLOYING_LABEL" 2>/dev/null || true
 
-          if gh pr merge "$PR_NUMBER" --merge; then
-            echo "Pull request '$PR_NUMBER' merged successfully using standard merge into ${{ inputs.base }}"
-          elif gh pr merge "$PR_NUMBER" --squash; then
-            echo "Standard merge disallowed; pull request '$PR_NUMBER' merged successfully using squash merge into ${{ inputs.base }}"
+          # Check if target branch requires squash merge (Indorama & HSC branches)
+          TARGET_BRANCH="${{ inputs.base }}"
+          USE_SQUASH_ONLY="false"
+          case "$TARGET_BRANCH" in
+            *"hemlock"*|*"indorama"*)
+              USE_SQUASH_ONLY="true"
+              ;;
+          esac
+
+          if [ "$USE_SQUASH_ONLY" = "true" ]; then
+            echo "Target branch '$TARGET_BRANCH' is configured for squash merge only."
+            if gh pr merge "$PR_NUMBER" --squash; then
+              echo "Pull request '$PR_NUMBER' merged successfully using squash merge into $TARGET_BRANCH"
+            else
+              gh pr comment "$PR_NUMBER" --body "Auto-merge failed during squash merge step. Please check the workflow logs."
+              echo "Failed to squash merge pull request '$PR_NUMBER'"
+              exit 1
+            fi
           else
-            gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step (both standard and squash merge failed). Please check the workflow logs."
-            echo "Failed to merge pull request '$PR_NUMBER'"
-            exit 1
+            if gh pr merge "$PR_NUMBER" --merge; then
+              echo "Pull request '$PR_NUMBER' merged successfully using standard merge into $TARGET_BRANCH"
+            elif gh pr merge "$PR_NUMBER" --squash; then
+              echo "Standard merge disallowed; pull request '$PR_NUMBER' merged successfully using squash merge into $TARGET_BRANCH"
+            else
+              gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step (both standard and squash merge failed). Please check the workflow logs."
+              echo "Failed to merge pull request '$PR_NUMBER'"
+              exit 1
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
