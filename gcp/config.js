@@ -35,5 +35,3 @@ module.exports = {
     return this.TEAMS_WEBHOOK_URL;
   }
 };
-
-// Test trigger for workflow testing: 2026-09-19T19:49:25IST
