@@ -398,9 +398,9 @@ esac
 
 # Fallback to Global Webhook URLs if no specific channel webhook is configured
 if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
-  [ -n "$TEAMS_WEBHOOK_URL" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_URL")
-  [ -n "$TEAMS_WEBHOOK_URL_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_URL_2")
-  [ -n "$TEAMS_WEBHOOK_URL_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_URL_3")
+  [ -n "$TEAMS_WEBHOOK_GLOBAL_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_1")
+  [ -n "$TEAMS_WEBHOOK_GLOBAL_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_2")
+  [ -n "$TEAMS_WEBHOOK_GLOBAL_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_3")
 fi
 
 if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
