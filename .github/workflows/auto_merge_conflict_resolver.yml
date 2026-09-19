@@ -17,6 +17,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  workflows: write
 
 jobs:
   handle-conflict-resolution:
@@ -298,14 +299,20 @@ jobs:
         id: merge
         if: env.should_run == 'true' && env.need_merge == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
           PR_NUMBER: ${{ env.pr_number }}
         run: |
           echo "Auto-merging PR #$PR_NUMBER..."
-          if gh pr merge "$PR_NUMBER" --merge; then
-            echo "PR #$PR_NUMBER merged successfully!"
+          if gh pr merge "$PR_NUMBER" --merge --admin; then
+            echo "PR #$PR_NUMBER merged successfully using standard merge!"
+          elif gh pr merge "$PR_NUMBER" --squash --admin; then
+            echo "Standard merge disallowed; PR #$PR_NUMBER merged successfully using squash merge!"
+          elif gh pr merge "$PR_NUMBER" --merge; then
+            echo "PR #$PR_NUMBER merged successfully using standard merge!"
+          elif gh pr merge "$PR_NUMBER" --squash; then
+            echo "Standard merge disallowed; PR #$PR_NUMBER merged successfully using squash merge!"
           else
-            echo "Failed to merge PR #$PR_NUMBER"
+            echo "Failed to merge PR #$PR_NUMBER (both standard and squash merge failed)"
             exit 1
           fi
 
@@ -473,7 +480,6 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
-              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
               ;;
             "apm01"|"asintapm01")
               [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
@@ -542,12 +548,10 @@ jobs:
               ;;
           esac
 
-          # Fallback to Global Webhook URLs if no specific channel webhook is configured
-          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
-          fi
+          # Always include Global Webhook URLs for universal notification broadcast
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}")
 
           for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
@@ -700,7 +704,6 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
-              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
               ;;
             "apm01"|"asintapm01")
               [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
@@ -769,12 +772,10 @@ jobs:
               ;;
           esac
 
-          # Fallback to Global Webhook URLs if no specific channel webhook is configured
-          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
-          fi
+          # Always include Global Webhook URLs for universal notification broadcast
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}")
 
           for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
@@ -783,3 +784,60 @@ jobs:
             fi
           done
           echo "Teams card successfully sent!"
+
+      # ──────────────────────────────────────────────────────────
+      # 📖 Global Wiki Deployment History Update
+      # ──────────────────────────────────────────────────────────
+      - name: Checkout Wiki
+        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Setup Node.js for Wiki
+        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Global Wiki Deployment History
+        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        run: |
+          if [ -d "wiki" ]; then
+            PR_NUM="${{ env.pr_number }}"
+            COMMIT_ID=""
+            if [ -n "$PR_NUM" ]; then
+              COMMIT_ID=$(gh pr view "$PR_NUM" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null || true)
+            fi
+
+            export WIKI_PAYLOAD=$(jq -n \
+              --arg env "${{ env.deploy_name || env.base_branch }}" \
+              --arg action "conflict_merge" \
+              --arg pr "$PR_NUM" \
+              --arg commit "$COMMIT_ID" \
+              --arg source "${{ env.head_branch }}" \
+              --arg target "${{ env.base_branch }}" \
+              --arg actor "${{ github.actor }}" \
+              --arg status "Conflicts Resolved & Merged" \
+              '{
+                environment: $env,
+                action: $action,
+                pr_number: $pr,
+                commit_id: $commit,
+                source_branch: $source,
+                target_branch: $target,
+                actor: $actor,
+                status: $status
+              }')
+
+            node .github/scripts/update_wiki_global.js || echo "Global wiki update warning: script finished with error"
+          else
+            echo "Wiki repository not found. Skipping wiki update."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+

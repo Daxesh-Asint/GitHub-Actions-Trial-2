@@ -13,6 +13,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  workflows: write
 
 jobs:
   handle-approval:
@@ -24,7 +25,7 @@ jobs:
 
       - name: Process Approval & Merge PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
@@ -57,6 +58,13 @@ jobs:
           DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
 
           case "$BASE_BRANCH" in
+            "tenant/asint-ais-02")
+              DEPLOY_NAME="AIS-02"
+              DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
+              ;;
+            "tenant/asint-apm-01-new")
+              DEPLOY_NAME="APM-01"
+              ;;
             "tenant/hemlock-non-prod")
               DEPLOY_NAME="HSC Non-Prod"
               ;;
@@ -75,6 +83,21 @@ jobs:
             "tenant/indorama-prod-933")
               DEPLOY_NAME="Indorama Prod 933"
               ;;
+            "tenant/asint-demo")
+              DEPLOY_NAME="ASINT-DEMO"
+              ;;
+            "tenant/asint-irc-temp")
+              DEPLOY_NAME="IRC"
+              ;;
+            "tenant/baystar")
+              DEPLOY_NAME="BAYSTAR"
+              ;;
+            "st-env-for-contentfederation")
+              DEPLOY_NAME="ST-ENV"
+              ;;
+            "apm-eiot-temp-copy")
+              DEPLOY_NAME="APM-EIOT"
+              ;;
             *)
               # Fallback if other branch has awaiting approval
               DEPLOY_NAME=$(echo "$LABELS" | grep -oE 'auto merge for .+' | sed 's/auto merge for //' || echo "$BASE_BRANCH")
@@ -85,10 +108,16 @@ jobs:
           PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
           if [ "$PR_STATE" = "OPEN" ]; then
             echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
-            if gh pr merge "$PR_NUMBER" --merge; then
-              echo "PR #$PR_NUMBER successfully merged!"
+            if gh pr merge "$PR_NUMBER" --merge --admin; then
+              echo "PR #$PR_NUMBER successfully merged using standard merge!"
+            elif gh pr merge "$PR_NUMBER" --squash --admin; then
+              echo "Standard merge disallowed; PR #$PR_NUMBER successfully merged using squash merge!"
+            elif gh pr merge "$PR_NUMBER" --merge; then
+              echo "PR #$PR_NUMBER successfully merged using standard merge!"
+            elif gh pr merge "$PR_NUMBER" --squash; then
+              echo "Standard merge disallowed; PR #$PR_NUMBER successfully merged using squash merge!"
             else
-              echo "Failed to merge PR #$PR_NUMBER"
+              echo "Failed to merge PR #$PR_NUMBER (both standard and squash merge failed)"
               exit 1
             fi
           else
@@ -216,7 +245,6 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
-              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
               ;;
             "apm01"|"asintapm01")
               [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
@@ -285,12 +313,10 @@ jobs:
               ;;
           esac
 
-          # Fallback to Global Webhook URLs if no specific channel webhook is configured
-          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
-          fi
+          # Always include Global Webhook URLs for universal notification broadcast
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}")
 
           if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
             echo "ℹ️ No specific or fallback Teams webhook configured for '$DEPLOY_NAME'. Skipping notification."
@@ -304,3 +330,60 @@ jobs:
             fi
           done
           echo "Teams card successfully sent!"
+
+      # ──────────────────────────────────────────────────────────
+      # 📖 Global Wiki Deployment History Update
+      # ──────────────────────────────────────────────────────────
+      - name: Checkout Wiki
+        if: always()
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Setup Node.js for Wiki
+        if: always()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Global Wiki Deployment History
+        if: always()
+        run: |
+          if [ -d "wiki" ]; then
+            PR_NUM="${{ github.event.pull_request.number || github.event.issue.number }}"
+            COMMIT_ID=""
+            if [ -n "$PR_NUM" ]; then
+              COMMIT_ID=$(gh pr view "$PR_NUM" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null || true)
+            fi
+
+            export WIKI_PAYLOAD=$(jq -n \
+              --arg env "${{ env.DEPLOY_NAME || env.base_branch }}" \
+              --arg action "approval_merge" \
+              --arg pr "$PR_NUM" \
+              --arg commit "$COMMIT_ID" \
+              --arg source "${{ github.event.pull_request.head.ref }}" \
+              --arg target "${{ github.event.pull_request.base.ref }}" \
+              --arg actor "${{ github.actor }}" \
+              --arg status "Approved & Merged" \
+              '{
+                environment: $env,
+                action: $action,
+                pr_number: $pr,
+                commit_id: $commit,
+                source_branch: $source,
+                target_branch: $target,
+                actor: $actor,
+                status: $status
+              }')
+
+            node .github/scripts/update_wiki_global.js || echo "Global wiki update warning: script finished with error"
+          else
+            echo "Wiki repository not found. Skipping wiki update."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
