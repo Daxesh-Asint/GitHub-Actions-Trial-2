@@ -303,9 +303,11 @@ jobs:
         run: |
           echo "Auto-merging PR #$PR_NUMBER..."
           if gh pr merge "$PR_NUMBER" --merge; then
-            echo "PR #$PR_NUMBER merged successfully!"
+            echo "PR #$PR_NUMBER merged successfully using standard merge!"
+          elif gh pr merge "$PR_NUMBER" --squash; then
+            echo "Standard merge disallowed; PR #$PR_NUMBER merged successfully using squash merge!"
           else
-            echo "Failed to merge PR #$PR_NUMBER"
+            echo "Failed to merge PR #$PR_NUMBER (both standard and squash merge failed)"
             exit 1
           fi
 
