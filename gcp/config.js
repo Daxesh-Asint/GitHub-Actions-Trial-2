@@ -10,7 +10,7 @@ module.exports = {
   GITHUB_PAT: process.env.GITHUB_PAT || '',
 
   // 📢 3. Global Fallback MS Teams Incoming Webhook URL:
-  TEAMS_WEBHOOK_URL: process.env.TEAMS_WEBHOOK_URL || process.env.TEAMS_WEBHOOK_URL_APM02 || '',
+  TEAMS_WEBHOOK_URL: process.env.TEAMS_WEBHOOK_GLOBAL_1 || process.env.TEAMS_WEBHOOK_URL || '',
 
   // 🤖 4. Fallback Bot Name:
   DEFAULT_BOT_NAME: process.env.BOT_NAME || 'Jarvis',
@@ -24,19 +24,13 @@ module.exports = {
   getChannelWebhookUrl: function (env) {
     if (!env) return this.TEAMS_WEBHOOK_URL;
     
-    // Check primary slot, slot 2, slot 3, or legacy var name
+    // Check primary slot, slot 2, slot 3
     if (env.webhookEnvVar && process.env[env.webhookEnvVar]) {
       return process.env[env.webhookEnvVar];
     }
     const legacyKey = env.webhookEnvVar ? env.webhookEnvVar.replace('_1', '') : '';
     if (legacyKey && process.env[legacyKey]) {
       return process.env[legacyKey];
-    }
-    if (env.id === 'apm02' && process.env.TEAMS_WEBHOOK_URL_APM02) {
-      return process.env.TEAMS_WEBHOOK_URL_APM02;
-    }
-    if (env.id === 'ais02' && process.env.TEAMS_WEBHOOK_URL_AIS02) {
-      return process.env.TEAMS_WEBHOOK_URL_AIS02;
     }
     return this.TEAMS_WEBHOOK_URL;
   }

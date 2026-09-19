@@ -138,9 +138,9 @@ jobs:
           TEAMS_WEBHOOK_ST_ENV_1: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}
           TEAMS_WEBHOOK_ST_ENV_2: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}
           TEAMS_WEBHOOK_ST_ENV_3: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-          TEAMS_WEBHOOK_URL_2: ${{ secrets.TEAMS_WEBHOOK_URL_2 }}
-          TEAMS_WEBHOOK_URL_3: ${{ secrets.TEAMS_WEBHOOK_URL_3 }}
+          TEAMS_WEBHOOK_GLOBAL_1: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}
+          TEAMS_WEBHOOK_GLOBAL_2: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}
+          TEAMS_WEBHOOK_GLOBAL_3: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}
         run: |
           chmod +x .github/scripts/notify_sap_event.sh
           ./.github/scripts/notify_sap_event.sh
