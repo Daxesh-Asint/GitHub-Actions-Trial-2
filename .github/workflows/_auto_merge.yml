@@ -189,26 +189,49 @@ jobs:
       # ──────────────────────────────────────────────────────────
       # 👥 Assign Reviewer & Wait for Approval (for protected branches)
       # ──────────────────────────────────────────────────────────
-      - name: Request Review for Protected Branch
-        if: (env.pr_exists == 'true' || env.pr_created == 'true') && inputs.reviewers != '' && env.pr_mergeable == 'true'
+      - name: Check Branch Protection & Request Review
+        if: (env.pr_exists == 'true' || env.pr_created == 'true') && env.pr_mergeable == 'true'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
           PR_NUMBER: ${{ env.pr_number }}
+          INPUT_REVIEWERS: ${{ inputs.reviewers }}
+          DEFAULT_REVIEWERS: "Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
         run: |
-          echo "Protected branch requires review from: ${{ inputs.reviewers }}"
-          IFS=',' read -ra REV_ARR <<< "${{ inputs.reviewers }}"
-          for rev in "${REV_ARR[@]}"; do
-            TRIMMED_REV=$(echo "$rev" | xargs)
-            if [ -n "$TRIMMED_REV" ]; then
-              echo "Requesting review from: $TRIMMED_REV"
-              gh pr edit "$PR_NUMBER" --add-reviewer "$TRIMMED_REV" 2>/dev/null || true
-            fi
-          done
-          gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
-          gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
-          gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned ${{ inputs.reviewers }} as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
-          echo "awaiting_approval=true" >> $GITHUB_ENV
-          echo "pr_mergeable=false" >> $GITHUB_ENV
+          TARGET_BRANCH="${{ inputs.base }}"
+          echo "Checking protection status for target branch: '$TARGET_BRANCH'..."
+          
+          IS_PROTECTED=$(gh api "repos/${{ github.repository }}/branches/$TARGET_BRANCH" --jq '.protected' 2>/dev/null || echo "false")
+          echo "Branch '$TARGET_BRANCH' protected status: $IS_PROTECTED"
+
+          ASSIGN_REVIEWERS=""
+          if [ -n "$INPUT_REVIEWERS" ]; then
+            ASSIGN_REVIEWERS="$INPUT_REVIEWERS"
+          elif [ "$IS_PROTECTED" = "true" ]; then
+            ASSIGN_REVIEWERS="$DEFAULT_REVIEWERS"
+          fi
+
+          if [ -n "$ASSIGN_REVIEWERS" ]; then
+            echo "Target branch is protected. Assigning reviewers: $ASSIGN_REVIEWERS"
+            IFS=',' read -ra REV_ARR <<< "$ASSIGN_REVIEWERS"
+            ASSIGNED_COUNT=0
+            for rev in "${REV_ARR[@]}"; do
+              TRIMMED_REV=$(echo "$rev" | xargs)
+              if [ -n "$TRIMMED_REV" ]; then
+                echo "Requesting review from: $TRIMMED_REV"
+                gh pr edit "$PR_NUMBER" --add-reviewer "$TRIMMED_REV" 2>/dev/null || true
+                ASSIGNED_COUNT=$((ASSIGNED_COUNT + 1))
+              fi
+            done
+            gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
+            gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned $ASSIGN_REVIEWERS as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
+            echo "awaiting_approval=true" >> $GITHUB_ENV
+            echo "assigned_reviewers=$ASSIGN_REVIEWERS" >> $GITHUB_ENV
+            echo "pr_mergeable=false" >> $GITHUB_ENV
+          else
+            echo "Target branch is not protected or no reviewers required. Proceeding with immediate merge."
+          fi
 
       # ──────────────────────────────────────────────────────────
       # ⚙️ Resolve CF App Configuration (from .github/cf-apps.json or inputs)
@@ -486,7 +509,9 @@ jobs:
               else
                 CARD_TITLE="🟡 Awaiting Review & Approval"
               fi
-              CARD_SUBTITLE="Target branch is protected. Assigned ${{ inputs.reviewers }} as reviewer. Once approved, deployment will start automatically."
+              ASSIGNED_REVS="${{ env.assigned_reviewers }}"
+              [ -z "$ASSIGNED_REVS" ] && ASSIGNED_REVS="${{ inputs.reviewers }}"
+              CARD_SUBTITLE="Target branch is protected. Assigned $ASSIGNED_REVS as reviewer(s). Once approved, deployment will start automatically."
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="Review & Approve PR on GitHub"
               if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then

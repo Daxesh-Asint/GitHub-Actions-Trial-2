@@ -57,6 +57,9 @@ jobs:
           DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
 
           case "$BASE_BRANCH" in
+            "tenant/asint-ais-02")
+              DEPLOY_NAME="AIS-02"
+              ;;
             "tenant/hemlock-non-prod")
               DEPLOY_NAME="HSC Non-Prod"
               ;;
