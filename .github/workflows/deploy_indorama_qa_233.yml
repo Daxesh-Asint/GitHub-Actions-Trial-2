@@ -10,7 +10,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      workflows: write
     with:
       base: "tenant/indorama-qa-233"
       compare: "main"
