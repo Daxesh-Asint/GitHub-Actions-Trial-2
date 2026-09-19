@@ -329,27 +329,47 @@ jobs:
               for app in "${APPS_LIST[@]}"; do
                 TRIMMED=$(echo "$app" | xargs)
                 if [ -n "$TRIMMED" ]; then
-                  echo "🔍 Checking state of app $TRIMMED..."
-                  APP_STATE=$(cf app "$TRIMMED" 2>/dev/null | grep -iE 'requested state:' | awk '{print tolower($3)}' || echo "")
-                  echo "Current requested state: ${APP_STATE:-unknown}"
+                  echo "🔍 Resolving App GUID and state for $TRIMMED..."
+                  APP_GUID=$(cf app "$TRIMMED" --guid 2>/dev/null | tr -d '[:space:]' || echo "")
+                  echo "App: $TRIMMED, GUID: ${APP_GUID:-unknown}"
 
                   STARTED=false
-                  for attempt in 1 2 3; do
-                    echo "▶️ Starting app $TRIMMED (attempt $attempt of 3)..."
+                  if [ -n "$APP_GUID" ]; then
+                    for attempt in 1 2 3; do
+                      echo "▶️ Sending direct Start action to CF v3 API for $TRIMMED (attempt $attempt of 3)..."
+                      START_RESP=$(cf curl "/v3/apps/$APP_GUID/actions/start" -X POST 2>&1 || true)
+                      echo "Response: $START_RESP"
+
+                      # Check if start request succeeded (HTTP 200/state: STARTED)
+                      if echo "$START_RESP" | grep -qiE '"state":\s*"STARTED"'; then
+                        echo "Waiting up to 30s for $TRIMMED instances to be running..."
+                        for poll in {1..6}; do
+                          sleep 5
+                          CURRENT_STATE=$(cf app "$TRIMMED" 2>/dev/null | grep -iE 'requested state:' | awk '{print tolower($3)}' || echo "")
+                          if [ "$CURRENT_STATE" = "started" ]; then
+                            STARTED=true
+                            echo "✅ App $TRIMMED is started and running!"
+                            break 2
+                          fi
+                        done
+                      else
+                        echo "⚠️ Direct start request failed or returned unexpected response. Waiting 10s before retry..."
+                        sleep 10
+                      fi
+                    done
+                  fi
+
+                  # Fallback to cf start if direct API did not achieve started state
+                  if [ "$STARTED" != "true" ]; then
+                    echo "⚠️ Direct v3 API start was unsuccessful. Attempting standard 'cf start $TRIMMED' as fallback..."
                     if cf start "$TRIMMED"; then
                       STARTED=true
-                      echo "✅ App $TRIMMED started successfully!"
-                      break
+                      echo "✅ App $TRIMMED started successfully via fallback!"
                     else
-                      echo "⚠️ Start attempt $attempt failed for $TRIMMED. Waiting 10 seconds before retry..."
-                      sleep 10
+                      START_FAILED=true
+                      echo "❌ Failed to start $TRIMMED. Fetching recent logs..."
+                      cf logs "$TRIMMED" --recent || true
                     fi
-                  done
-
-                  if [ "$STARTED" != "true" ]; then
-                    START_FAILED=true
-                    echo "❌ Failed to start $TRIMMED after 3 attempts. Fetching recent logs..."
-                    cf logs "$TRIMMED" --recent || true
                   fi
                 fi
               done
