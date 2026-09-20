@@ -103,6 +103,8 @@ jobs:
               ;;
           esac
 
+          echo "DEPLOY_NAME=$DEPLOY_NAME" >> $GITHUB_ENV
+
           # 3. Merge the Pull Request (if not already merged)
           PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
           if [ "$PR_STATE" = "OPEN" ]; then
