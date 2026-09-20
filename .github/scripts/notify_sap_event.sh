@@ -135,6 +135,10 @@ if [ -z "$COMMIT_ID" ] && [ -n "$TARGET_BRANCH" ]; then
 fi
 [ -z "$COMMIT_ID" ] && COMMIT_ID="N/A"
 
+echo "commit_id=$COMMIT_ID" >> $GITHUB_OUTPUT
+echo "status=$STATUS" >> $GITHUB_OUTPUT
+echo "clean_name=$CLEAN_NAME" >> $GITHUB_OUTPUT
+
 DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
 TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
 
