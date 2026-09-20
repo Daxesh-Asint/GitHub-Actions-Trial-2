@@ -1,14 +1,8 @@
 name: "Deploy: AIS-02"
 
 on:
-  push:
-    branches:
-      - dev
-
   repository_dispatch:
     types: [trigger_ais02_deployment]
-
-  workflow_dispatch:
 
 jobs:
   merging-process:
