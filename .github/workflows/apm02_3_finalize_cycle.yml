@@ -229,8 +229,8 @@ jobs:
           
           # Safety check: branch must strictly match snapshot/main-
           if [[ "$SNAPSHOT" =~ ^snapshot/main- ]]; then
-            echo "🗑️ Deleting remote snapshot branch $SNAPSHOT..."
-            git push origin --delete "$SNAPSHOT" || echo "Branch $SNAPSHOT might already be deleted."
+            echo "🗑️ Deleting remote snapshot branch $SNAPSHOT via GitHub API..."
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$SNAPSHOT" || echo "Branch $SNAPSHOT might already be deleted."
             echo "✅ Remote snapshot branch $SNAPSHOT deleted successfully."
           else
             echo "⚠️ Safety guard: '$SNAPSHOT' does not match snapshot/main-*. Skipping deletion."
