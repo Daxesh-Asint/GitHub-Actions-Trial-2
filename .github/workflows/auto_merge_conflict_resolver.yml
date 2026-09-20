@@ -788,7 +788,7 @@ jobs:
       # 📖 Global Wiki Deployment History Update
       # ──────────────────────────────────────────────────────────
       - name: Checkout Wiki
-        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        if: always() && env.should_run == 'true' && (env.need_merge == 'true' || env.action_type == 'merged')
         uses: actions/checkout@v4
         continue-on-error: true
         with:
@@ -797,13 +797,13 @@ jobs:
           token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
 
       - name: Setup Node.js for Wiki
-        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        if: always() && env.should_run == 'true' && (env.need_merge == 'true' || env.action_type == 'merged')
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Update Global Wiki Deployment History
-        if: always() && env.should_run == 'true' && env.need_merge == 'true'
+        if: always() && env.should_run == 'true' && (env.need_merge == 'true' || env.action_type == 'merged')
         run: |
           if [ -d "wiki" ]; then
             PR_NUM="${{ env.pr_number }}"
