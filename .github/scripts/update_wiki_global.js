@@ -161,7 +161,7 @@ function renderMarkdownTable(title, list) {
       : 'N/A';
 
     const branches = `<nobr>\`${row.source_branch || '-'}\` &rarr;</nobr><br><nobr>\`${row.target_branch || '-'}\`</nobr>`;
-    const dateFormatted = `<nobr>${row.date || ''}</nobr><br><small><nobr>${row.time || ''}</nobr></small>`;
+    const dateFormatted = (row.date || '').replace(', ', ',<br>').replace(/ /g, '&nbsp;');
     const initiator = row.actor && row.actor !== 'N/A' ? `<nobr>${row.actor}</nobr>` : 'N/A';
 
     md += `| ${row.id} | ${dateFormatted} | ${prLink} | ${commitLink} | ${branches} | ${initiator} | ${row.merge_status || '-'} | ${row.sap_status || '-'} | ${row.status || '-'} |\n`;
