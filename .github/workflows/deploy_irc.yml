@@ -3,7 +3,6 @@ name: "Deploy: IRC"
 on:
   repository_dispatch:
     types: [trigger_irc_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
@@ -11,7 +10,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      workflows: write
     with:
       base: "tenant/asint-irc-temp"
       compare: "main"

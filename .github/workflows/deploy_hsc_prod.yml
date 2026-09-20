@@ -10,7 +10,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      workflows: write
     with:
       base: "tenant/hemlock-prod"
       compare: "tenant/hemlock-non-prod"

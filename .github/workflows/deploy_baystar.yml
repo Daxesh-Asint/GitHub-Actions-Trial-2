@@ -3,7 +3,6 @@ name: "Deploy: BAYSTAR"
 on:
   repository_dispatch:
     types: [trigger_baystar_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
@@ -11,7 +10,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      workflows: write
     with:
       base: "tenant/baystar"
       compare: "main"

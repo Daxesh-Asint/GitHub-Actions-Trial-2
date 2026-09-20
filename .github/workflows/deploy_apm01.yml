@@ -3,7 +3,6 @@ name: "Deploy: APM-01"
 on:
   repository_dispatch:
     types: [trigger_apm01_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
@@ -11,7 +10,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      workflows: write
     with:
       base: "tenant/asint-apm-01-new"
       compare: "main"
