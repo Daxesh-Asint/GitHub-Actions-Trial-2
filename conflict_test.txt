@@ -1,1 +1,1 @@
-﻿Source conflict line A
+Source conflict line A resolved with Target line B
