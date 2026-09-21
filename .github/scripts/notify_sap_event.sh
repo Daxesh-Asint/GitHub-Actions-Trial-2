@@ -19,8 +19,10 @@ ALLOWED_JOBS=(
   "AsInt-APM-EIOT"
   "AsInt-DEMO"
   "AsInt-IRC"
+  "IRC"
   "AsInt-ST"
   "BAYSTAR"
+  "Baystar"
   "Hemlock-NON-PROD"
   "Hemlock-PROD"
   "Indorama-PROD-900"
@@ -76,13 +78,13 @@ case "$RESOURCE_NAME" in
   "AsInt-DEMO")
     TARGET_BRANCH="tenant/asint-demo"
     ;;
-  "AsInt-IRC")
+  "AsInt-IRC"|"IRC")
     TARGET_BRANCH="tenant/asint-irc-temp"
     ;;
   "AsInt-ST")
     TARGET_BRANCH="st-env-for-contentfederation"
     ;;
-  "BAYSTAR")
+  "BAYSTAR"|"Baystar")
     TARGET_BRANCH="tenant/baystar"
     ;;
   "Hemlock-NON-PROD")
