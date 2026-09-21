@@ -486,6 +486,11 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}")
               ;;
+            "ais02dc"|"asintais02dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}")
+              ;;
           esac
 
           # Always include Global Webhook URLs for universal notification broadcast

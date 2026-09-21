@@ -153,6 +153,16 @@ const ENVIRONMENTS = [
     tenantBranch: 'tenant/vmos-dev',
     aliases: ['vmos', 'asint-vmos', 'vmos-dev', 'vmos deployment', 'vmos deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_VMOS_1'
+  },
+  {
+    id: 'ais02_dc',
+    name: 'AIS-02 DC',
+    channelId: '19:5f02426408b84504a93199460c822515@thread.tacv2',
+    channelName: 'AIS-02-DC Deployment POC',
+    dispatchEvent: 'trigger_ais02_dc_deployment',
+    tenantBranch: 'tenant/asint-ais-02-dc',
+    aliases: ['ais-02 dc', 'ais02 dc', 'ais-02-dc', 'ais02-dc', 'ais02dc', 'ais dc'],
+    webhookEnvVar: 'TEAMS_WEBHOOK_AIS02_DC_1'
   }
 ];
 

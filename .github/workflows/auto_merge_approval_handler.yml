@@ -100,6 +100,9 @@ jobs:
             "tenant/vmos-dev")
               DEPLOY_NAME="VMOS"
               ;;
+            "tenant/asint-ais-02-dc")
+              DEPLOY_NAME="AIS-02 DC"
+              ;;
             *)
               # Fallback if other branch has awaiting approval
               DEPLOY_NAME=$(echo "$LABELS" | grep -oE 'auto merge for .+' | sed 's/auto merge for //' || echo "$BASE_BRANCH")
@@ -319,6 +322,11 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}")
+              ;;
+            "ais02dc"|"asintais02dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}")
               ;;
           esac
 
