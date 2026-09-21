@@ -169,9 +169,9 @@ function renderMarkdownTable(title, list) {
   return md;
 }
 
-// 1. Update individual environment history
+// 1. Update individual environment history (APM-02 is excluded because it uses its own dedicated snapshot cycle updater)
 const targets = [];
-if (cleanEnv && cleanEnv !== 'General') {
+if (cleanEnv && cleanEnv !== 'General' && envKey !== 'apm02') {
   targets.push({
     name: cleanEnv,
     jsonPath: path.join(wikiDir, `${envKey}_history.json`),
