@@ -119,7 +119,7 @@ function triggerWorkflowDispatch(eventType, clientPayload, callback) {
  * Creates an empty commit on a target branch directly via GitHub Git Data API to re-trigger deployments
  */
 function createEmptyCommitOnBranch(branch, commitMessage, callback) {
-  const refPath = `/repos/${config.GITHUB_REPO}/git/ref/heads/${branch}`;
+  const refPath = `/repos/${config.GITHUB_REPO}/git/refs/heads/${branch}`;
 
   // 1. Get current branch commit SHA
   callGitHubAPI(refPath, 'GET', null, (err, statusCode, refData) => {
