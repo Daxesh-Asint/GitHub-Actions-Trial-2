@@ -19,14 +19,17 @@ ALLOWED_JOBS=(
   "AsInt-APM-EIOT"
   "AsInt-DEMO"
   "AsInt-IRC"
+  "IRC"
   "AsInt-ST"
   "BAYSTAR"
+  "Baystar"
   "Hemlock-NON-PROD"
   "Hemlock-PROD"
   "Indorama-PROD-900"
   "Indorama-PROD-933"
   "Indorama-QA-233"
   "Indorama-QA-234"
+  "VMOS"
 )
 
 IS_ALLOWED=false
@@ -76,13 +79,13 @@ case "$RESOURCE_NAME" in
   "AsInt-DEMO")
     TARGET_BRANCH="tenant/asint-demo"
     ;;
-  "AsInt-IRC")
+  "AsInt-IRC"|"IRC")
     TARGET_BRANCH="tenant/asint-irc-temp"
     ;;
   "AsInt-ST")
     TARGET_BRANCH="st-env-for-contentfederation"
     ;;
-  "BAYSTAR")
+  "BAYSTAR"|"Baystar")
     TARGET_BRANCH="tenant/baystar"
     ;;
   "Hemlock-NON-PROD")
@@ -102,6 +105,9 @@ case "$RESOURCE_NAME" in
     ;;
   "Indorama-QA-234")
     TARGET_BRANCH="tenant/indorama-qa-234"
+    ;;
+  "VMOS")
+    TARGET_BRANCH="tenant/vmos-dev"
     ;;
 esac
 
@@ -397,6 +403,11 @@ case "$NORM_ENV" in
     [ -n "$TEAMS_WEBHOOK_ST_ENV_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_1")
     [ -n "$TEAMS_WEBHOOK_ST_ENV_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_2")
     [ -n "$TEAMS_WEBHOOK_ST_ENV_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_3")
+    ;;
+  "vmos"|"asintvmos")
+    [ -n "$TEAMS_WEBHOOK_VMOS_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_1")
+    [ -n "$TEAMS_WEBHOOK_VMOS_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_2")
+    [ -n "$TEAMS_WEBHOOK_VMOS_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_3")
     ;;
 esac
 

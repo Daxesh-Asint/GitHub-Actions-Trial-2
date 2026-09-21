@@ -97,11 +97,16 @@ jobs:
             "apm-eiot-temp-copy")
               DEPLOY_NAME="APM-EIOT"
               ;;
+            "tenant/vmos-dev")
+              DEPLOY_NAME="VMOS"
+              ;;
             *)
               # Fallback if other branch has awaiting approval
               DEPLOY_NAME=$(echo "$LABELS" | grep -oE 'auto merge for .+' | sed 's/auto merge for //' || echo "$BASE_BRANCH")
               ;;
           esac
+
+          echo "DEPLOY_NAME=$DEPLOY_NAME" >> $GITHUB_ENV
 
           # 3. Merge the Pull Request (if not already merged)
           PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
@@ -309,6 +314,11 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}")
+              ;;
+            "vmos"|"asintvmos")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}")
               ;;
           esac
 

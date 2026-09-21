@@ -196,22 +196,45 @@ jobs:
           WIKI_PAYLOAD: '{"action": "${{ needs.finalize.result == ''success'' && ''finalize-success'' || ''finalize-fail'' }}", "snapshot": "${{ needs.finalize.outputs.snapshot }}", "pr_number": "${{ needs.finalize.outputs.pr_number }}"}'
 
   notify-success:
-    needs: [guard, finalize]
+    needs: [guard, finalize, update-wiki-finalize]
     if: success() && needs.guard.outputs.is_target_job == 'true'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ APM-02 Deployment Cycle Complete"
-      card_subtitle: "APM02 deployed successfully. Now merging snapshot back into main."
+      card_subtitle: "APM-02 deployed & merged back into main successfully. Snapshot branch deleted."
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
-      snapshot_branch: ${{ needs.finalize.outputs.snapshot }}
+      snapshot_branch: "${{ needs.finalize.outputs.snapshot }} (Deleted 🗑️)"
       pr_number: ${{ needs.finalize.outputs.pr_number }}
       tenant_pr_number: ${{ needs.finalize.outputs.tenant_pr_number }}
       extra_fact_title: "Cycle State"
-      extra_fact_value: "Reset to IDLE. Ready for next deployment."
+      extra_fact_value: "Reset to IDLE. Snapshot branch deleted."
       action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
     secrets: inherit
+
+  delete-snapshot-branch:
+    needs: [guard, finalize, update-wiki-finalize, notify-success]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success' && needs.notify-success.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete Remote Snapshot Branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SNAPSHOT="${{ needs.finalize.outputs.snapshot }}"
+          echo "Target snapshot branch: [$SNAPSHOT]"
+          
+          # Safety check: branch must strictly match snapshot/main-
+          if [[ "$SNAPSHOT" =~ ^snapshot/main- ]]; then
+            echo "🗑️ Deleting remote snapshot branch $SNAPSHOT via GitHub API..."
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$SNAPSHOT" || echo "Branch $SNAPSHOT might already be deleted."
+            echo "✅ Remote snapshot branch $SNAPSHOT deleted successfully."
+          else
+            echo "⚠️ Safety guard: '$SNAPSHOT' does not match snapshot/main-*. Skipping deletion."
+          fi
 
   notify-sap-failure:
     needs: [guard, finalize]
@@ -229,6 +252,7 @@ jobs:
       extra_fact_value: "New snapshots cannot be created until this is resolved."
       action_label: "Review main PR #${{ needs.finalize.outputs.pr_number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.finalize.outputs.pr_number }}"
+      show_jarvis_recovery: true
     secrets: inherit
 
   notify-main-merge-conflict:

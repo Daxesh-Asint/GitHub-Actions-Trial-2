@@ -143,6 +143,16 @@ const ENVIRONMENTS = [
     tenantBranch: 'st-env-for-contentfederation',
     aliases: ['st-env', 'st env', 'stenv', 'st', 'asint-st'],
     webhookEnvVar: 'TEAMS_WEBHOOK_ST_ENV_1'
+  },
+  {
+    id: 'vmos',
+    name: 'VMOS',
+    channelId: '19:ebc512933cec453f8f26e68e72f3c217@thread.tacv2',
+    channelName: 'VMOS Deployment POC',
+    dispatchEvent: 'trigger_vmos_deployment',
+    tenantBranch: 'tenant/vmos-dev',
+    aliases: ['vmos', 'asint-vmos', 'vmos-dev', 'vmos deployment', 'vmos deployment poc'],
+    webhookEnvVar: 'TEAMS_WEBHOOK_VMOS_1'
   }
 ];
 

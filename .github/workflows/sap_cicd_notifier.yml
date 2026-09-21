@@ -36,14 +36,17 @@ on:
           - "AsInt-APM-EIOT"
           - "AsInt-DEMO"
           - "AsInt-IRC"
+          - "IRC"
           - "AsInt-ST"
           - "BAYSTAR"
+          - "Baystar"
           - "Hemlock-NON-PROD"
           - "Hemlock-PROD"
           - "Indorama-PROD-900"
           - "Indorama-PROD-933"
           - "Indorama-QA-233"
           - "Indorama-QA-234"
+          - "VMOS"
         default: "AsInt-AIS-02"
       subject:
         description: "Subject / Description"
@@ -141,6 +144,9 @@ jobs:
           TEAMS_WEBHOOK_ST_ENV_1: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_1 }}
           TEAMS_WEBHOOK_ST_ENV_2: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}
           TEAMS_WEBHOOK_ST_ENV_3: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}
+          TEAMS_WEBHOOK_VMOS_1: ${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}
+          TEAMS_WEBHOOK_VMOS_2: ${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}
+          TEAMS_WEBHOOK_VMOS_3: ${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}
           TEAMS_WEBHOOK_GLOBAL_1: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}
           TEAMS_WEBHOOK_GLOBAL_2: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}
           TEAMS_WEBHOOK_GLOBAL_3: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}
