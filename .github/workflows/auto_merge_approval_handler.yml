@@ -97,6 +97,9 @@ jobs:
             "apm-eiot-temp-copy")
               DEPLOY_NAME="APM-EIOT"
               ;;
+            "tenant/vmos-dev")
+              DEPLOY_NAME="VMOS"
+              ;;
             *)
               # Fallback if other branch has awaiting approval
               DEPLOY_NAME=$(echo "$LABELS" | grep -oE 'auto merge for .+' | sed 's/auto merge for //' || echo "$BASE_BRANCH")

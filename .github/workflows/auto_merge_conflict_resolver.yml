@@ -140,6 +140,9 @@ jobs:
             "tenant/asint-demo")
               DEPLOY_NAME="ASINT-DEMO"
               ;;
+            "tenant/vmos-dev")
+              DEPLOY_NAME="VMOS"
+              ;;
           esac
 
           # Resolve CF configuration from .github/cf-apps.json
