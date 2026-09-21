@@ -14,9 +14,9 @@ const {
 
 console.log('🧪 Starting Multi-Environment Channel Routing Verification...\n');
 
-// Test 1: Verify all 14 environments exist with their expected dispatch event
-console.log('Test 1: Verifying all 14 environment definitions...');
-assert.strictEqual(ENVIRONMENTS.length, 14, 'Should have exactly 14 environments');
+// Test 1: Verify all 15 environments exist with their expected dispatch event
+console.log('Test 1: Verifying all 15 environment definitions...');
+assert.strictEqual(ENVIRONMENTS.length, 15, 'Should have exactly 15 environments');
 
 const expectedMappings = {
   'AIS-02 Deployment POC': 'trigger_ais02_deployment',
@@ -32,7 +32,8 @@ const expectedMappings = {
   'Indorama QA 233 Deployment POC': 'trigger_indorama_qa_233_deployment',
   'Indorama QA 234 Deployment POC': 'trigger_indorama_qa_234_deployment',
   'IRC Deployment POC': 'trigger_irc_deployment',
-  'ST-ENV Deployment POC': 'trigger_st_env_deployment'
+  'ST-ENV Deployment POC': 'trigger_st_env_deployment',
+  'VMOS Deployment POC': 'trigger_vmos_deployment'
 };
 
 for (const [channelName, expectedDispatch] of Object.entries(expectedMappings)) {
