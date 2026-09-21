@@ -30,6 +30,7 @@ ALLOWED_JOBS=(
   "Indorama-QA-233"
   "Indorama-QA-234"
   "VMOS"
+  "AsInt-AIS-02-DC"
 )
 
 IS_ALLOWED=false
@@ -108,6 +109,9 @@ case "$RESOURCE_NAME" in
     ;;
   "VMOS")
     TARGET_BRANCH="tenant/vmos-dev"
+    ;;
+  "AsInt-AIS-02-DC")
+    TARGET_BRANCH="tenant/asint-ais-02-dc"
     ;;
 esac
 
@@ -408,6 +412,11 @@ case "$NORM_ENV" in
     [ -n "$TEAMS_WEBHOOK_VMOS_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_1")
     [ -n "$TEAMS_WEBHOOK_VMOS_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_2")
     [ -n "$TEAMS_WEBHOOK_VMOS_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_3")
+    ;;
+  "asintais02dc"|"ais02dc")
+    [ -n "$TEAMS_WEBHOOK_AIS02_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_1")
+    [ -n "$TEAMS_WEBHOOK_AIS02_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_2")
+    [ -n "$TEAMS_WEBHOOK_AIS02_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_3")
     ;;
 esac
 
