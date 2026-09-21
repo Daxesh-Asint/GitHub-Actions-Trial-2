@@ -24,8 +24,24 @@ if (!fs.existsSync(wikiDir)) {
 
 // Extract parameters
 const rawEnv = payload.environment || payload.deployment_name || payload.resource_name || 'General';
-const cleanEnv = rawEnv.replace(/^AsInt-/i, '').replace(/[-_]/g, ' ').trim()
-  .replace(/\b\w/g, c => c.toUpperCase()); // Capitalize words
+
+function normalizeEnv(name) {
+  if (!name || name === 'General') return 'General';
+  let clean = name.replace(/^AsInt[-_ ]?/i, '').replace(/[-_]/g, ' ').trim();
+  // Preserve well-known uppercase acronyms
+  return clean
+    .split(/\s+/)
+    .map(word => {
+      const upper = word.toUpperCase();
+      if (['QA', 'PROD', 'AIS', 'APM', 'EIOT', 'HSC', 'IRC', 'ST', 'ENV', 'DEMO', 'BAYSTAR'].includes(upper)) {
+        return upper;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+const cleanEnv = normalizeEnv(rawEnv);
 const envSlug = cleanEnv.replace(/\s+/g, '-');
 const envKey = cleanEnv.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -37,7 +53,7 @@ const shortCommit = commitId && commitId !== 'N/A' ? commitId.substring(0, 7) : 
 const sourceBranch = payload.source_branch || payload.head_branch || 'dev';
 const targetBranch = payload.target_branch || payload.base_branch || 'tenant';
 const actor = payload.actor || payload.initiator || 'github-actions[bot]';
-const status = payload.status || 'Success'; // Success, Failed, Awaiting Approval, Running, etc.
+const status = payload.status || 'Success';
 
 const now = new Date();
 const dateIST = payload.date || now.toLocaleDateString('en-US', {
@@ -54,29 +70,6 @@ const timeIST = payload.time || now.toLocaleTimeString('en-US', {
   hour12: true
 }) + ' IST';
 
-const historyJsonFile = path.join(wikiDir, `${envKey}_history.json`);
-const historyMdFile = path.join(wikiDir, `${envSlug}-Deployment-History.md`);
-const homeMdFile = path.join(wikiDir, 'Home.md');
-
-let history = [];
-if (fs.existsSync(historyJsonFile)) {
-  try {
-    history = JSON.parse(fs.readFileSync(historyJsonFile, 'utf8'));
-  } catch (err) {
-    console.warn(`Could not parse existing ${historyJsonFile}, starting new.`);
-    history = [];
-  }
-}
-
-// Match existing entry if this is a follow-up action (e.g. sap_start, sap_finish, approval_merge)
-let entry = null;
-if (prNumber) {
-  entry = history.find(item => item.pr_number === prNumber);
-}
-if (!entry && shortCommit !== 'N/A') {
-  entry = history.find(item => item.commit_id && item.commit_id.startsWith(shortCommit));
-}
-
 // Styling helpers
 function formatBadge(text, type) {
   if (type === 'good') return `<span style="color:#2ea44f;font-weight:bold;">${text}</span>`;
@@ -85,97 +78,137 @@ function formatBadge(text, type) {
   return `<span>${text}</span>`;
 }
 
-if (!entry) {
-  // Create new history entry
-  const nextId = history.length > 0 ? Math.max(...history.map(h => h.id || 0)) + 1 : 1;
-  entry = {
-    id: nextId,
-    date: dateIST,
-    time: timeIST,
-    environment: cleanEnv,
-    pr_number: prNumber || 'N/A',
-    commit_id: shortCommit,
-    source_branch: sourceBranch,
-    target_branch: targetBranch,
-    actor: actor,
-    merge_status: 'Merged',
-    sap_status: '⏳ Pending',
-    status: status
-  };
-  history.unshift(entry);
-}
-
-// Update entry based on action
-if (action === 'deploy' || action === 'merge_attempt') {
-  if (status === 'Success' || status === 'Merged') {
-    entry.merge_status = formatBadge('✅ Yes', 'good');
-    entry.status = '🚀 Deploying';
-  } else if (status === 'Awaiting Approval') {
-    entry.merge_status = formatBadge('⏳ Awaiting Approval', 'warn');
-    entry.status = '🟡 Awaiting Review';
-  } else {
-    entry.merge_status = formatBadge('❌ Failed', 'danger');
-    entry.status = '❌ Merge Failed';
+function updateHistoryArray(historyList, envName) {
+  let entry = null;
+  if (prNumber) {
+    entry = historyList.find(item => item.pr_number === prNumber);
   }
-  if (shortCommit !== 'N/A') entry.commit_id = shortCommit;
-  if (prNumber) entry.pr_number = prNumber;
-} else if (action === 'approval_merge') {
-  entry.merge_status = formatBadge('✅ Yes (Approved)', 'good');
-  entry.status = '🚀 Deploying';
-  if (shortCommit !== 'N/A') entry.commit_id = shortCommit;
-} else if (action === 'conflict_merge') {
-  entry.merge_status = formatBadge('✅ Yes (Resolved)', 'good');
-  entry.status = '🚀 Deploying';
-  if (shortCommit !== 'N/A') entry.commit_id = shortCommit;
-} else if (action === 'sap_start') {
-  entry.sap_status = formatBadge('⏳ Running', 'warn');
-  entry.status = '🚀 In Progress';
-  if (shortCommit !== 'N/A' && entry.commit_id === 'N/A') entry.commit_id = shortCommit;
-} else if (action === 'sap_finish') {
-  if (status === 'SUCCESS' || status === 'INFO') {
-    entry.sap_status = formatBadge('✅ Success', 'good');
-    entry.status = '✅ Succeeded';
-  } else {
-    entry.sap_status = formatBadge('❌ Failed', 'danger');
-    entry.status = '❌ SAP Build Failed';
+  if (!entry && shortCommit !== 'N/A') {
+    entry = historyList.find(item => item.commit_id && item.commit_id.startsWith(shortCommit));
   }
-  if (shortCommit !== 'N/A' && entry.commit_id === 'N/A') entry.commit_id = shortCommit;
+
+  if (!entry) {
+    const nextId = historyList.length > 0 ? Math.max(...historyList.map(h => h.id || 0)) + 1 : 1;
+    entry = {
+      id: nextId,
+      date: dateIST,
+      time: timeIST,
+      environment: envName,
+      pr_number: prNumber || 'N/A',
+      commit_id: shortCommit,
+      source_branch: sourceBranch,
+      target_branch: targetBranch,
+      actor: actor,
+      merge_status: 'Merged',
+      sap_status: '<nobr>⏳&nbsp;Pending</nobr>',
+      status: status
+    };
+    historyList.unshift(entry);
+  }
+
+  if (action === 'deploy' || action === 'merge_attempt') {
+    if (status === 'Success' || status === 'Merged') {
+      entry.merge_status = formatBadge('<nobr>✅&nbsp;Yes</nobr>', 'good');
+      entry.status = '<nobr>🚀&nbsp;Deploying</nobr>';
+    } else if (status === 'Awaiting Approval') {
+      entry.merge_status = formatBadge('<nobr>⏳&nbsp;Awaiting&nbsp;Approval</nobr>', 'warn');
+      entry.status = '<nobr>🟡&nbsp;Awaiting&nbsp;Review</nobr>';
+    } else {
+      entry.merge_status = formatBadge('<nobr>❌&nbsp;Failed</nobr>', 'danger');
+      entry.status = '<nobr>❌&nbsp;Merge&nbsp;Failed</nobr>';
+    }
+    if (shortCommit !== 'N/A') entry.commit_id = shortCommit;
+    if (prNumber) entry.pr_number = prNumber;
+  } else if (action === 'approval_merge') {
+    entry.merge_status = formatBadge('<nobr>✅&nbsp;Yes&nbsp;(Approved)</nobr>', 'good');
+    entry.status = '<nobr>🚀&nbsp;Deploying</nobr>';
+    if (shortCommit !== 'N/A') entry.commit_id = shortCommit;
+  } else if (action === 'conflict_merge') {
+    entry.merge_status = formatBadge('<nobr>✅&nbsp;Yes&nbsp;(Resolved)</nobr>', 'good');
+    entry.status = '<nobr>🚀&nbsp;Deploying</nobr>';
+    if (shortCommit !== 'N/A') entry.commit_id = shortCommit;
+  } else if (action === 'sap_start') {
+    entry.sap_status = formatBadge('<nobr>⏳&nbsp;Running</nobr>', 'warn');
+    entry.status = '<nobr>🚀&nbsp;In&nbsp;Progress</nobr>';
+    if (shortCommit !== 'N/A' && entry.commit_id === 'N/A') entry.commit_id = shortCommit;
+  } else if (action === 'sap_finish') {
+    if (status === 'SUCCESS' || status === 'INFO') {
+      entry.sap_status = formatBadge('<nobr>✅&nbsp;Success</nobr>', 'good');
+      entry.status = '<nobr>✅&nbsp;Succeeded</nobr>';
+    } else {
+      entry.sap_status = formatBadge('<nobr>❌&nbsp;Failed</nobr>', 'danger');
+      entry.status = '<nobr>❌&nbsp;SAP&nbsp;Build&nbsp;Failed</nobr>';
+    }
+    if (shortCommit !== 'N/A' && entry.commit_id === 'N/A') entry.commit_id = shortCommit;
+  }
+
+  return entry;
 }
 
-// Save JSON log
-fs.writeFileSync(historyJsonFile, JSON.stringify(history, null, 2), 'utf8');
+function renderMarkdownTable(title, list) {
+  let md = `# ${title} Deployment History\n\n`;
+  md += `> Auto-updated by GitHub Actions upon every deployment event and SAP CI/CD completion.\n\n`;
+  md += `| # | 📅 Date (IST) | 🔀 Pull Request | 🏷️ Commit | 🌿 Source &rarr; Target | 👤 Initiator | 🔀 Merge Status | ⚙️ SAP CI/CD | 📊 Overall Status |\n`;
+  md += `|---|---|---|---|---|---|---|---|---|\n`;
 
-// Generate Environment Markdown Table
-let md = `# ${cleanEnv} Deployment History\n\n`;
-md += `> Auto-updated by GitHub Actions upon every deployment event and SAP CI/CD completion.\n\n`;
-md += `| # | 📅 Date (IST) | 🔀 Pull Request | 🏷️ Commit | 🌿 Source &rarr; Target | 👤 Initiator | 🔀 Merge Status | ⚙️ SAP CI/CD | 📊 Overall Status |\n`;
-md += `|---|---|---|---|---|---|---|---|---|\n`;
+  for (const row of list) {
+    const prLink = row.pr_number && row.pr_number !== 'N/A'
+      ? `[#${row.pr_number}](https://github.com/${REPO}/pull/${row.pr_number})`
+      : 'N/A';
 
-for (const row of history) {
-  const prLink = row.pr_number && row.pr_number !== 'N/A'
-    ? `[#${row.pr_number}](https://github.com/${REPO}/pull/${row.pr_number})`
-    : 'N/A';
+    const commitLink = row.commit_id && row.commit_id !== 'N/A'
+      ? `[\`${row.commit_id}\`](https://github.com/${REPO}/commit/${row.commit_id})`
+      : 'N/A';
 
-  const commitLink = row.commit_id && row.commit_id !== 'N/A'
-    ? `[\`${row.commit_id}\`](https://github.com/${REPO}/commit/${row.commit_id})`
-    : 'N/A';
+    const branches = `<nobr>\`${row.source_branch || '-'}\` &rarr;</nobr><br><nobr>\`${row.target_branch || '-'}\`</nobr>`;
+    const dateFormatted = (row.date || '').replace(', ', ',<br>').replace(/ /g, '&nbsp;');
+    const initiator = row.actor && row.actor !== 'N/A' ? `<nobr>${row.actor}</nobr>` : 'N/A';
 
-  const branches = `\`${row.source_branch || '-'}\` &rarr;<br>\`${row.target_branch || '-'}\``;
-  const dateFormatted = `${(row.date || '').replace(', ', ',<br>')}<br><small>${row.time || ''}</small>`;
-
-  md += `| ${row.id} | ${dateFormatted} | ${prLink} | ${commitLink} | ${branches} | ${row.actor || 'N/A'} | ${row.merge_status || '-'} | ${row.sap_status || '-'} | ${row.status || '-'} |\n`;
+    md += `| ${row.id} | ${dateFormatted} | ${prLink} | ${commitLink} | ${branches} | ${initiator} | ${row.merge_status || '-'} | ${row.sap_status || '-'} | ${row.status || '-'} |\n`;
+  }
+  return md;
 }
 
-fs.writeFileSync(historyMdFile, md, 'utf8');
+// 1. Update individual environment history
+const targets = [];
+if (cleanEnv && cleanEnv !== 'General') {
+  targets.push({
+    name: cleanEnv,
+    jsonPath: path.join(wikiDir, `${envKey}_history.json`),
+    mdPath: path.join(wikiDir, `${envSlug}-Deployment-History.md`)
+  });
+}
 
-// Update Home.md index
+// 2. Always keep General Deployment History updated with all deployments across every environment
+targets.push({
+  name: 'General',
+  jsonPath: path.join(wikiDir, 'general_history.json'),
+  mdPath: path.join(wikiDir, 'General-Deployment-History.md')
+});
+
+for (const target of targets) {
+  let hist = [];
+  if (fs.existsSync(target.jsonPath)) {
+    try {
+      hist = JSON.parse(fs.readFileSync(target.jsonPath, 'utf8'));
+    } catch (e) {
+      hist = [];
+    }
+  }
+
+  updateHistoryArray(hist, target.name === 'General' ? cleanEnv : target.name);
+  fs.writeFileSync(target.jsonPath, JSON.stringify(hist, null, 2), 'utf8');
+  fs.writeFileSync(target.mdPath, renderMarkdownTable(target.name, hist), 'utf8');
+}
+
+// 3. Update Home.md index
+const homeMdFile = path.join(wikiDir, 'Home.md');
 let homeContent = `# Welcome to the Repository Deployment Wiki\n\n`;
 homeContent += `Auto-generated deployment logs and tracking across all configured tenant environments.\n\n`;
 homeContent += `### 🌐 Environment Deployment Histories\n\n`;
 homeContent += `| Environment | Wiki History Page | Last Activity (IST) |\n`;
 homeContent += `|:---|:---|:---|\n`;
 
-// Discover all deployment history markdown files in wiki directory
 const files = fs.readdirSync(wikiDir);
 const historyPages = files.filter(f => f.endsWith('-Deployment-History.md')).sort();
 
@@ -190,7 +223,7 @@ for (const page of historyPages) {
 homeContent += `\n*Page dynamically maintained by GitHub Actions automation workflows.*\n`;
 fs.writeFileSync(homeMdFile, homeContent, 'utf8');
 
-// Commit & push to wiki repo
+// 4. Commit & push to wiki repo
 try {
   execSync(`git config user.name "github-actions[bot]"`, { cwd: wikiDir });
   execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`, { cwd: wikiDir });
