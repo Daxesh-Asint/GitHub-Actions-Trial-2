@@ -169,9 +169,17 @@ function renderMarkdownTable(title, list) {
   return md;
 }
 
-// 1. Update individual environment history (APM-02 is excluded because it uses its own dedicated snapshot cycle updater)
+// Environments that follow the Snapshot Cycle deployment process (like APM-02)
+// These manage their own dedicated snapshot cycle tables and are excluded here from individual wiki overwrites,
+// while still being tracked in General Deployment History.
+const SNAPSHOT_CYCLE_ENVS = [
+  'apm02',
+  'asintapm02'
+];
+
+// 1. Update individual environment history
 const targets = [];
-if (cleanEnv && cleanEnv !== 'General' && envKey !== 'apm02') {
+if (cleanEnv && cleanEnv !== 'General' && !SNAPSHOT_CYCLE_ENVS.includes(envKey)) {
   targets.push({
     name: cleanEnv,
     jsonPath: path.join(wikiDir, `${envKey}_history.json`),
