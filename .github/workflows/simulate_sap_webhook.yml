@@ -44,6 +44,7 @@ on:
           - "Indorama-QA-233"
           - "Indorama-QA-234"
           - "VMOS"
+          - "AsInt-AIS-02-DC"
         default: "AsInt-Indorama-Prod-900"
       commit_id:
         description: "Commit ID (optional, defaults to branch HEAD)"
