@@ -138,6 +138,11 @@ function buildHelpCard(botName, channelEnv, allEnvs) {
         color: 'Accent'
       },
       {
+        syntax: `@${name} re-trigger`,
+        desc: `Re-triggers SAP CI/CD pipeline without code changes (via empty sync commit on ${channelEnv.tenantBranch || 'tenant branch'}).`,
+        color: 'Warning'
+      },
+      {
         syntax: `@${name} help`,
         desc: `Displays available deployment commands for this channel.`,
         color: 'Default'
