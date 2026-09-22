@@ -2,7 +2,9 @@ const config = require('./config');
 const {
   callGitHubAPI,
   getActiveDeploymentPR,
-  triggerWorkflowDispatch
+  checkActiveEnvironmentDeployment,
+  triggerWorkflowDispatch,
+  createEmptyCommitOnBranch
 } = require('./github');
 let envModule;
 try {
@@ -17,6 +19,7 @@ try {
 const {
   ENVIRONMENTS,
   extractChannelName,
+  getEnvironmentById,
   getEnvironmentByChannelName,
   findEnvironmentInText
 } = envModule;
@@ -25,6 +28,8 @@ const {
   getBlockedExplanation,
   getChannelMismatchMessage,
   getDeployInitiatedMessage,
+  getRetriggerInitiatedMessage,
+  getDeploymentInProgressMessage,
   getHelpMessage,
   getChannelHelpMessage,
   getStatusMessage
@@ -63,9 +68,23 @@ exports.deployBot = (req, res) => {
         : 'Team Member';
 
     // 4. Detect MS Teams Channel & Environment context
+    //    Priority: ?channel= query param → channelData.channel.name → conversation.name
+    const queryChannel = req.query && (req.query.channel || req.query.env) ? (req.query.channel || req.query.env) : null;
     const channelName = extractChannelName(req);
-    const currentChannelEnv = getEnvironmentByChannelName(channelName);
+    const currentChannelEnv = queryChannel
+      ? getEnvironmentById(queryChannel)       // Most reliable: ?channel=apm02
+      : getEnvironmentByChannelName(channelName); // Fallback: Teams payload
     const targetWebhookUrl = config.getChannelWebhookUrl(currentChannelEnv);
+
+    // 🔍 DEBUG: Log channel detection for troubleshooting boundary issues
+    console.log('[Channel Detection]', JSON.stringify({
+      queryChannel: queryChannel || '(none)',
+      detectedChannelName: channelName || '(empty)',
+      resolvedEnv: currentChannelEnv ? currentChannelEnv.id : '(none)',
+      resolvedVia: queryChannel ? 'query-param' : (currentChannelEnv ? 'payload' : 'undetected'),
+      channelData: req.body && req.body.channelData ? req.body.channelData : '(missing)',
+      conversationName: req.body && req.body.conversation && req.body.conversation.name ? req.body.conversation.name : '(missing)'
+    }));
 
     // 5. Clean user input (strip HTML tags like <at>Jarvis</at>)
     const rawText = (req.body && typeof req.body.text === 'string') ? req.body.text : '';
@@ -94,8 +113,6 @@ exports.deployBot = (req, res) => {
         (cleanText.includes('share snapshot') ||
          cleanText.includes('extend') ||
          cleanText.includes('reduce') ||
-         cleanText.includes('re-trigger') ||
-         cleanText.includes('retrigger') ||
          cleanText.includes('deployment fix pushed') ||
          cleanText.includes('fix pushed'))
       ) {
@@ -110,11 +127,58 @@ exports.deployBot = (req, res) => {
     }
 
     // =======================================================================
+    // 🔒 FAIL-CLOSED: Block deploy commands when channel is UNDETECTED
+    // =======================================================================
+    // If channel name could not be determined, block deploy commands targeting
+    // non-APM-02 environments. APM-02-exclusive commands (share snapshot, etc.)
+    // are exempt — they're handled by the APM-02 section below.
+    if (!currentChannelEnv && targetEnvInText) {
+      if (cleanText.includes('deploy') || cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
+        console.warn('[SECURITY] Deploy/Re-trigger command blocked — channel not detected.', {
+          rawText: rawText.substring(0, 200),
+          targetEnv: targetEnvInText.name,
+          channelName: channelName || '(empty)'
+        });
+        return sendBotResponse(
+          res,
+          `🔒 **Channel Not Detected**\n\n` +
+          `Your command for **${targetEnvInText.name}** was blocked because the bot could not verify which Teams channel you're in.\n\n` +
+          `**How to fix:**\n` +
+          `* Use this command from the dedicated **${targetEnvInText.channelName}** channel\n` +
+          `* Make sure the bot is properly installed in the channel\n\n` +
+          `💡 *This is a security measure to prevent cross-environment deployments.*`,
+          `🛡️ Channel Verification Failed`,
+          targetWebhookUrl
+        );
+      }
+    }
+
+    // =======================================================================
     // 🤖 APM-02 SPECIFIC LOGIC (For APM-02 Deployment POC)
     // =======================================================================
+    // APM-02-exclusive commands that no other environment uses.
+    // When these are detected, we know the user intends APM-02 regardless of
+    // channel detection (restores pre-refactor behavior).
+    const isApm02ExclusiveCommand =
+      cleanText.includes('share snapshot') ||
+      cleanText.includes('deploy now') ||
+      cleanText.includes('force start') ||
+      cleanText.includes('deployment fix pushed') ||
+      cleanText.includes('fix pushed') ||
+      cleanText.includes('re-deploy fix') ||
+      cleanText.includes('redeploy fix') ||
+      /(?:extend|reduce|decrease)\s+\d+/.test(cleanText);
+
+    // re-trigger in APM-02 channel or explicitly targeting APM-02
+    const isApm02Retrigger =
+      (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) &&
+      ((currentChannelEnv && currentChannelEnv.isApm02) || (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02));
+
     const isApm02Context =
       (currentChannelEnv && currentChannelEnv.isApm02) ||
-      (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02);
+      (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02) ||
+      isApm02ExclusiveCommand ||
+      isApm02Retrigger;
 
     if (isApm02Context) {
       // ---------------------------------------------------------------------
@@ -461,23 +525,109 @@ exports.deployBot = (req, res) => {
         );
       }
 
-      // Engage anti-spam lock
-      lastDirectDeployTimes[targetDeployEnv.id] = now;
-
-      // Trigger GitHub Actions repository_dispatch event
-      triggerWorkflowDispatch(targetDeployEnv.dispatchEvent, null, (err, statusCode) => {
-        if (err || (statusCode !== 204 && statusCode !== 200)) {
-          delete lastDirectDeployTimes[targetDeployEnv.id];
-          return sendBotResponse(
-            res,
-            `❌ **Failed to trigger ${targetDeployEnv.name} deployment.** GitHub status: ${statusCode || err.message}`,
-            `❌ Deployment Trigger Failed`,
-            targetWebhookUrl
-          );
+      // Check if an existing deployment is already active for this environment
+      checkActiveEnvironmentDeployment(targetDeployEnv, (err, activePr) => {
+        if (err) {
+          console.warn(`[Deployment Check] Error querying active PR for ${targetDeployEnv.name}:`, err.message);
         }
 
-        const confirmation = getDeployInitiatedMessage(targetDeployEnv.name, senderName);
-        sendBotResponse(res, confirmation.body, confirmation.title, targetWebhookUrl);
+        if (activePr) {
+          const inProgressMsg = getDeploymentInProgressMessage(targetDeployEnv.name, activePr, botName);
+          return sendBotResponse(res, inProgressMsg.body, inProgressMsg.title, targetWebhookUrl);
+        }
+
+        // Engage anti-spam lock
+        lastDirectDeployTimes[targetDeployEnv.id] = now;
+
+        // Trigger GitHub Actions repository_dispatch event
+        triggerWorkflowDispatch(targetDeployEnv.dispatchEvent, null, (dispatchErr, statusCode) => {
+          if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
+            delete lastDirectDeployTimes[targetDeployEnv.id];
+            return sendBotResponse(
+              res,
+              `❌ **Failed to trigger ${targetDeployEnv.name} deployment.** GitHub status: ${statusCode || dispatchErr.message}`,
+              `❌ Deployment Trigger Failed`,
+              targetWebhookUrl
+            );
+          }
+
+          const confirmation = getDeployInitiatedMessage(targetDeployEnv.name, senderName);
+          sendBotResponse(res, confirmation.body, confirmation.title, targetWebhookUrl);
+        });
+      });
+      return;
+    }
+
+    // =======================================================================
+    // 🔁 RE-TRIGGER LOGIC (For the other 13 Environments)
+    // =======================================================================
+    // Creates an empty commit on the tenant branch directly via GitHub Git Data API
+    // without code changes to restart SAP CI/CD pipeline.
+    if (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
+      if (!targetDeployEnv) {
+        return sendBotResponse(
+          res,
+          `Please specify which environment to re-trigger, or run this command from that environment's dedicated channel.\n\n` +
+          `**Example:** \`@${botName} re-trigger\` (in that channel) or \`@${botName} re-trigger ais-02\``,
+          `❓ Unknown Environment`,
+          targetWebhookUrl
+        );
+      }
+
+      if (!targetDeployEnv.tenantBranch) {
+        return sendBotResponse(
+          res,
+          `Cannot re-trigger ${targetDeployEnv.name}: No tenant branch defined for this environment.`,
+          `⚠️ Configuration Error`,
+          targetWebhookUrl
+        );
+      }
+
+      // Check anti-spam lock for direct deployments/re-triggers (20 seconds per env)
+      const now = Date.now();
+      const lastTrigger = lastDirectDeployTimes[targetDeployEnv.id] || 0;
+      if (now - lastTrigger < DEPLOY_LOCK_DURATION_MS) {
+        const secondsLeft = Math.ceil((DEPLOY_LOCK_DURATION_MS - (now - lastTrigger)) / 1000);
+        return sendBotResponse(
+          res,
+          `A deployment or re-trigger request for **${targetDeployEnv.name}** was triggered just a moment ago.\n\n` +
+          `Please wait **${secondsLeft} seconds** before triggering another run.\n\n` +
+          `📢 *Progress notification cards will appear in this channel as the build starts.*`,
+          `⏳ Deployment in Progress!`,
+          targetWebhookUrl
+        );
+      }
+
+      // Check if an existing deployment is already active for this environment
+      checkActiveEnvironmentDeployment(targetDeployEnv, (err, activePr) => {
+        if (err) {
+          console.warn(`[Re-trigger Check] Error querying active PR for ${targetDeployEnv.name}:`, err.message);
+        }
+
+        if (activePr) {
+          const inProgressMsg = getDeploymentInProgressMessage(targetDeployEnv.name, activePr, botName);
+          return sendBotResponse(res, inProgressMsg.body, inProgressMsg.title, targetWebhookUrl);
+        }
+
+        // Engage anti-spam lock
+        lastDirectDeployTimes[targetDeployEnv.id] = now;
+
+        const commitMsg = `chore(re-trigger): re-trigger SAP CI/CD deployment on ${targetDeployEnv.name} by ${senderName || 'user'}`;
+
+        createEmptyCommitOnBranch(targetDeployEnv.tenantBranch, commitMsg, (commitErr, commitSha) => {
+          if (commitErr) {
+            delete lastDirectDeployTimes[targetDeployEnv.id];
+            return sendBotResponse(
+              res,
+              `❌ **Failed to re-trigger ${targetDeployEnv.name}.** Error creating empty commit: ${commitErr.message}`,
+              `❌ Re-trigger Failed`,
+              targetWebhookUrl
+            );
+          }
+
+          const retriggerMsg = getRetriggerInitiatedMessage(targetDeployEnv.name, targetDeployEnv.tenantBranch, commitSha, senderName);
+          sendBotResponse(res, retriggerMsg.body, retriggerMsg.title, targetWebhookUrl);
+        });
       });
       return;
     }

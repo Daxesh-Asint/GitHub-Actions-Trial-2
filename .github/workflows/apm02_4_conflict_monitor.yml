@@ -103,13 +103,36 @@ jobs:
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       card_title: "✅ APM-02 Deployment Cycle Complete (Conflicts Resolved)"
-      card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into main."
+      card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into main. Snapshot branch deleted."
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
-      snapshot_branch: ${{ github.event.pull_request.head.ref }}
+      snapshot_branch: "${{ github.event.pull_request.head.ref }} (Deleted 🗑️)"
       pr_number: ${{ github.event.pull_request.number }}
       extra_fact_title: "Cycle State"
-      extra_fact_value: "Reset to IDLE. Ready for next deployment."
+      extra_fact_value: "Reset to IDLE. Snapshot branch deleted."
       action_label: "Review main PR #${{ github.event.pull_request.number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
     secrets: inherit
+
+  delete-snapshot-branch:
+    needs: [auto-merge-resolved, notify-and-update-wiki, notify-success]
+    if: always() && needs.notify-success.result == 'success' && (needs.auto-merge-resolved.result == 'success' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete Remote Snapshot Branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SNAPSHOT="${{ github.event.pull_request.head.ref }}"
+          echo "Target snapshot branch: [$SNAPSHOT]"
+          
+          # Safety check: branch must strictly match snapshot/main-
+          if [[ "$SNAPSHOT" =~ ^snapshot/main- ]]; then
+            echo "🗑️ Deleting remote snapshot branch $SNAPSHOT via GitHub API..."
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$SNAPSHOT" || echo "Branch $SNAPSHOT might already be deleted."
+            echo "✅ Remote snapshot branch $SNAPSHOT deleted successfully."
+          else
+            echo "⚠️ Safety guard: '$SNAPSHOT' does not match snapshot/main-*. Skipping deletion."
+          fi

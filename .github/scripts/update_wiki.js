@@ -11,9 +11,14 @@ const payload = JSON.parse(PAYLOAD);
 const action = payload.action; 
 const snapshot = payload.snapshot;
 
+const rawEnv = payload.environment || payload.deployment_name || 'APM-02';
+const envTitle = rawEnv.replace(/^AsInt[-_ ]?/i, '').replace(/[-_]/g, ' ').trim().toUpperCase();
+const envSlug = rawEnv.replace(/^AsInt[-_ ]?/i, '').replace(/\s+/g, '-').toUpperCase();
+const envKey = rawEnv.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 const wikiDir = path.join(process.cwd(), 'wiki');
-const historyFile = path.join(wikiDir, 'apm02_history.json');
-const mdFile = path.join(wikiDir, 'APM-02-Deployment-History.md');
+const historyFile = path.join(wikiDir, `${envKey}_history.json`);
+const mdFile = path.join(wikiDir, `${envSlug}-Deployment-History.md`);
 
 if (!fs.existsSync(wikiDir)) {
   console.error("Wiki directory not found.");
@@ -74,22 +79,23 @@ if (action === 'create') {
 
 fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
 
-let md = `# APM-02 Deployment History\n\n`;
+let md = `# ${envTitle} Deployment History\n\n`;
 md += `> Auto-updated by GitHub Actions after every deployment cycle.\n\n`;
-md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | APM02<br>PR | Main PR | snapshot merged into APM-02? | snapshot merged into main? | Completed? | Status |\n`;
+md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | ${envTitle}<br>PR | Main PR | snapshot merged into ${envTitle}? | snapshot merged into main? | Completed? | Status |\n`;
 md += `|---|---|---|---|---|---|---|---|---|\n`;
 
 const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial-2';
 
 for (const r of history) {
-  const apm02Link = r.apm02_pr !== 'N/A' && r.apm02_pr !== 'NO_COMMITS' ? `[#${r.apm02_pr}](https://github.com/${REPO}/pull/${r.apm02_pr})` : r.apm02_pr;
+  const tenantPr = r[`${envKey}_pr`] || r.apm02_pr || r.tenant_pr || 'N/A';
+  const tenantPrLink = tenantPr !== 'N/A' && tenantPr !== 'NO_COMMITS' ? `[#${tenantPr}](https://github.com/${REPO}/pull/${tenantPr})` : tenantPr;
   const mainLink = r.main_pr !== 'N/A' && r.main_pr !== 'NO_COMMITS' ? `[#${r.main_pr}](https://github.com/${REPO}/pull/${r.main_pr})` : r.main_pr;
   
   // Format date to take exactly 2 lines by splitting after the comma and preventing wraps elsewhere
-  const dateStr = r.date.replace(', ', ',<br>').replace(/ /g, '&nbsp;');
+  const dateStr = (r.date || '').replace(', ', ',<br>').replace(/ /g, '&nbsp;');
   
   // Format status to keep emoji and first word on the same line, and the rest on a new line
-  const statusParts = r.status.split(' ');
+  const statusParts = (r.status || '').split(' ');
   let statusStr = statusParts[0];
   if (statusParts.length > 1) {
     statusStr += '&nbsp;' + statusParts[1];
@@ -98,7 +104,9 @@ for (const r of history) {
     statusStr += '<br>' + statusParts.slice(2).join(' ');
   }
   
-  md += `| ${r.id} | ${dateStr} | \`${r.snapshot}\` | ${apm02Link} | ${mainLink} | ${r.merged_apm02} | ${r.merged_main} | ${r.cycle_completed} | ${statusStr} |\n`;
+  const mergedTenant = r[`merged_${envKey}`] || r.merged_apm02 || r.merged_tenant || '-';
+
+  md += `| ${r.id} | ${dateStr} | \`${r.snapshot}\` | ${tenantPrLink} | ${mainLink} | ${mergedTenant} | ${r.merged_main || '-'} | ${r.cycle_completed || '-'} | ${statusStr} |\n`;
 }
 
 fs.writeFileSync(mdFile, md);
@@ -106,11 +114,11 @@ fs.writeFileSync(mdFile, md);
 try {
   execSync(`git config user.name "github-actions[bot]"`, { cwd: wikiDir });
   execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`, { cwd: wikiDir });
-  execSync(`git add apm02_history.json APM-02-Deployment-History.md`, { cwd: wikiDir });
+  execSync(`git add "${path.basename(historyFile)}" "${path.basename(mdFile)}"`, { cwd: wikiDir });
   
   const status = execSync(`git status --porcelain`, { cwd: wikiDir }).toString();
   if (status.trim() !== '') {
-    execSync(`git commit -m "docs: Update APM-02 Deployment History for ${snapshot}"`, { cwd: wikiDir });
+    execSync(`git commit -m "docs: Update ${envTitle} Deployment History for ${snapshot}"`, { cwd: wikiDir });
     execSync(`git push`, { cwd: wikiDir });
     console.log("Wiki updated successfully.");
   } else {

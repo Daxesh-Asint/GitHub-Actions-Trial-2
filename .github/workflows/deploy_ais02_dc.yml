@@ -1,8 +1,8 @@
-name: "Deploy: Indorama Prod 933"
+name: "Deploy: AIS-02 DC"
 
 on:
   repository_dispatch:
-    types: [trigger_indorama_prod_933_deployment]
+    types: [trigger_ais02_dc_deployment]
 
 jobs:
   merging-process:
@@ -11,8 +11,8 @@ jobs:
       contents: write
       pull-requests: write
     with:
-      base: "tenant/indorama-prod-933"
-      compare: "tenant/indorama-qa-234"
-      deployment_name: "Indorama Prod 933"
+      base: "tenant/asint-ais-02-dc"
+      compare: "dev"
+      deployment_name: "AIS-02 DC"
       dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
     secrets: inherit

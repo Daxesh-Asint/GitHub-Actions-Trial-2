@@ -48,6 +48,9 @@ on:
 jobs:
   process:
     runs-on: ubuntu-latest
+    concurrency:
+      group: auto-merge-${{ inputs.base }}
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -186,26 +189,49 @@ jobs:
       # ──────────────────────────────────────────────────────────
       # 👥 Assign Reviewer & Wait for Approval (for protected branches)
       # ──────────────────────────────────────────────────────────
-      - name: Request Review for Protected Branch
-        if: (env.pr_exists == 'true' || env.pr_created == 'true') && inputs.reviewers != '' && env.pr_mergeable == 'true'
+      - name: Check Branch Protection & Request Review
+        if: (env.pr_exists == 'true' || env.pr_created == 'true') && env.pr_mergeable == 'true'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
           PR_NUMBER: ${{ env.pr_number }}
+          INPUT_REVIEWERS: ${{ inputs.reviewers }}
+          DEFAULT_REVIEWERS: "Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
         run: |
-          echo "Protected branch requires review from: ${{ inputs.reviewers }}"
-          IFS=',' read -ra REV_ARR <<< "${{ inputs.reviewers }}"
-          for rev in "${REV_ARR[@]}"; do
-            TRIMMED_REV=$(echo "$rev" | xargs)
-            if [ -n "$TRIMMED_REV" ]; then
-              echo "Requesting review from: $TRIMMED_REV"
-              gh pr edit "$PR_NUMBER" --add-reviewer "$TRIMMED_REV" 2>/dev/null || true
-            fi
-          done
-          gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
-          gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
-          gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned ${{ inputs.reviewers }} as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
-          echo "awaiting_approval=true" >> $GITHUB_ENV
-          echo "pr_mergeable=false" >> $GITHUB_ENV
+          TARGET_BRANCH="${{ inputs.base }}"
+          echo "Checking protection status for target branch: '$TARGET_BRANCH'..."
+          
+          IS_PROTECTED=$(gh api "repos/${{ github.repository }}/branches/$TARGET_BRANCH" --jq '.protected' 2>/dev/null || echo "false")
+          echo "Branch '$TARGET_BRANCH' protected status: $IS_PROTECTED"
+
+          ASSIGN_REVIEWERS=""
+          if [ -n "$INPUT_REVIEWERS" ]; then
+            ASSIGN_REVIEWERS="$INPUT_REVIEWERS"
+          elif [ "$IS_PROTECTED" = "true" ]; then
+            ASSIGN_REVIEWERS="$DEFAULT_REVIEWERS"
+          fi
+
+          if [ -n "$ASSIGN_REVIEWERS" ]; then
+            echo "Target branch is protected. Assigning reviewers: $ASSIGN_REVIEWERS"
+            IFS=',' read -ra REV_ARR <<< "$ASSIGN_REVIEWERS"
+            ASSIGNED_COUNT=0
+            for rev in "${REV_ARR[@]}"; do
+              TRIMMED_REV=$(echo "$rev" | xargs)
+              if [ -n "$TRIMMED_REV" ]; then
+                echo "Requesting review from: $TRIMMED_REV"
+                gh pr edit "$PR_NUMBER" --add-reviewer "$TRIMMED_REV" 2>/dev/null || true
+                ASSIGNED_COUNT=$((ASSIGNED_COUNT + 1))
+              fi
+            done
+            gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
+            gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned $ASSIGN_REVIEWERS as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
+            echo "awaiting_approval=true" >> $GITHUB_ENV
+            echo "assigned_reviewers=$ASSIGN_REVIEWERS" >> $GITHUB_ENV
+            echo "pr_mergeable=false" >> $GITHUB_ENV
+          else
+            echo "Target branch is not protected or no reviewers required. Proceeding with immediate merge."
+          fi
 
       # ──────────────────────────────────────────────────────────
       # ⚙️ Resolve CF App Configuration (from .github/cf-apps.json or inputs)
@@ -273,69 +299,81 @@ jobs:
           echo "================================="
 
       # ──────────────────────────────────────────────────────────
-      # 🛑 Stop App(s) Just-In-Time (ONLY if PR is mergeable and apps configured)
+      # 🛑 Stop App(s) Just-In-Time (COMMENTED OUT - Stopped/Started via SAP CI/CD lifecycle)
       # ──────────────────────────────────────────────────────────
-      - name: Stop App Before Merge
-        if: env.pr_mergeable == 'true' && env.cf_apps_count != '0'
-        env:
-          CF_USERNAME: ${{ secrets.CF_USERNAME }}
-          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-        run: |
-          echo "Installing CF CLI..."
-          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
-          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
-          sudo apt-get update -qq
-          sudo apt-get install -y cf8-cli
-
-          echo "Logging into Cloud Foundry..."
-          cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
-          cf target -o "$cf_org" -s "$cf_space" || true
-
-          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
-          for app in "${APPS_LIST[@]}"; do
-            TRIMMED=$(echo "$app" | xargs)
-            if [ -n "$TRIMMED" ]; then
-              echo "🛑 Stopping app $TRIMMED to free memory quota for deployment..."
-              cf stop "$TRIMMED"
-            fi
-          done
-          echo "app_was_stopped=true" >> $GITHUB_ENV
+      # - name: Stop App Before Merge
+      #   if: env.pr_mergeable == 'true' && env.cf_apps_count != '0'
+      #   env:
+      #     CF_USERNAME: ${{ secrets.CF_USERNAME }}
+      #     CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+      #   run: |
+      #     echo "Installing CF CLI..."
+      #     wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+      #     echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+      #     sudo apt-get update -qq
+      #     sudo apt-get install -y cf8-cli
+      #
+      #     echo "Logging into Cloud Foundry..."
+      #     cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+      #     cf target -o "$cf_org" -s "$cf_space" || true
+      #
+      #     IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+      #     for app in "${APPS_LIST[@]}"; do
+      #       TRIMMED=$(echo "$app" | xargs)
+      #       if [ -n "$TRIMMED" ]; then
+      #         echo "🛑 Stopping app $TRIMMED to free memory quota for deployment..."
+      #         cf stop "$TRIMMED"
+      #       fi
+      #     done
+      #     echo "app_was_stopped=true" >> $GITHUB_ENV
 
       - name: Merge PR
         id: merge-pr
         if: env.pr_mergeable == 'true'
         run: |
           PR_NUMBER="${{ env.pr_number }}"
-          if gh pr merge "$PR_NUMBER" --merge; then
-            echo "Pull request '$PR_NUMBER' merged successfully"
+          DEPLOYING_LABEL="${{ inputs.deployment_name }} Deploying"
+          [ -z "${{ inputs.deployment_name }}" ] && DEPLOYING_LABEL="Deploying"
+          gh label create "$DEPLOYING_LABEL" --color "#1d76db" --description "Deployment is in progress" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --add-label "$DEPLOYING_LABEL" 2>/dev/null || true
+
+          if gh pr merge "$PR_NUMBER" --merge --admin; then
+            echo "Pull request '$PR_NUMBER' merged successfully using standard merge into ${{ inputs.base }}"
+          elif gh pr merge "$PR_NUMBER" --squash --admin; then
+            echo "Standard merge disallowed; pull request '$PR_NUMBER' merged successfully using squash merge into ${{ inputs.base }}"
+          elif gh pr merge "$PR_NUMBER" --merge; then
+            echo "Pull request '$PR_NUMBER' merged successfully using standard merge into ${{ inputs.base }}"
+          elif gh pr merge "$PR_NUMBER" --squash; then
+            echo "Standard merge disallowed; pull request '$PR_NUMBER' merged successfully using squash merge into ${{ inputs.base }}"
           else
-            gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step. Please check the workflow logs."
+            gh pr comment "$PR_NUMBER" --body "Auto-merge failed during merge step (both standard and squash merge failed). Please check the workflow logs."
             echo "Failed to merge pull request '$PR_NUMBER'"
             exit 1
           fi
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
 
       # ──────────────────────────────────────────────────────────
-      # 🛡️ Safety Net: Restart App(s) if Merge Fails
+      # 🛡️ Safety Net: Restart App(s) if Merge Fails (COMMENTED OUT)
       # ──────────────────────────────────────────────────────────
-      - name: Safety Restart App If Merge Failed
-        if: failure() && env.app_was_stopped == 'true'
-        env:
-          CF_USERNAME: ${{ secrets.CF_USERNAME }}
-          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-        run: |
-          echo "⚠️ Merge failed after app was stopped! Restarting $cf_apps_comma immediately..."
-          cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
-          cf target -o "$cf_org" -s "$cf_space" || true
-          IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
-          for app in "${APPS_LIST[@]}"; do
-            TRIMMED=$(echo "$app" | xargs)
-            if [ -n "$TRIMMED" ]; then
-              echo "▶️ Restarting app $TRIMMED..."
-              cf start "$TRIMMED"
-            fi
-          done
+      # - name: Safety Restart App If Merge Failed
+      #   if: failure() && env.app_was_stopped == 'true'
+      #   env:
+      #     CF_USERNAME: ${{ secrets.CF_USERNAME }}
+      #     CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+      #   run: |
+      #     echo "⚠️ Merge failed after app was stopped! Restarting $cf_apps_comma immediately..."
+      #     cf login -a "$cf_api" -u "$CF_USERNAME" -p "$CF_PASSWORD"
+      #     cf target -o "$cf_org" -s "$cf_space" || true
+      #     IFS=',' read -ra APPS_LIST <<< "$cf_apps_comma"
+      #     for app in "${APPS_LIST[@]}"; do
+      #       TRIMMED=$(echo "$app" | xargs)
+      #       if [ -n "$TRIMMED" ]; then
+      #         echo "▶️ Restarting app $TRIMMED..."
+      #         cf start "$TRIMMED"
+      #       fi
+      #     done
 
       # ──────────────────────────────────────────────────────────
       # MS Teams Notification (Adaptive Card format)
@@ -377,7 +415,6 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_3 }}")
-              [ -n "${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_AIS02 }}")
               ;;
             "apm01"|"asintapm01")
               [ -n "${{ secrets.TEAMS_WEBHOOK_APM01_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM01_1 }}")
@@ -444,14 +481,22 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}")
               ;;
+            "vmos"|"asintvmos")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_3 }}")
+              ;;
+            "ais02dc"|"asintais02dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}")
+              ;;
           esac
 
-          # Fallback to Global Webhook URLs if no specific channel webhook is configured
-          if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_2 }}")
-            [ -n "${{ secrets.TEAMS_WEBHOOK_URL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_URL_3 }}")
-          fi
+          # Always include Global Webhook URLs for universal notification broadcast
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}")
 
           if [ "${#TARGET_WEBHOOKS[@]}" -eq 0 ]; then
             echo "ℹ️ No specific or fallback Teams webhook configured for '$DEPLOY_NAME'. Skipping notification."
@@ -480,7 +525,9 @@ jobs:
               else
                 CARD_TITLE="🟡 Awaiting Review & Approval"
               fi
-              CARD_SUBTITLE="Target branch is protected. Assigned ${{ inputs.reviewers }} as reviewer. Once approved, deployment will start automatically."
+              ASSIGNED_REVS="${{ env.assigned_reviewers }}"
+              [ -z "$ASSIGNED_REVS" ] && ASSIGNED_REVS="${{ inputs.reviewers }}"
+              CARD_SUBTITLE="Target branch is protected. Assigned $ASSIGNED_REVS as reviewer(s). Once approved, deployment will start automatically."
               PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
               PR_LABEL="Review & Approve PR on GitHub"
               if [ -n "$COMMIT_COUNT" ] && [ "$COMMIT_COUNT" -gt 0 ] 2>/dev/null; then
@@ -493,11 +540,7 @@ jobs:
               MERGE_COLOR="good"
               if [ -n "$DEPLOY_NAME" ]; then
                 CARD_TITLE="🚀 $DEPLOY_NAME Deployment Triggered"
-                if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
-                  CARD_SUBTITLE="Auto-merge completed • Stopped $cf_apps_comma (freed CF runtime memory) • SAP CI/CD started"
-                else
-                  CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
-                fi
+                CARD_SUBTITLE="Auto-merge completed • SAP CI/CD deployment started"
               else
                 CARD_TITLE="GitHub Auto-Merge Notification"
                 CARD_SUBTITLE=""
@@ -559,11 +602,11 @@ jobs:
           fi
 
           CF_APP_NOTE=""
-          if [ -n "$cf_apps_comma" ] && [ "$cf_apps_count" -gt 0 ] 2>/dev/null; then
-            if [ "$app_was_stopped" = "true" ] && [ "$pr_mergeable" != "true" ]; then
-              CF_APP_NOTE="▶️ Restarting $cf_apps_comma (Deployment merge failed; restoring runtime services)"
+          if [ "$app_was_stopped" = "true" ] && [ -n "$cf_apps_comma" ]; then
+            if [ "${{ job.status }}" != "success" ]; then
+              CF_APP_NOTE="▶️ Restarted $cf_apps_comma (Merge did not complete; app restored automatically)"
             else
-              CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed."
+              CF_APP_NOTE="🛑 Stopped $cf_apps_comma — Stopped because more Cloud Foundry runtime memory is needed to get deployment completed. Once deployment is completed, the app will be restarted automatically."
             fi
           fi
 
@@ -682,3 +725,68 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      # ──────────────────────────────────────────────────────────
+      # 📖 Global Wiki Deployment History Update
+      # ──────────────────────────────────────────────────────────
+      - name: Checkout Wiki
+        if: always()
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Setup Node.js for Wiki
+        if: always()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Global Wiki Deployment History
+        if: always()
+        run: |
+          if [ -d "wiki" ]; then
+            PR_NUM="${{ env.pr_number }}"
+            COMMIT_ID=""
+            if [ -n "$PR_NUM" ]; then
+              COMMIT_ID=$(gh pr view "$PR_NUM" --json mergeCommit --jq '.mergeCommit.oid // empty' 2>/dev/null || true)
+            fi
+            
+            STATUS_STR="Success"
+            if [ "${{ job.status }}" != "success" ]; then
+              STATUS_STR="Failed"
+            fi
+            if [ "${{ env.awaiting_approval }}" = "true" ]; then
+              STATUS_STR="Awaiting Approval"
+            fi
+
+            export WIKI_PAYLOAD=$(jq -n \
+              --arg env "${{ inputs.deployment_name }}" \
+              --arg action "deploy" \
+              --arg pr "$PR_NUM" \
+              --arg commit "$COMMIT_ID" \
+              --arg source "${{ inputs.compare }}" \
+              --arg target "${{ inputs.base }}" \
+              --arg actor "${{ github.actor }}" \
+              --arg status "$STATUS_STR" \
+              '{
+                environment: $env,
+                action: $action,
+                pr_number: $pr,
+                commit_id: $commit,
+                source_branch: $source,
+                target_branch: $target,
+                actor: $actor,
+                status: $status
+              }')
+
+            node .github/scripts/update_wiki_global.js || echo "Global wiki update warning: script finished with error"
+          else
+            echo "Wiki repository not found. Skipping wiki update."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
+

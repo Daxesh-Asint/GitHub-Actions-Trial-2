@@ -3,7 +3,6 @@ name: "Deploy: HSC Prod"
 on:
   repository_dispatch:
     types: [trigger_hsc_prod_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
@@ -16,5 +15,4 @@ jobs:
       compare: "tenant/hemlock-non-prod"
       deployment_name: "HSC Prod"
       dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-      reviewers: "Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
     secrets: inherit
