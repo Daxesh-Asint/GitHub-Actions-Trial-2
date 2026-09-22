@@ -12,8 +12,6 @@ echo "================================"
 
 ALLOWED_JOBS=(
   "AsInt-AIS-02"
-  "AsInt-AIS-02-Safety-Test-DND"
-  "AsInt-AIS-02-mta-fix"
   "AsInt-APM-01"
   "AsInt-APM-02"
   "AsInt-APM-EIOT"
@@ -94,7 +92,7 @@ CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 # Map Resource Name to Target Branch to determine Commit ID
 TARGET_BRANCH=""
 case "$RESOURCE_NAME" in
-  "AsInt-AIS-02"|"AsInt-AIS-02-Safety-Test-DND"|"AsInt-AIS-02-mta-fix")
+  "AsInt-AIS-02")
     TARGET_BRANCH="tenant/asint-ais-02"
     ;;
   "AsInt-APM-01")
