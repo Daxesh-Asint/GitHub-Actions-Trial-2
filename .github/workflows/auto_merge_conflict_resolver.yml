@@ -148,6 +148,93 @@ jobs:
               IS_PROTECTED="true"
               REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
+            "tenant/asint-ais-02-dc-addin")
+              DEPLOY_NAME="AIS-02 DC AddIn"
+              ;;
+            "tenant/asint-apm-01-dc")
+              DEPLOY_NAME="APM-01 DC"
+              ;;
+            "tenant/asint-apm-01-dc-addin")
+              DEPLOY_NAME="APM-01 DC AddIn"
+              ;;
+            "tenant/asint-apm-02-dc")
+              DEPLOY_NAME="APM-02 DC"
+              ;;
+            "tenant/asint-apm-02-dc-addin")
+              DEPLOY_NAME="APM-02 DC AddIn"
+              ;;
+            "tenant/asint-apm-eiot-dc")
+              DEPLOY_NAME="APM-EIOT DC"
+              ;;
+            "tenant/asint-apm-eiot-dc-addin")
+              DEPLOY_NAME="APM-EIOT DC AddIn"
+              ;;
+            "tenant/asint-demo-dc")
+              DEPLOY_NAME="AsInt Demo DC"
+              ;;
+            "tenant/asint-demo-dc-addin")
+              DEPLOY_NAME="AsInt Demo DC AddIn"
+              ;;
+            "tenant/asint-st-env-dc")
+              DEPLOY_NAME="ST-ENV DC"
+              ;;
+            "tenant/asint-st-env-dc-addin")
+              DEPLOY_NAME="ST-ENV DC AddIn"
+              ;;
+            "tenant/baystar-dc")
+              DEPLOY_NAME="BAYSTAR DC"
+              ;;
+            "tenant/baystar-dc-addin")
+              DEPLOY_NAME="BAYSTAR DC AddIn"
+              ;;
+            "tenant/hemlock-non-prod-dc")
+              DEPLOY_NAME="HSC Non-Prod DC"
+              ;;
+            "tenant/hemlock-non-prod-dc-addin")
+              DEPLOY_NAME="HSC Non-Prod DC AddIn"
+              ;;
+            "tenant/hemlock-prod-dc")
+              DEPLOY_NAME="HSC Prod DC"
+              ;;
+            "tenant/hemlock-prod-dc-addin")
+              DEPLOY_NAME="HSC Prod DC AddIn"
+              ;;
+            "tenant/indorama-prod-900-dc")
+              DEPLOY_NAME="Indorama Prod 900 DC"
+              ;;
+            "tenant/indorama-prod-900-dc-addin")
+              DEPLOY_NAME="Indorama Prod 900 DC AddIn"
+              ;;
+            "tenant/indorama-prod-933-dc")
+              DEPLOY_NAME="Indorama Prod 933 DC"
+              ;;
+            "tenant/indorama-prod-933-dc-addin")
+              DEPLOY_NAME="Indorama Prod 933 DC AddIn"
+              ;;
+            "tenant/indorama-qa-233-dc")
+              DEPLOY_NAME="Indorama QA 233 DC"
+              ;;
+            "tenant/indorama-qa-233-dc-addin")
+              DEPLOY_NAME="Indorama QA 233 DC AddIn"
+              ;;
+            "tenant/indorama-qa-234-dc")
+              DEPLOY_NAME="Indorama QA 234 DC"
+              ;;
+            "tenant/indorama-qa-234-dc-addin")
+              DEPLOY_NAME="Indorama QA 234 DC AddIn"
+              ;;
+            "tenant/irc-dc")
+              DEPLOY_NAME="IRC DC"
+              ;;
+            "tenant/irc-dc-addin")
+              DEPLOY_NAME="IRC DC AddIn"
+              ;;
+            "tenant/vmos-dc")
+              DEPLOY_NAME="VMOS DC"
+              ;;
+            "tenant/vmos-dc-addin")
+              DEPLOY_NAME="VMOS DC AddIn"
+              ;;
           esac
 
           # Resolve CF configuration from .github/cf-apps.json
