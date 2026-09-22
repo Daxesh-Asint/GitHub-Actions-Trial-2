@@ -12,56 +12,101 @@ echo "================================"
 
 ALLOWED_JOBS=(
   # ── 1. Core Module Jobs ─────────────────────────────────────
+  # 1.
   "AsInt-AIS-02"
+  # 2.
   "AsInt-APM-01"
+  # 3.
   "AsInt-APM-02"
+  # 4.
   "AsInt-APM-EIOT"
+  # 5.
   "AsInt-DEMO"
+  # 6.
   "AsInt-IRC"
   "IRC"
+  # 7.
   "AsInt-ST"
+  # 8.
   "BAYSTAR"
   "Baystar"
+  # 9.
   "Hemlock-NON-PROD"
+  # 10.
   "Hemlock-PROD"
+  # 11.
   "Indorama-PROD-900"
+  # 12.
   "Indorama-PROD-933"
+  # 13.
   "Indorama-QA-233"
+  # 14.
   "Indorama-QA-234"
+  # 15.
   "VMOS"
 
   # ── 2. DC Module Jobs ───────────────────────────────────────
+  # 1.
   "AsInt-AIS-02-DC"
+  # 2.
   "AsInt-APM-01-DC"
+  # 3.
   "AsInt-APM-02-DC"
+  # 4.
   "AsInt-APM-EIOT-DC"
+  # 5.
   "AsInt-DEMO-DC"
-  "AsInt-ST-DC"
-  "Baystar-DC"
-  "Hemlock-NON-PROD-DC"
-  "Hemlock-PROD-DC"
-  "Indorama-PROD-900-DC"
-  "Indorama-PROD-933-DC"
-  "Indorama-QA-233-DC"
-  "Indorama-QA-234-DC"
+  # 6.
   "IRC-DC"
+  # 7.
+  "AsInt-ST-DC"
+  # 8.
+  "Baystar-DC"
+  # 9.
+  "Hemlock-NON-PROD-DC"
+  # 10.
+  "Hemlock-PROD-DC"
+  # 11.
+  "Indorama-PROD-900-DC"
+  # 12.
+  "Indorama-PROD-933-DC"
+  # 13.
+  "Indorama-QA-233-DC"
+  # 14.
+  "Indorama-QA-234-DC"
+  # 15.
   "VMOS-DC"
 
   # ── 3. DC AddIn Module Jobs ─────────────────────────────────
+  # 1.
   "AsInt-AIS-02-DC-AddIn"
+  # 2.
   "AsInt-APM-01-DC-AddIn"
+  # 3.
   "AsInt-APM-02-DC-AddIn"
+  # 4.
   "AsInt-APM-EIOT-DC-AddIn"
+  # 5.
   "AsInt-DEMO-DC-AddIn"
-  "AsInt-ST-DC-AddIn"
-  "Baystar-DC-AddIn"
-  "Hemlock-NON-PROD-DC-AddIn"
-  "Hemlock-PROD-DC-AddIn"
-  "Indorama-PROD-900-DC-AddIn"
-  "Indorama-PROD-933-DC-AddIn"
-  "Indorama-QA-233-DC-AddIn"
-  "Indorama-QA-234-DC-AddIn"
+  # 6.
   "IRC-DC-AddIn"
+  # 7.
+  "AsInt-ST-DC-AddIn"
+  # 8.
+  "Baystar-DC-AddIn"
+  # 9.
+  "Hemlock-NON-PROD-DC-AddIn"
+  # 10.
+  "Hemlock-PROD-DC-AddIn"
+  # 11.
+  "Indorama-PROD-900-DC-AddIn"
+  # 12.
+  "Indorama-PROD-933-DC-AddIn"
+  # 13.
+  "Indorama-QA-233-DC-AddIn"
+  # 14.
+  "Indorama-QA-234-DC-AddIn"
+  # 15.
   "VMOS-DC-AddIn"
 )
 
@@ -98,142 +143,187 @@ CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 TARGET_BRANCH=""
 case "$RESOURCE_NAME" in
   # ── 1. Core Module Jobs ─────────────────────────────────────
+  # 1.
   "AsInt-AIS-02")
     TARGET_BRANCH="tenant/asint-ais-02"
     ;;
+  # 2.
   "AsInt-APM-01")
     TARGET_BRANCH="tenant/asint-apm-01-new"
     ;;
+  # 3.
   "AsInt-APM-02")
     TARGET_BRANCH="tenant/asint-apm-02-v2"
     ;;
+  # 4.
   "AsInt-APM-EIOT")
     TARGET_BRANCH="apm-eiot-temp-copy"
     ;;
+  # 5.
   "AsInt-DEMO")
     TARGET_BRANCH="tenant/asint-demo"
     ;;
+  # 6.
   "AsInt-IRC"|"IRC")
     TARGET_BRANCH="tenant/asint-irc-temp"
     ;;
+  # 7.
   "AsInt-ST")
     TARGET_BRANCH="st-env-for-contentfederation"
     ;;
+  # 8.
   "BAYSTAR"|"Baystar")
     TARGET_BRANCH="tenant/baystar"
     ;;
+  # 9.
   "Hemlock-NON-PROD")
     TARGET_BRANCH="tenant/hemlock-non-prod"
     ;;
+  # 10.
   "Hemlock-PROD")
     TARGET_BRANCH="tenant/hemlock-prod"
     ;;
+  # 11.
   "Indorama-PROD-900")
     TARGET_BRANCH="tenant/indorama-prod-900"
     ;;
+  # 12.
   "Indorama-PROD-933")
     TARGET_BRANCH="tenant/indorama-prod-933"
     ;;
+  # 13.
   "Indorama-QA-233")
     TARGET_BRANCH="tenant/indorama-qa-233"
     ;;
+  # 14.
   "Indorama-QA-234")
     TARGET_BRANCH="tenant/indorama-qa-234"
     ;;
+  # 15.
   "VMOS")
     TARGET_BRANCH="tenant/vmos-dev"
     ;;
 
   # ── 2. DC Module Jobs ───────────────────────────────────────
+  # 1.
   "AsInt-AIS-02-DC")
     TARGET_BRANCH="tenant/asint-ais-02-dc"
     ;;
+  # 2.
   "AsInt-APM-01-DC")
     TARGET_BRANCH="tenant/asint-apm-01-dc"
     ;;
+  # 3.
   "AsInt-APM-02-DC")
     TARGET_BRANCH="tenant/asint-apm-02-dc"
     ;;
+  # 4.
   "AsInt-APM-EIOT-DC")
     TARGET_BRANCH="tenant/asint-apm-eiot-dc"
     ;;
+  # 5.
   "AsInt-DEMO-DC")
     TARGET_BRANCH="tenant/asint-demo-dc"
     ;;
-  "AsInt-ST-DC")
-    TARGET_BRANCH="tenant/asint-st-env-dc"
-    ;;
-  "Baystar-DC")
-    TARGET_BRANCH="tenant/baystar-dc"
-    ;;
-  "Hemlock-NON-PROD-DC")
-    TARGET_BRANCH="tenant/hemlock-non-prod-dc"
-    ;;
-  "Hemlock-PROD-DC")
-    TARGET_BRANCH="tenant/hemlock-prod-dc"
-    ;;
-  "Indorama-PROD-900-DC")
-    TARGET_BRANCH="tenant/indorama-prod-900-dc"
-    ;;
-  "Indorama-PROD-933-DC")
-    TARGET_BRANCH="tenant/indorama-prod-933-dc"
-    ;;
-  "Indorama-QA-233-DC")
-    TARGET_BRANCH="tenant/indorama-qa-233-dc"
-    ;;
-  "Indorama-QA-234-DC")
-    TARGET_BRANCH="tenant/indorama-qa-234-dc"
-    ;;
+  # 6.
   "IRC-DC")
     TARGET_BRANCH="tenant/irc-dc"
     ;;
+  # 7.
+  "AsInt-ST-DC")
+    TARGET_BRANCH="tenant/asint-st-env-dc"
+    ;;
+  # 8.
+  "Baystar-DC")
+    TARGET_BRANCH="tenant/baystar-dc"
+    ;;
+  # 9.
+  "Hemlock-NON-PROD-DC")
+    TARGET_BRANCH="tenant/hemlock-non-prod-dc"
+    ;;
+  # 10.
+  "Hemlock-PROD-DC")
+    TARGET_BRANCH="tenant/hemlock-prod-dc"
+    ;;
+  # 11.
+  "Indorama-PROD-900-DC")
+    TARGET_BRANCH="tenant/indorama-prod-900-dc"
+    ;;
+  # 12.
+  "Indorama-PROD-933-DC")
+    TARGET_BRANCH="tenant/indorama-prod-933-dc"
+    ;;
+  # 13.
+  "Indorama-QA-233-DC")
+    TARGET_BRANCH="tenant/indorama-qa-233-dc"
+    ;;
+  # 14.
+  "Indorama-QA-234-DC")
+    TARGET_BRANCH="tenant/indorama-qa-234-dc"
+    ;;
+  # 15.
   "VMOS-DC")
     TARGET_BRANCH="tenant/vmos-dc"
     ;;
 
   # ── 3. DC AddIn Module Jobs ─────────────────────────────────
+  # 1.
   "AsInt-AIS-02-DC-AddIn")
     TARGET_BRANCH="tenant/asint-ais-02-dc-addin"
     ;;
+  # 2.
   "AsInt-APM-01-DC-AddIn")
     TARGET_BRANCH="tenant/asint-apm-01-dc-addin"
     ;;
+  # 3.
   "AsInt-APM-02-DC-AddIn")
     TARGET_BRANCH="tenant/asint-apm-02-dc-addin"
     ;;
+  # 4.
   "AsInt-APM-EIOT-DC-AddIn")
     TARGET_BRANCH="tenant/asint-apm-eiot-dc-addin"
     ;;
+  # 5.
   "AsInt-DEMO-DC-AddIn")
     TARGET_BRANCH="tenant/asint-demo-dc-addin"
     ;;
-  "AsInt-ST-DC-AddIn")
-    TARGET_BRANCH="tenant/asint-st-env-dc-addin"
-    ;;
-  "Baystar-DC-AddIn")
-    TARGET_BRANCH="tenant/baystar-dc-addin"
-    ;;
-  "Hemlock-NON-PROD-DC-AddIn")
-    TARGET_BRANCH="tenant/hemlock-non-prod-dc-addin"
-    ;;
-  "Hemlock-PROD-DC-AddIn")
-    TARGET_BRANCH="tenant/hemlock-prod-dc-addin"
-    ;;
-  "Indorama-PROD-900-DC-AddIn")
-    TARGET_BRANCH="tenant/indorama-prod-900-dc-addin"
-    ;;
-  "Indorama-PROD-933-DC-AddIn")
-    TARGET_BRANCH="tenant/indorama-prod-933-dc-addin"
-    ;;
-  "Indorama-QA-233-DC-AddIn")
-    TARGET_BRANCH="tenant/indorama-qa-233-dc-addin"
-    ;;
-  "Indorama-QA-234-DC-AddIn")
-    TARGET_BRANCH="tenant/indorama-qa-234-dc-addin"
-    ;;
+  # 6.
   "IRC-DC-AddIn")
     TARGET_BRANCH="tenant/irc-dc-addin"
     ;;
+  # 7.
+  "AsInt-ST-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-st-env-dc-addin"
+    ;;
+  # 8.
+  "Baystar-DC-AddIn")
+    TARGET_BRANCH="tenant/baystar-dc-addin"
+    ;;
+  # 9.
+  "Hemlock-NON-PROD-DC-AddIn")
+    TARGET_BRANCH="tenant/hemlock-non-prod-dc-addin"
+    ;;
+  # 10.
+  "Hemlock-PROD-DC-AddIn")
+    TARGET_BRANCH="tenant/hemlock-prod-dc-addin"
+    ;;
+  # 11.
+  "Indorama-PROD-900-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-prod-900-dc-addin"
+    ;;
+  # 12.
+  "Indorama-PROD-933-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-prod-933-dc-addin"
+    ;;
+  # 13.
+  "Indorama-QA-233-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-qa-233-dc-addin"
+    ;;
+  # 14.
+  "Indorama-QA-234-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-qa-234-dc-addin"
+    ;;
+  # 15.
   "VMOS-DC-AddIn")
     TARGET_BRANCH="tenant/vmos-dc-addin"
     ;;
