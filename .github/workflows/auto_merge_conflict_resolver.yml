@@ -145,6 +145,8 @@ jobs:
               ;;
             "tenant/asint-ais-02-dc")
               DEPLOY_NAME="AIS-02 DC"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
           esac
 
