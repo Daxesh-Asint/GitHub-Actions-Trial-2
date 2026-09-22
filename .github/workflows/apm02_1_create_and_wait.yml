@@ -602,7 +602,7 @@ jobs:
   # ─────────────────────────────────────────────
   notify-conflict:
     needs: [guard, create-snapshot, merge-to-tenant]
-    if: failure() && needs.merge-to-tenant.outputs.has_conflicts == 'true'
+    if: always() && needs.merge-to-tenant.result == 'failure' && needs.merge-to-tenant.outputs.has_conflicts == 'true'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       env_name: ${{ needs.guard.outputs.env_name }}
@@ -626,7 +626,7 @@ jobs:
   # ─────────────────────────────────────────────
   notify-tenant-merged:
     needs: [guard, create-snapshot, merge-to-tenant]
-    if: success() && needs.merge-to-tenant.outputs.tenant_pr_number != 'NO_COMMITS'
+    if: always() && needs.merge-to-tenant.result == 'success' && needs.merge-to-tenant.outputs.tenant_pr_number != 'NO_COMMITS'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       env_name: ${{ needs.guard.outputs.env_name }}
@@ -671,7 +671,7 @@ jobs:
   # ─────────────────────────────────────────────
   notify-already-synced:
     needs: [guard, create-snapshot, merge-to-tenant]
-    if: success() && needs.merge-to-tenant.outputs.tenant_pr_number == 'NO_COMMITS'
+    if: always() && needs.merge-to-tenant.result == 'success' && needs.merge-to-tenant.outputs.tenant_pr_number == 'NO_COMMITS'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       env_name: ${{ needs.guard.outputs.env_name }}
