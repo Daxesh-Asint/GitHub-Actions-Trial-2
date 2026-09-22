@@ -14,9 +14,9 @@ const {
 
 console.log('🧪 Starting Multi-Environment Channel Routing Verification...\n');
 
-// Test 1: Verify all 15 environments exist with their expected dispatch event
-console.log('Test 1: Verifying all 15 environment definitions...');
-assert.strictEqual(ENVIRONMENTS.length, 15, 'Should have exactly 15 environments');
+// Test 1: Verify all 18 environments exist with their expected dispatch event
+console.log('Test 1: Verifying all 18 environment definitions...');
+assert.strictEqual(ENVIRONMENTS.length, 18, 'Should have exactly 18 environments');
 
 const expectedMappings = {
   'AIS-02 Deployment POC': 'trigger_ais02_deployment',
@@ -33,7 +33,10 @@ const expectedMappings = {
   'Indorama QA 234 Deployment POC': 'trigger_indorama_qa_234_deployment',
   'IRC Deployment POC': 'trigger_irc_deployment',
   'ST-ENV Deployment POC': 'trigger_st_env_deployment',
-  'VMOS Deployment POC': 'trigger_vmos_deployment'
+  'VMOS Deployment POC': 'trigger_vmos_deployment',
+  'AIS-02-DC Deployment POC': 'trigger_ais02_dc_deployment',
+  'APM-02 DC Deployment POC': 'trigger_apm02_dc_deployment',
+  'APM-02 DC AddIn Deployment POC': 'trigger_apm02_dc_addin_deployment'
 };
 
 for (const [channelName, expectedDispatch] of Object.entries(expectedMappings)) {
@@ -229,6 +232,22 @@ assert(apm02CardText.includes('deployment fix pushed'), 'APM-02 help should incl
 assert(apm02CardText.includes('status'), 'APM-02 help should include status');
 assert(apm02CardText.includes('APM-02 Command Centre'), 'APM-02 help header should say APM-02 Command Centre');
 console.log('  ✅ APM-02 help card shows all 8 commands correctly');
+
+// APM-02 DC channel → should show 8 APM-02 DC specific commands
+const apm02DcEnv = getEnvironmentById('apm02_dc');
+const apm02DcHelpCard = buildHelpCard('Jarvis', apm02DcEnv, ENVIRONMENTS);
+const apm02DcCardText = JSON.stringify(apm02DcHelpCard);
+assert(apm02DcCardText.includes('share snapshot'), 'APM-02 DC help should include share snapshot');
+assert(apm02DcCardText.includes('APM-02 DC Command Centre'), 'APM-02 DC help header should say APM-02 DC Command Centre');
+console.log('  ✅ APM-02 DC help card shows all commands correctly');
+
+// APM-02 DC AddIn channel → should show 8 APM-02 DC AddIn specific commands
+const apm02DcAddInEnv = getEnvironmentById('apm02_dc_addin');
+const apm02DcAddInHelpCard = buildHelpCard('Jarvis', apm02DcAddInEnv, ENVIRONMENTS);
+const apm02DcAddInCardText = JSON.stringify(apm02DcAddInHelpCard);
+assert(apm02DcAddInCardText.includes('share snapshot'), 'APM-02 DC AddIn help should include share snapshot');
+assert(apm02DcAddInCardText.includes('APM-02 DC AddIn Command Centre'), 'APM-02 DC AddIn help header should say APM-02 DC AddIn Command Centre');
+console.log('  ✅ APM-02 DC AddIn help card shows all commands correctly');
 
 // AIS-02 channel → should show channel-specific deploy commands, NOT other envs
 const ais02Env = getEnvironmentById('ais02');

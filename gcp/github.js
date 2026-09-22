@@ -47,12 +47,33 @@ function callGitHubAPI(path, method, data, callback) {
 }
 
 /**
- * Checks GitHub using Search API: Searches across ALL open APM-02 PRs
+ * Checks GitHub using Search API: Searches across open snapshot PRs for a specific environment
  */
-function getActiveDeploymentPR(callback) {
-  const query = encodeURIComponent(
-    `repo:${config.GITHUB_REPO} is:pr is:open label:"APM-02 Active","APM-02 Deploying","APM-02 Failed","APM-02 Blocked","APM-02 Pre-Deploy Blocked","auto merge for APM02"`
-  );
+function getActiveDeploymentPR(env, callback) {
+  // Support legacy call: getActiveDeploymentPR(callback)
+  if (typeof env === 'function') {
+    callback = env;
+    env = null;
+  }
+
+  const labelPrefix = (env && env.labelPrefix) ? env.labelPrefix : 'APM-02';
+  const autoMergeLabel = (env && env.id === 'apm02_dc')
+    ? 'auto merge for APM-02-DC'
+    : (env && env.id === 'apm02_dc_addin')
+      ? 'auto merge for APM-02-DC-AddIn'
+      : 'auto merge for APM02';
+
+  const labels = [
+    `${labelPrefix} Active`,
+    `${labelPrefix} Deploying`,
+    `${labelPrefix} Failed`,
+    `${labelPrefix} Blocked`,
+    `${labelPrefix} Pre-Deploy Blocked`,
+    autoMergeLabel
+  ];
+
+  const labelQuery = labels.map((l) => `label:"${l}"`).join(',');
+  const query = encodeURIComponent(`repo:${config.GITHUB_REPO} is:pr is:open ${labelQuery}`);
 
   callGitHubAPI(`/search/issues?q=${query}`, 'GET', null, (err, statusCode, res) => {
     if (err) return callback(err);
@@ -72,7 +93,7 @@ function checkActiveEnvironmentDeployment(env, callback) {
   if (!env) return callback(null, null);
 
   if (env.isApm02) {
-    return getActiveDeploymentPR(callback);
+    return getActiveDeploymentPR(env, callback);
   }
 
   // Check for active deploying label or auto-merge PR for this environment
@@ -97,11 +118,12 @@ function checkActiveEnvironmentDeployment(env, callback) {
  * Extracts the snapshot branch name from PR labels or body
  */
 function extractSnapshotBranch(activePr) {
+  if (!activePr) return 'snapshot branch';
   if (activePr.head && activePr.head.ref) {
     return activePr.head.ref;
   }
-  const match = (activePr.body || '').match(/`?(snapshot\/main-[^`\s]+)`?/);
-  return match ? match[1] : (activePr.title.match(/snapshot\/main-[^\s]+/)?.[0] || 'snapshot branch');
+  const match = (activePr.body || '').match(/`?(snapshot\/main(?:-[a-z0-9]+)?-[^`\s]+)`?/i);
+  return match ? match[1] : (activePr.title ? (activePr.title.match(/snapshot\/main(?:-[a-z0-9]+)?-[^\s]+/i)?.[0] || 'snapshot branch') : 'snapshot branch');
 }
 
 /**
