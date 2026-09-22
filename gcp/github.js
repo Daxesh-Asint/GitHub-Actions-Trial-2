@@ -47,7 +47,7 @@ function callGitHubAPI(path, method, data, callback) {
 }
 
 /**
- * Checks GitHub using Search API: Searches across open snapshot PRs for a specific environment
+ * Checks GitHub for an active deployment PR for a specific APM-02 environment (Core, DC, DC AddIn)
  */
 function getActiveDeploymentPR(env, callback) {
   // Support legacy call: getActiveDeploymentPR(callback)
@@ -72,16 +72,18 @@ function getActiveDeploymentPR(env, callback) {
     autoMergeLabel
   ];
 
-  const labelQuery = labels.map((l) => `label:"${l}"`).join(',');
-  const query = encodeURIComponent(`repo:${config.GITHUB_REPO} is:pr is:open ${labelQuery}`);
-
-  callGitHubAPI(`/search/issues?q=${query}`, 'GET', null, (err, statusCode, res) => {
+  // Fetch open pull requests (up to 50 most recent)
+  callGitHubAPI(`/repos/${config.GITHUB_REPO}/pulls?state=open&per_page=50&sort=created&direction=desc`, 'GET', null, (err, statusCode, pulls) => {
     if (err) return callback(err);
-    if (!res || !Array.isArray(res.items)) {
-      return callback(new Error('Invalid response from GitHub Search API'));
+    if (!Array.isArray(pulls)) {
+      return callback(new Error(`Failed to fetch pulls from GitHub: ${statusCode}`));
     }
 
-    const activePr = res.items.length > 0 ? res.items[0] : null;
+    const activePr = pulls.find((pr) => {
+      const prLabels = (pr.labels || []).map((l) => l.name);
+      return labels.some((targetLabel) => prLabels.includes(targetLabel));
+    }) || null;
+
     callback(null, activePr);
   });
 }
@@ -101,15 +103,18 @@ function checkActiveEnvironmentDeployment(env, callback) {
     `auto merge for ${env.name}`,
     `${env.name} Deploying`
   ];
-  const labelQuery = labels.map((l) => `label:"${l}"`).join(',');
-  const query = encodeURIComponent(`repo:${config.GITHUB_REPO} is:pr is:open ${labelQuery}`);
 
-  callGitHubAPI(`/search/issues?q=${query}`, 'GET', null, (err, statusCode, res) => {
+  callGitHubAPI(`/repos/${config.GITHUB_REPO}/pulls?state=open&per_page=50&sort=created&direction=desc`, 'GET', null, (err, statusCode, pulls) => {
     if (err) return callback(err);
-    if (!res || !Array.isArray(res.items)) {
-      return callback(null, null);
+    if (!Array.isArray(pulls)) {
+      return callback(new Error(`Failed to fetch pulls from GitHub: ${statusCode}`));
     }
-    const activePr = res.items.length > 0 ? res.items[0] : null;
+
+    const activePr = pulls.find((pr) => {
+      const prLabels = (pr.labels || []).map((l) => l.name);
+      return labels.some((targetLabel) => prLabels.includes(targetLabel));
+    }) || null;
+
     callback(null, activePr);
   });
 }
