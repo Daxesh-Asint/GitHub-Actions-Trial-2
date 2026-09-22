@@ -82,6 +82,8 @@ jobs:
           REVIEWERS=""
 
           case "$BASE_BRANCH" in
+            # ── 1. Core Module Branches ─────────────────────────
+            # 1.
             "tenant/asint-ais-02")
               DEPLOY_NAME="AIS-02"
               DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-AIS-02/TwoColumnsBeginExpanded"
@@ -89,149 +91,200 @@ jobs:
               CF_ORG="ais-02-eu10-org"
               CF_SPACE="main"
               ;;
+            # 2.
             "tenant/asint-apm-01-new")
               DEPLOY_NAME="APM-01"
               CF_STOP_APP="crawler-layer-backend"
               CF_ORG="asint-apm-01"
               CF_SPACE="demo"
               ;;
-            "st-env-for-contentfederation")
-              DEPLOY_NAME="ST-ENV"
+            # 3.
+            "tenant/asint-apm-02-v2")
+              DEPLOY_NAME="APM-02"
               ;;
+            # 4.
             "apm-eiot-temp-copy")
               DEPLOY_NAME="APM-EIOT"
               ;;
+            # 5.
+            "tenant/asint-demo")
+              DEPLOY_NAME="ASINT-DEMO"
+              ;;
+            # 6.
+            "tenant/asint-irc-temp")
+              DEPLOY_NAME="IRC"
+              ;;
+            # 7.
+            "st-env-for-contentfederation")
+              DEPLOY_NAME="ST-ENV"
+              ;;
+            # 8.
+            "tenant/baystar")
+              DEPLOY_NAME="BAYSTAR"
+              ;;
+            # 9.
             "tenant/hemlock-non-prod")
               DEPLOY_NAME="HSC Non-Prod"
               IS_PROTECTED="true"
               REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
+            # 10.
             "tenant/hemlock-prod")
               DEPLOY_NAME="HSC Prod"
               IS_PROTECTED="true"
               REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
-            "tenant/asint-irc-temp")
-              DEPLOY_NAME="IRC"
-              ;;
-            "tenant/baystar")
-              DEPLOY_NAME="BAYSTAR"
-              ;;
-            "tenant/indorama-qa-233")
-              DEPLOY_NAME="Indorama QA 233"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
-              ;;
-            "tenant/indorama-qa-234")
-              DEPLOY_NAME="Indorama QA 234"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
-              ;;
+            # 11.
             "tenant/indorama-prod-900")
               DEPLOY_NAME="Indorama Prod 900"
               IS_PROTECTED="true"
               REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
+            # 12.
             "tenant/indorama-prod-933")
               DEPLOY_NAME="Indorama Prod 933"
               IS_PROTECTED="true"
               REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
-            "tenant/asint-demo")
-              DEPLOY_NAME="ASINT-DEMO"
+            # 13.
+            "tenant/indorama-qa-233")
+              DEPLOY_NAME="Indorama QA 233"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
+            # 14.
+            "tenant/indorama-qa-234")
+              DEPLOY_NAME="Indorama QA 234"
+              IS_PROTECTED="true"
+              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
+              ;;
+            # 15.
             "tenant/vmos-dev")
               DEPLOY_NAME="VMOS"
               ;;
+
+            # ── 2. DC Module Branches ───────────────────────────
+            # 1.
             "tenant/asint-ais-02-dc")
               DEPLOY_NAME="AIS-02 DC"
               IS_PROTECTED="true"
               REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
-            "tenant/asint-ais-02-dc-addin")
-              DEPLOY_NAME="AIS-02 DC AddIn"
-              ;;
+            # 2.
             "tenant/asint-apm-01-dc")
               DEPLOY_NAME="APM-01 DC"
               ;;
-            "tenant/asint-apm-01-dc-addin")
-              DEPLOY_NAME="APM-01 DC AddIn"
-              ;;
+            # 3.
             "tenant/asint-apm-02-dc")
               DEPLOY_NAME="APM-02 DC"
               ;;
-            "tenant/asint-apm-02-dc-addin")
-              DEPLOY_NAME="APM-02 DC AddIn"
-              ;;
+            # 4.
             "tenant/asint-apm-eiot-dc")
               DEPLOY_NAME="APM-EIOT DC"
               ;;
-            "tenant/asint-apm-eiot-dc-addin")
-              DEPLOY_NAME="APM-EIOT DC AddIn"
-              ;;
+            # 5.
             "tenant/asint-demo-dc")
               DEPLOY_NAME="AsInt Demo DC"
               ;;
-            "tenant/asint-demo-dc-addin")
-              DEPLOY_NAME="AsInt Demo DC AddIn"
-              ;;
-            "tenant/asint-st-env-dc")
-              DEPLOY_NAME="ST-ENV DC"
-              ;;
-            "tenant/asint-st-env-dc-addin")
-              DEPLOY_NAME="ST-ENV DC AddIn"
-              ;;
-            "tenant/baystar-dc")
-              DEPLOY_NAME="BAYSTAR DC"
-              ;;
-            "tenant/baystar-dc-addin")
-              DEPLOY_NAME="BAYSTAR DC AddIn"
-              ;;
-            "tenant/hemlock-non-prod-dc")
-              DEPLOY_NAME="HSC Non-Prod DC"
-              ;;
-            "tenant/hemlock-non-prod-dc-addin")
-              DEPLOY_NAME="HSC Non-Prod DC AddIn"
-              ;;
-            "tenant/hemlock-prod-dc")
-              DEPLOY_NAME="HSC Prod DC"
-              ;;
-            "tenant/hemlock-prod-dc-addin")
-              DEPLOY_NAME="HSC Prod DC AddIn"
-              ;;
-            "tenant/indorama-prod-900-dc")
-              DEPLOY_NAME="Indorama Prod 900 DC"
-              ;;
-            "tenant/indorama-prod-900-dc-addin")
-              DEPLOY_NAME="Indorama Prod 900 DC AddIn"
-              ;;
-            "tenant/indorama-prod-933-dc")
-              DEPLOY_NAME="Indorama Prod 933 DC"
-              ;;
-            "tenant/indorama-prod-933-dc-addin")
-              DEPLOY_NAME="Indorama Prod 933 DC AddIn"
-              ;;
-            "tenant/indorama-qa-233-dc")
-              DEPLOY_NAME="Indorama QA 233 DC"
-              ;;
-            "tenant/indorama-qa-233-dc-addin")
-              DEPLOY_NAME="Indorama QA 233 DC AddIn"
-              ;;
-            "tenant/indorama-qa-234-dc")
-              DEPLOY_NAME="Indorama QA 234 DC"
-              ;;
-            "tenant/indorama-qa-234-dc-addin")
-              DEPLOY_NAME="Indorama QA 234 DC AddIn"
-              ;;
+            # 6.
             "tenant/irc-dc")
               DEPLOY_NAME="IRC DC"
               ;;
-            "tenant/irc-dc-addin")
-              DEPLOY_NAME="IRC DC AddIn"
+            # 7.
+            "tenant/asint-st-env-dc")
+              DEPLOY_NAME="ST-ENV DC"
               ;;
+            # 8.
+            "tenant/baystar-dc")
+              DEPLOY_NAME="BAYSTAR DC"
+              ;;
+            # 9.
+            "tenant/hemlock-non-prod-dc")
+              DEPLOY_NAME="HSC Non-Prod DC"
+              ;;
+            # 10.
+            "tenant/hemlock-prod-dc")
+              DEPLOY_NAME="HSC Prod DC"
+              ;;
+            # 11.
+            "tenant/indorama-prod-900-dc")
+              DEPLOY_NAME="Indorama Prod 900 DC"
+              ;;
+            # 12.
+            "tenant/indorama-prod-933-dc")
+              DEPLOY_NAME="Indorama Prod 933 DC"
+              ;;
+            # 13.
+            "tenant/indorama-qa-233-dc")
+              DEPLOY_NAME="Indorama QA 233 DC"
+              ;;
+            # 14.
+            "tenant/indorama-qa-234-dc")
+              DEPLOY_NAME="Indorama QA 234 DC"
+              ;;
+            # 15.
             "tenant/vmos-dc")
               DEPLOY_NAME="VMOS DC"
               ;;
+
+            # ── 3. DC AddIn Module Branches ─────────────────────
+            # 1.
+            "tenant/asint-ais-02-dc-addin")
+              DEPLOY_NAME="AIS-02 DC AddIn"
+              ;;
+            # 2.
+            "tenant/asint-apm-01-dc-addin")
+              DEPLOY_NAME="APM-01 DC AddIn"
+              ;;
+            # 3.
+            "tenant/asint-apm-02-dc-addin")
+              DEPLOY_NAME="APM-02 DC AddIn"
+              ;;
+            # 4.
+            "tenant/asint-apm-eiot-dc-addin")
+              DEPLOY_NAME="APM-EIOT DC AddIn"
+              ;;
+            # 5.
+            "tenant/asint-demo-dc-addin")
+              DEPLOY_NAME="AsInt Demo DC AddIn"
+              ;;
+            # 6.
+            "tenant/irc-dc-addin")
+              DEPLOY_NAME="IRC DC AddIn"
+              ;;
+            # 7.
+            "tenant/asint-st-env-dc-addin")
+              DEPLOY_NAME="ST-ENV DC AddIn"
+              ;;
+            # 8.
+            "tenant/baystar-dc-addin")
+              DEPLOY_NAME="BAYSTAR DC AddIn"
+              ;;
+            # 9.
+            "tenant/hemlock-non-prod-dc-addin")
+              DEPLOY_NAME="HSC Non-Prod DC AddIn"
+              ;;
+            # 10.
+            "tenant/hemlock-prod-dc-addin")
+              DEPLOY_NAME="HSC Prod DC AddIn"
+              ;;
+            # 11.
+            "tenant/indorama-prod-900-dc-addin")
+              DEPLOY_NAME="Indorama Prod 900 DC AddIn"
+              ;;
+            # 12.
+            "tenant/indorama-prod-933-dc-addin")
+              DEPLOY_NAME="Indorama Prod 933 DC AddIn"
+              ;;
+            # 13.
+            "tenant/indorama-qa-233-dc-addin")
+              DEPLOY_NAME="Indorama QA 233 DC AddIn"
+              ;;
+            # 14.
+            "tenant/indorama-qa-234-dc-addin")
+              DEPLOY_NAME="Indorama QA 234 DC AddIn"
+              ;;
+            # 15.
             "tenant/vmos-dc-addin")
               DEPLOY_NAME="VMOS DC AddIn"
               ;;
