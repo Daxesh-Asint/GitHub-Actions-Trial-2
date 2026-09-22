@@ -29,8 +29,14 @@ const ENVIRONMENTS = [
     channelId: '19:lSAZ2F1bhcVqFh6zoLafU-RovkCK6uhoMM4sBBaQMcY1@thread.tacv2',
     channelName: 'APM-02 Deployment POC',
     isApm02: true,
+    baseBranch: 'main',
+    snapshotPrefix: 'snapshot/main-',
     dispatchEvent: 'trigger_apm02_deployment',
+    adjustDispatchEvent: 'adjust_apm02_wait',
+    retriggerDispatchEvent: 'retrigger_apm02_deployment',
+    redeployFixDispatchEvent: 'redeploy_apm02_fix',
     tenantBranch: 'tenant/asint-apm-02-v2',
+    labelPrefix: 'APM-02',
     aliases: ['apm-02', 'apm02', 'asint-apm-02'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APM02_1'
   },
@@ -163,6 +169,40 @@ const ENVIRONMENTS = [
     tenantBranch: 'tenant/asint-ais-02-dc',
     aliases: ['ais-02 dc', 'ais02 dc', 'ais-02-dc', 'ais02-dc', 'ais02dc', 'ais dc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_AIS02_DC_1'
+  },
+  {
+    id: 'apm02_dc',
+    name: 'APM-02 DC',
+    channelId: '19:465eada7a0ee418581a59f9c8d7cfffd@thread.tacv2',
+    channelName: 'APM-02 DC Deployment POC',
+    isApm02: true,
+    baseBranch: 'main-dc',
+    snapshotPrefix: 'snapshot/main-dc-',
+    dispatchEvent: 'trigger_apm02_dc_deployment',
+    adjustDispatchEvent: 'adjust_apm02_dc_wait',
+    retriggerDispatchEvent: 'retrigger_apm02_dc_deployment',
+    redeployFixDispatchEvent: 'redeploy_apm02_dc_fix',
+    tenantBranch: 'tenant/asint-apm-02-dc',
+    labelPrefix: 'APM-02 DC',
+    aliases: ['apm-02 dc', 'apm02 dc', 'apm-02-dc', 'apm02-dc', 'apm02dc', 'asint-apm-02-dc', 'apm 02 dc'],
+    webhookEnvVar: 'TEAMS_WEBHOOK_APM02_DC_1'
+  },
+  {
+    id: 'apm02_dc_addin',
+    name: 'APM-02 DC AddIn',
+    channelId: '19:781b4e172d3b494092b3b5a08037a5f0@thread.tacv2',
+    channelName: 'APM-02 DC AddIn Deployment POC',
+    isApm02: true,
+    baseBranch: 'main-dc-addin',
+    snapshotPrefix: 'snapshot/main-dc-addin-',
+    dispatchEvent: 'trigger_apm02_dc_addin_deployment',
+    adjustDispatchEvent: 'adjust_apm02_dc_addin_wait',
+    retriggerDispatchEvent: 'retrigger_apm02_dc_addin_deployment',
+    redeployFixDispatchEvent: 'redeploy_apm02_dc_addin_fix',
+    tenantBranch: 'tenant/asint-apm-02-dc-addin',
+    labelPrefix: 'APM-02 DC AddIn',
+    aliases: ['apm-02 dc addin', 'apm02 dc addin', 'apm-02-dc-addin', 'apm02-dc-addin', 'apm02dcaddin', 'asint-apm-02-dc-addin', 'apm 02 dc addin', 'apm02 addin', 'apm-02 addin', 'apm02-addin'],
+    webhookEnvVar: 'TEAMS_WEBHOOK_APM02_DC_ADDIN_1'
   }
 ];
 
@@ -242,15 +282,15 @@ function getEnvironmentByChannelName(channelNameOrId) {
 
   // 2. Try match by channel name or alias
   const normInput = normalizeString(channelNameOrId);
-  return ENVIRONMENTS.find((env) => {
-    const normChannel = normalizeString(env.channelName);
-    const normEnvName = normalizeString(env.name);
-    return (
-      normInput === normChannel ||
-      normInput.includes(normEnvName) ||
-      env.aliases.some((alias) => normalizeString(alias) === normInput)
-    );
-  }) || null;
+  return (
+    ENVIRONMENTS.find((env) => normInput === normalizeString(env.channelName)) ||
+    ENVIRONMENTS.find((env) => env.aliases.some((alias) => normalizeString(alias) === normInput)) ||
+    // If substring matching, check longer/more specific names first (e.g. APM-02 DC before APM-02)
+    [...ENVIRONMENTS]
+      .sort((a, b) => b.name.length - a.name.length)
+      .find((env) => normInput.includes(normalizeString(env.name))) ||
+    null
+  );
 }
 
 /**

@@ -1,0 +1,239 @@
+name: "APM-02 DC AddIn: 6. Recovery & Retry"
+
+on:
+  push:
+    branches:
+      - 'snapshot/main-dc-addin-*'
+  repository_dispatch:
+    types: [retrigger_apm02_dc_addin_deployment, redeploy_apm02_dc_addin_fix]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # STEP 1 — Guard & State Inspection
+  # ──────────────────────────────────────────────────────────
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      snapshot_branch: ${{ steps.check.outputs.snapshot_branch }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+      recovery_type: ${{ steps.check.outputs.recovery_type }}
+    steps:
+      - name: Inspect Active Failed APM-02 DC AddIn Deployment
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EVENT_NAME="${{ github.event_name }}"
+          echo "Triggered by event: $EVENT_NAME"
+
+          # Query open tracking PR with label "APM-02 DC AddIn Failed"
+          FAILED_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 DC AddIn Failed" --json number,headRefName,title --jq '.[0]')
+          
+          if [ -z "$FAILED_PR_JSON" ] || [ "$FAILED_PR_JSON" == "null" ]; then
+            echo "ℹ️ No open PR with label 'APM-02 DC AddIn Failed' found."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PR_NUMBER=$(echo "$FAILED_PR_JSON" | jq -r '.number')
+          SNAPSHOT_BRANCH=$(echo "$FAILED_PR_JSON" | jq -r '.headRefName')
+          echo "Found Failed Tracking PR: #$PR_NUMBER for branch: $SNAPSHOT_BRANCH"
+
+          # If triggered by a git push, verify the pushed branch matches the failed snapshot
+          if [ "$EVENT_NAME" == "push" ]; then
+            PUSHED_BRANCH="${GITHUB_REF#refs/heads/}"
+            echo "Pushed branch: $PUSHED_BRANCH"
+            if [ "$PUSHED_BRANCH" != "$SNAPSHOT_BRANCH" ]; then
+              echo "ℹ️ Push was to a different branch than active failed snapshot. Skipping recovery."
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "recovery_type=code_fix" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "repository_dispatch" ]; then
+            DISPATCH_TYPE="${{ github.event.action }}"
+            echo "Dispatch type: $DISPATCH_TYPE"
+            if [ "$DISPATCH_TYPE" == "retrigger_apm02_dc_addin_deployment" ]; then
+              echo "recovery_type=retrigger" >> $GITHUB_OUTPUT
+            else
+              echo "recovery_type=code_fix" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "recovery_type=code_fix" >> $GITHUB_OUTPUT
+          fi
+
+          echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "snapshot_branch=$SNAPSHOT_BRANCH" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+  # ──────────────────────────────────────────────────────────
+  # STEP 2 — Execute Recovery & Re-deploy to APM-02 DC AddIn Tenant
+  # ──────────────────────────────────────────────────────────
+  execute-recovery:
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      recovery_mode: ${{ steps.deploy.outputs.recovery_mode }}
+      status_message: ${{ steps.deploy.outputs.status_message }}
+      has_conflicts: ${{ steps.deploy.outputs.has_conflicts }}
+      tenant_pr_number: ${{ steps.deploy.outputs.tenant_pr_number }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-deploy or Sync to APM-02 DC AddIn Tenant
+        id: deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          SNAPSHOT="${{ needs.guard.outputs.snapshot_branch }}"
+          PR_NUMBER="${{ needs.guard.outputs.pr_number }}"
+          RECOVERY_TYPE="${{ needs.guard.outputs.recovery_type }}"
+
+          echo "Initiating recovery for snapshot: $SNAPSHOT (type: $RECOVERY_TYPE)"
+
+          git fetch origin "$SNAPSHOT"
+          git fetch origin tenant/asint-apm-02-dc-addin
+
+          DIFF_COMMITS=$(git log origin/tenant/asint-apm-02-dc-addin..origin/"$SNAPSHOT" --oneline)
+          NEW_COMMITS=$(echo "$DIFF_COMMITS" | grep -v '^$' | wc -l)
+
+          echo "New commits on snapshot branch since last deployment: $NEW_COMMITS"
+
+          if [ "$NEW_COMMITS" -gt 0 ]; then
+            echo "mode=code_fix" >> $GITHUB_OUTPUT
+            echo "🔧 Code changes detected. Merging $SNAPSHOT into tenant/asint-apm-02-dc-addin..."
+
+            # Create or reuse PR into tenant/asint-apm-02-dc-addin
+            TENANT_PR=$(gh pr list --repo ${{ github.repository }} \
+              --base tenant/asint-apm-02-dc-addin \
+              --head "$SNAPSHOT" \
+              --state open \
+              --json number \
+              --jq '.[0].number')
+
+            if [ -z "$TENANT_PR" ] || [ "$TENANT_PR" == "null" ]; then
+              echo "Creating new PR into tenant/asint-apm-02-dc-addin..."
+              TENANT_PR=$(gh pr create --repo ${{ github.repository }} \
+                --base tenant/asint-apm-02-dc-addin \
+                --head "$SNAPSHOT" \
+                --title "Fix: Merging from $SNAPSHOT into tenant/asint-apm-02-dc-addin" \
+                --body "Automated build fix PR following SAP CI/CD failure." | grep -oE '[0-9]+$')
+              gh pr edit "$TENANT_PR" --repo ${{ github.repository }} --add-label "auto merge for APM-02-DC-AddIn"
+              echo "Created PR #$TENANT_PR"
+            else
+              echo "Found existing open PR #$TENANT_PR"
+            fi
+
+            # Wait and check mergeability
+            for i in {1..10}; do
+              STATUS=$(gh pr view "$TENANT_PR" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
+              echo "Attempt $i: '$STATUS'"
+              if [[ "$STATUS" == "MERGEABLE" ]]; then
+                gh pr merge "$TENANT_PR" --repo ${{ github.repository }} --merge
+                echo "✅ Successfully merged $SNAPSHOT into tenant/asint-apm-02-dc-addin"
+                echo "has_conflicts=false" >> $GITHUB_OUTPUT
+                break
+              elif [[ "$STATUS" == "CONFLICTING" ]]; then
+                echo "❌ Merge conflict detected with tenant/asint-apm-02-dc-addin."
+                echo "has_conflicts=true" >> $GITHUB_OUTPUT
+                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
+                  --title "🟠 APM-02 DC AddIn Pre-Deploy Blocked (Conflicts): Merging from $SNAPSHOT to main-dc-addin" \
+                  --remove-label "APM-02 DC AddIn Failed" --add-label "APM-02 DC AddIn Pre-Deploy Blocked"
+                gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} \
+                  --body "⚠️ **Merge conflicts detected** when trying to apply build fix to \`tenant/asint-apm-02-dc-addin\`. Please resolve conflicts in PR #$TENANT_PR."
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "tenant_pr_number=$TENANT_PR" >> $GITHUB_OUTPUT
+            STATUS_MSG="Build fix ($NEW_COMMITS commit(s)) merged into APM-02 DC AddIn. SAP CI/CD restarted."
+
+          else
+            echo "mode=retrigger" >> $GITHUB_OUTPUT
+            echo "🔁 No new commits on snapshot. Re-triggering SAP CI/CD via empty sync commit to APM-02 DC AddIn tenant."
+
+            git checkout tenant/asint-apm-02-dc-addin
+            git pull origin tenant/asint-apm-02-dc-addin
+            git commit --allow-empty -m "chore(trigger): re-trigger SAP CI/CD deployment on APM-02 DC AddIn"
+            git push origin tenant/asint-apm-02-dc-addin
+            echo "✅ Trigger commit pushed to tenant/asint-apm-02-dc-addin"
+
+            LAST_TENANT_PR=$(gh pr list --repo ${{ github.repository }} --base tenant/asint-apm-02-dc-addin --head "$SNAPSHOT" --state all --json number --jq '.[0].number')
+            echo "tenant_pr_number=$LAST_TENANT_PR" >> $GITHUB_OUTPUT
+
+            STATUS_MSG="Transient retry triggered (no code changes). SAP CI/CD restarted."
+          fi
+
+          echo "status_message=$STATUS_MSG" >> $GITHUB_OUTPUT
+
+          # Update Tracking PR state back to "APM-02 DC AddIn Deploying"
+          gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
+            --title "🔵 APM-02 DC AddIn Deploying: Merging from $SNAPSHOT to main-dc-addin" \
+            --remove-label "APM-02 DC AddIn Failed" \
+            --remove-label "APM-02 DC AddIn Blocked" \
+            --remove-label "APM-02 DC AddIn Pre-Deploy Blocked" \
+            --add-label "APM-02 DC AddIn Deploying"
+
+          gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} \
+            --body "🚀 **APM-02 DC AddIn Deployment Active:** $STATUS_MSG SAP CI/CD build is now in progress (~55-60m)."
+          
+          echo "✅ Tracking PR #$PR_NUMBER updated to 'APM-02 DC AddIn Deploying'"
+
+  # ──────────────────────────────────────────────────────────
+  # STEP 3 — Notify Teams of Re-Deployment
+  # ──────────────────────────────────────────────────────────
+  notify-success:
+    needs: [guard, execute-recovery]
+    if: success() && needs.execute-recovery.outputs.has_conflicts != 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      env_name: "APM-02 DC AddIn"
+      base_branch: "main-dc-addin"
+      tenant_branch: "tenant/asint-apm-02-dc-addin"
+      card_title: "🔄 APM-02 DC AddIn Deployment Re-Triggered"
+      card_subtitle: ${{ needs.execute-recovery.outputs.status_message }}
+      status_text: "APM-02 DC AddIn Deployment In Progress — SAP CI/CD Running (~55-60m)"
+      status_color: "good"
+      snapshot_branch: ${{ needs.guard.outputs.snapshot_branch }}
+      pr_number: ${{ needs.guard.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.execute-recovery.outputs.tenant_pr_number }}
+      extra_fact_title: "Recovery Status"
+      extra_fact_value: "Pipeline restarted. Snapshot will automatically merge to main-dc-addin upon successful completion."
+      action_label: "Review main-dc-addin PR #${{ needs.guard.outputs.pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.guard.outputs.pr_number }}"
+    secrets: inherit
+
+  notify-conflict:
+    needs: [guard, execute-recovery]
+    if: failure() && needs.execute-recovery.outputs.has_conflicts == 'true'
+    uses: ./.github/workflows/_apm02_notify.yml
+    with:
+      env_name: "APM-02 DC AddIn"
+      base_branch: "main-dc-addin"
+      tenant_branch: "tenant/asint-apm-02-dc-addin"
+      card_title: "⚠️ APM-02 DC AddIn Fix Blocked: Merge Conflicts"
+      card_subtitle: "A merge conflict occurred while trying to apply the build fix to tenant/asint-apm-02-dc-addin."
+      status_text: "Deployment blocked due to merge conflicts."
+      status_color: "attention"
+      snapshot_branch: ${{ needs.guard.outputs.snapshot_branch }}
+      pr_number: ${{ needs.guard.outputs.pr_number }}
+      tenant_pr_number: ${{ needs.execute-recovery.outputs.tenant_pr_number }}
+      extra_fact_title: "Action Required"
+      extra_fact_value: "Resolve conflicts with tenant/asint-apm-02-dc-addin to resume deployment."
+      action_label: "Review main-dc-addin PR #${{ needs.guard.outputs.pr_number }}"
+      action_url: "https://github.com/${{ github.repository }}/pull/${{ needs.guard.outputs.pr_number }}"
+    secrets: inherit

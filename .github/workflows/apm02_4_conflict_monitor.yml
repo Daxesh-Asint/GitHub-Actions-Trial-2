@@ -1,4 +1,4 @@
-name: "APM-02: Guard - Main PR Conflicts"
+name: "APM-02 Family: Guard - Base PR Conflicts"
 
 on:
   pull_request:
@@ -10,8 +10,49 @@ permissions:
   actions: write
 
 jobs:
+  check-env:
+    runs-on: ubuntu-latest
+    outputs:
+      is_target: ${{ steps.detect.outputs.is_target }}
+      env_name: ${{ steps.detect.outputs.env_name }}
+      base_branch: ${{ steps.detect.outputs.base_branch }}
+      label_prefix: ${{ steps.detect.outputs.label_prefix }}
+    steps:
+      - name: Detect Environment from PR Base and Labels
+        id: detect
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+          ACTION="${{ github.event.action }}"
+          IS_MERGED="${{ github.event.pull_request.merged }}"
+
+          echo "Base Ref: $BASE_REF"
+          echo "Labels: $LABELS"
+          echo "Action: $ACTION, Merged: $IS_MERGED"
+
+          if [[ "$BASE_REF" == "main-dc-addin" ]] && echo "$LABELS" | grep -q "APM-02 DC AddIn Blocked"; then
+            echo "is_target=true" >> $GITHUB_OUTPUT
+            echo "env_name=APM-02 DC AddIn" >> $GITHUB_OUTPUT
+            echo "base_branch=main-dc-addin" >> $GITHUB_OUTPUT
+            echo "label_prefix=APM-02 DC AddIn" >> $GITHUB_OUTPUT
+          elif [[ "$BASE_REF" == "main-dc" ]] && echo "$LABELS" | grep -q "APM-02 DC Blocked"; then
+            echo "is_target=true" >> $GITHUB_OUTPUT
+            echo "env_name=APM-02 DC" >> $GITHUB_OUTPUT
+            echo "base_branch=main-dc" >> $GITHUB_OUTPUT
+            echo "label_prefix=APM-02 DC" >> $GITHUB_OUTPUT
+          elif [[ "$BASE_REF" == "main" ]] && echo "$LABELS" | grep -q "APM-02 Blocked"; then
+            echo "is_target=true" >> $GITHUB_OUTPUT
+            echo "env_name=APM-02" >> $GITHUB_OUTPUT
+            echo "base_branch=main" >> $GITHUB_OUTPUT
+            echo "label_prefix=APM-02" >> $GITHUB_OUTPUT
+          else
+            echo "is_target=false" >> $GITHUB_OUTPUT
+            echo "Not a monitored conflict PR. Skipping."
+          fi
+
   auto-merge-resolved:
-    if: github.event.action == 'synchronize' && github.event.pull_request.base.ref == 'main' && contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked')
+    needs: check-env
+    if: needs.check-env.outputs.is_target == 'true' && github.event.action == 'synchronize'
     runs-on: ubuntu-latest
     steps:
       - name: Wait for Mergeability Check
@@ -27,6 +68,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          ENV_NAME: ${{ needs.check-env.outputs.env_name }}
+          BASE_BRANCH: ${{ needs.check-env.outputs.base_branch }}
+          LABEL_PREFIX: ${{ needs.check-env.outputs.label_prefix }}
         run: |
           # Wait up to 30 seconds for mergeable state to be determined
           for i in {1..6}; do
@@ -46,9 +90,9 @@ jobs:
             
             # Update labels
             gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
-              --title "🟢 APM-02 Blocked (Conflicts Resolved): Merging from ${{ github.event.pull_request.head.ref }} to main" \
-              --remove-label "APM-02 Blocked" \
-              --add-label "APM-02 Blocked (Conflicts Resolved)"
+              --title "🟢 ${ENV_NAME} Blocked (Conflicts Resolved): Merging from ${{ github.event.pull_request.head.ref }} to ${BASE_BRANCH}" \
+              --remove-label "${LABEL_PREFIX} Blocked" \
+              --add-label "${LABEL_PREFIX} Blocked (Conflicts Resolved)"
               
             echo "Marking PR as ready (in case it is a draft)..."
             gh pr ready "$PR_NUMBER" --repo ${{ github.repository }} 2>/dev/null || true
@@ -61,10 +105,10 @@ jobs:
           fi
 
   notify-and-update-wiki:
-    needs: auto-merge-resolved
-    if: always() && (
+    needs: [check-env, auto-merge-resolved]
+    if: always() && needs.check-env.outputs.is_target == 'true' && (
           (needs.auto-merge-resolved.result == 'success' && github.event.action == 'synchronize') || 
-          (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)')))
+          (github.event.action == 'closed' && github.event.pull_request.merged == true)
         )
     runs-on: ubuntu-latest
     steps:
@@ -92,31 +136,33 @@ jobs:
             echo "Wiki repo not found, skipping."
           fi
         env:
-          WIKI_PAYLOAD: '{"action": "post-conflict", "snapshot": "${{ github.event.pull_request.head.ref }}"}'
+          WIKI_PAYLOAD: '{"action": "post-conflict", "environment": "${{ needs.check-env.outputs.env_name }}", "snapshot": "${{ github.event.pull_request.head.ref }}"}'
 
   notify-success:
-    needs: [auto-merge-resolved, notify-and-update-wiki]
-    if: always() && (
+    needs: [check-env, auto-merge-resolved, notify-and-update-wiki]
+    if: always() && needs.check-env.outputs.is_target == 'true' && (
           (needs.auto-merge-resolved.result == 'success' && github.event.action == 'synchronize') || 
-          (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && (contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked') || contains(github.event.pull_request.labels.*.name, 'APM-02 Blocked (Conflicts Resolved)')))
+          (github.event.action == 'closed' && github.event.pull_request.merged == true)
         )
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "✅ APM-02 Deployment Cycle Complete (Conflicts Resolved)"
-      card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into main. Snapshot branch deleted."
+      env_name: ${{ needs.check-env.outputs.env_name }}
+      base_branch: ${{ needs.check-env.outputs.base_branch }}
+      card_title: "✅ ${{ needs.check-env.outputs.env_name }} Deployment Cycle Complete (Conflicts Resolved)"
+      card_subtitle: "Merge conflicts were resolved and PR #${{ github.event.pull_request.number }} was successfully merged into ${{ needs.check-env.outputs.base_branch }}. Snapshot branch deleted."
       status_text: "✅ Deployment & Merge Complete"
       status_color: "good"
       snapshot_branch: "${{ github.event.pull_request.head.ref }} (Deleted 🗑️)"
       pr_number: ${{ github.event.pull_request.number }}
       extra_fact_title: "Cycle State"
       extra_fact_value: "Reset to IDLE. Snapshot branch deleted."
-      action_label: "Review main PR #${{ github.event.pull_request.number }}"
+      action_label: "Review ${{ needs.check-env.outputs.base_branch }} PR #${{ github.event.pull_request.number }}"
       action_url: "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
     secrets: inherit
 
   delete-snapshot-branch:
-    needs: [auto-merge-resolved, notify-and-update-wiki, notify-success]
-    if: always() && needs.notify-success.result == 'success' && (needs.auto-merge-resolved.result == 'success' || github.event.pull_request.merged == true)
+    needs: [check-env, auto-merge-resolved, notify-and-update-wiki, notify-success]
+    if: always() && needs.check-env.outputs.is_target == 'true' && needs.notify-success.result == 'success' && (needs.auto-merge-resolved.result == 'success' || github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
     permissions:
       contents: write
