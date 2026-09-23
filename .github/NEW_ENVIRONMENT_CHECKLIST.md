@@ -109,14 +109,16 @@ When onboarding a new environment (e.g., `AIS-02`, `VMOS`, `APM-02 DC`, `APM-02 
 ### D. Direct Auto-Merge Pipeline (For Legacy / Direct Auto-Merge Environments)
 *Applies to environments using `_auto_merge.yml`.*
 
+- [ ] **`.github/scripts/resolve_teams_webhooks.sh`**:
+  - [ ] Add `"<env>"|"<alias>")` mapping to `TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_<ENV>")` in this centralized script. (All auto-merge workflows source this single script).
 - [ ] **`.github/workflows/_auto_merge.yml`**:
-  - [ ] Add `"<env>"|"<alias>")` to `TARGET_WEBHOOKS` switch block.
+  - [ ] Pass the webhook secret in `env:` of the notification step (`TEAMS_WEBHOOK_<ENV>: ${{ secrets.TEAMS_WEBHOOK_<ENV> }}`).
 - [ ] **`.github/workflows/auto_merge_conflict_resolver.yml`**:
-  - [ ] Add `"<env>"|"<alias>")` to conflict notification switch blocks.
-  - [ ] Add branch mapping in `tenant/<env>-branch` detection block.
+  - [ ] Pass the webhook secret in `env:` of notification steps (`notify-awaiting-approval`, `notify-merged`).
+  - [ ] Add branch mapping in `tenant/<env>-branch` detection block if non-standard.
 - [ ] **`.github/workflows/auto_merge_approval_handler.yml`**:
-  - [ ] Add `"<env>"|"<alias>")` to target webhooks switch block.
-  - [ ] Add branch mapping in `tenant/<env>-branch` detection block.
+  - [ ] Pass the webhook secret in `env:` of the notification step.
+  - [ ] Add branch mapping in `tenant/<env>-branch` detection block if non-standard.
 - [ ] **`.github/workflows/deploy_<env>.yml`**:
   - [ ] Create workflow file with `repository_dispatch` matching the environment's `dispatchEvent`.
 
@@ -160,6 +162,7 @@ When onboarding a new environment (e.g., `AIS-02`, `VMOS`, `APM-02 DC`, `APM-02 
 | **7** | **Recovery workflow looking for wrong failed PR** | Hardcoded query for `label: "APM-02 Failed"`. | Must use dynamic label query: `label: "${LABEL_PREFIX} Failed"`. |
 | **8** | **Auto-merge does not happen after resolving conflicts** | (1) PR workflow (`pull_request: synchronize`) runs from head/snapshot branch which inherited outdated workflow from base branch. (2) `gh pr merge --admin` failed due to lack of admin permissions on GITHUB_TOKEN. (3) 30s timeout too short for GitHub mergeability computation. | (1) Keep base branches (`main`, `main-dc`, `main-dc-addin`) synced with latest `.github/workflows`. (2) Use fallback chain: `gh pr merge --auto || gh pr merge --admin || gh pr merge`. (3) Poll mergeability for 60s (12 attempts). |
 | **9** | **Conflict monitor skipped due to hardcoded base branch or missing labels** | Old workflows checked `base.ref == 'tenant/asint-apm-02-v2'`. | Always support all APM-02 branches (`tenant/asint-apm-02-v2`, `tenant/asint-apm-02-dc`, `tenant/asint-apm-02-dc-addin`) in `check-env`. |
+| **10** | **GitHub Actions expression length limit exceeded (workflow parse failure)** | Embedding 120+ inline `${{ secrets.TEAMS_WEBHOOK_... }}` directly into inline `run: \|` bash scripts causes GitHub's workflow expression parser to fail. | **Never embed secrets inline in bash script bodies.** Pass secrets via `env:` mapping in the step, and resolve target webhooks via `.github/scripts/resolve_teams_webhooks.sh`. |
 
 ---
 
