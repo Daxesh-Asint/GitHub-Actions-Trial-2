@@ -23,27 +23,28 @@ jobs:
         id: detect
         run: |
           BASE_REF="${{ github.event.pull_request.base.ref }}"
+          HEAD_REF="${{ github.event.pull_request.head.ref }}"
           LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
           ACTION="${{ github.event.action }}"
           IS_MERGED="${{ github.event.pull_request.merged }}"
 
-          echo "Base Ref: $BASE_REF"
+          echo "Base Ref: $BASE_REF, Head Ref: $HEAD_REF"
           echo "Labels: $LABELS"
           echo "Action: $ACTION, Merged: $IS_MERGED"
 
-          if [[ "$BASE_REF" == "tenant/asint-apm-02-dc-addin" ]] && echo "$LABELS" | grep -q "auto merge for APM-02-DC-AddIn"; then
+          if [[ "$BASE_REF" == "tenant/asint-apm-02-dc-addin" ]] || [[ "$HEAD_REF" =~ ^snapshot/main-dc-addin- ]]; then
             echo "is_target=true" >> $GITHUB_OUTPUT
             echo "env_name=APM-02 DC AddIn" >> $GITHUB_OUTPUT
             echo "base_branch=main-dc-addin" >> $GITHUB_OUTPUT
             echo "tenant_branch=tenant/asint-apm-02-dc-addin" >> $GITHUB_OUTPUT
             echo "label_prefix=APM-02 DC AddIn" >> $GITHUB_OUTPUT
-          elif [[ "$BASE_REF" == "tenant/asint-apm-02-dc" ]] && echo "$LABELS" | grep -q "auto merge for APM-02-DC"; then
+          elif [[ "$BASE_REF" == "tenant/asint-apm-02-dc" ]] || [[ "$HEAD_REF" =~ ^snapshot/main-dc- ]]; then
             echo "is_target=true" >> $GITHUB_OUTPUT
             echo "env_name=APM-02 DC" >> $GITHUB_OUTPUT
             echo "base_branch=main-dc" >> $GITHUB_OUTPUT
             echo "tenant_branch=tenant/asint-apm-02-dc" >> $GITHUB_OUTPUT
             echo "label_prefix=APM-02 DC" >> $GITHUB_OUTPUT
-          elif [[ "$BASE_REF" == "tenant/asint-apm-02-v2" ]] && echo "$LABELS" | grep -q "auto merge for APM02"; then
+          elif [[ "$BASE_REF" == "tenant/asint-apm-02-v2" ]] || ([[ "$HEAD_REF" =~ ^snapshot/main- ]] && ! [[ "$HEAD_REF" =~ ^snapshot/main-dc ]]); then
             echo "is_target=true" >> $GITHUB_OUTPUT
             echo "env_name=APM-02" >> $GITHUB_OUTPUT
             echo "base_branch=main" >> $GITHUB_OUTPUT
@@ -73,8 +74,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Wait up to 30 seconds for mergeable state to be determined
-          for i in {1..6}; do
+          # Wait up to 60 seconds for mergeable state to be determined
+          for i in {1..12}; do
             MERGEABLE=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable -q .mergeable)
             if [ "$MERGEABLE" == "UNKNOWN" ]; then
               echo "Mergeable state is UNKNOWN. Waiting..."
@@ -90,7 +91,9 @@ jobs:
             echo "✅ Conflicts have been resolved! PR is now mergeable."
             
             echo "Attempting to auto-merge..."
-            gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge --admin
+            gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge --auto 2>/dev/null || \
+            gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge --admin 2>/dev/null || \
+            gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge
             echo "✅ PR successfully merged."
           else
             echo "⚠️ PR is still not mergeable. Conflicts remain or checks are failing."

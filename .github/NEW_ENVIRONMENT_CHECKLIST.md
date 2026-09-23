@@ -158,6 +158,8 @@ When onboarding a new environment (e.g., `AIS-02`, `VMOS`, `APM-02 DC`, `APM-02 
 | **5** | **Testing before pushing to `main`** | `repository_dispatch` triggers GitHub Actions from the default branch (`main` / `dev`). | Always push workflow changes to remote `dev` and `main` before issuing Jarvis commands in Teams. |
 | **6** | **Hardcoded environment names in UI cards** | Hardcoded `"APM-02 PR"` or `"Track APM-02 Deployment"` in buttons/facts. | Always use dynamic interpolation: `\($env_name) PR` and `Track \($env_name) Deployment Status...`. |
 | **7** | **Recovery workflow looking for wrong failed PR** | Hardcoded query for `label: "APM-02 Failed"`. | Must use dynamic label query: `label: "${LABEL_PREFIX} Failed"`. |
+| **8** | **Auto-merge does not happen after resolving conflicts** | (1) PR workflow (`pull_request: synchronize`) runs from head/snapshot branch which inherited outdated workflow from base branch. (2) `gh pr merge --admin` failed due to lack of admin permissions on GITHUB_TOKEN. (3) 30s timeout too short for GitHub mergeability computation. | (1) Keep base branches (`main`, `main-dc`, `main-dc-addin`) synced with latest `.github/workflows`. (2) Use fallback chain: `gh pr merge --auto || gh pr merge --admin || gh pr merge`. (3) Poll mergeability for 60s (12 attempts). |
+| **9** | **Conflict monitor skipped due to hardcoded base branch or missing labels** | Old workflows checked `base.ref == 'tenant/asint-apm-02-v2'`. | Always support all APM-02 branches (`tenant/asint-apm-02-v2`, `tenant/asint-apm-02-dc`, `tenant/asint-apm-02-dc-addin`) in `check-env`. |
 
 ---
 
