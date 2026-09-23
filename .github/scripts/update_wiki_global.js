@@ -33,8 +33,11 @@ function normalizeEnv(name) {
     .split(/\s+/)
     .map(word => {
       const upper = word.toUpperCase();
-      if (['QA', 'PROD', 'AIS', 'APM', 'EIOT', 'HSC', 'IRC', 'ST', 'ENV', 'DEMO', 'BAYSTAR'].includes(upper)) {
+      if (['QA', 'PROD', 'AIS', 'APM', 'EIOT', 'HSC', 'IRC', 'ST', 'ENV', 'DEMO', 'BAYSTAR', 'VMOS', 'DC'].includes(upper)) {
         return upper;
+      }
+      if (upper === 'ADDIN' || upper === 'ADD-IN') {
+        return 'AddIn';
       }
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
@@ -169,9 +172,17 @@ function renderMarkdownTable(title, list) {
   return md;
 }
 
+// Environments that follow the Snapshot Cycle deployment process (like APM-02)
+// These manage their own dedicated snapshot cycle tables and are excluded here from individual wiki overwrites,
+// while still being tracked in General Deployment History.
+const SNAPSHOT_CYCLE_ENVS = [
+  'apm02',
+  'asintapm02'
+];
+
 // 1. Update individual environment history
 const targets = [];
-if (cleanEnv && cleanEnv !== 'General') {
+if (cleanEnv && cleanEnv !== 'General' && !SNAPSHOT_CYCLE_ENVS.includes(envKey)) {
   targets.push({
     name: cleanEnv,
     jsonPath: path.join(wikiDir, `${envKey}_history.json`),
