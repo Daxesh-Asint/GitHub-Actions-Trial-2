@@ -207,11 +207,11 @@ const ENVIRONMENTS = [
   {
     id: 'ais02_dc_addin',
     name: 'AIS-02 DC AddIn',
-    channelId: '',
-    channelName: 'AIS-02 DC AddIn Deployment',
+    channelId: '19:6e153f094cbe42979468dc67cbe4c500@thread.tacv2',
+    channelName: 'AIS-02 DC AddIn Deployment POC',
     dispatchEvent: 'trigger_ais02_dc_addin_deployment',
     tenantBranch: 'tenant/asint-ais-02-dc-addin',
-    aliases: ['ais-02 dc addin', 'ais02 dc addin', 'ais-02-dc-addin', 'ais02-dc-addin', 'ais02dcaddin', 'ais dc addin', 'ais-02 addin', 'ais02 addin'],
+    aliases: ['ais-02 dc addin', 'ais02 dc addin', 'ais-02-dc-addin', 'ais02-dc-addin', 'ais02dcaddin', 'ais dc addin', 'ais-02 addin', 'ais02 addin', 'ais-02 dc addin deployment poc', 'ais-02 dc addin deployment'],
     webhookEnvVar: 'TEAMS_WEBHOOK_AIS02_DC_ADDIN_1'
   },
   {
@@ -357,11 +357,11 @@ const ENVIRONMENTS = [
   {
     id: 'indorama_qa_233_dc',
     name: 'Indorama QA 233 DC',
-    channelId: '',
-    channelName: 'Indorama QA 233 DC Deployment',
+    channelId: '19:f94a9976c02246a6b388b3e0706019df@thread.tacv2',
+    channelName: 'Indorama QA 233 DC Deployment POC',
     dispatchEvent: 'trigger_indorama_qa_233_dc_deployment',
     tenantBranch: 'tenant/indorama-qa-233-dc',
-    aliases: ['indorama qa 233 dc', 'indorama 233 dc', 'indoramaqa233dc', 'qa 233 dc', 'qa233dc', '233 dc'],
+    aliases: ['indorama qa 233 dc', 'indorama 233 dc', 'indoramaqa233dc', 'qa 233 dc', 'qa233dc', '233 dc', 'indorama qa 233 dc deployment poc', 'indorama qa 233 dc deployment'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1'
   },
   {
