@@ -261,6 +261,7 @@ jobs:
             --arg custom_url "$CUSTOM_BTN_URL" \
             --arg show_sap "$SHOW_SAP_BTN" \
             --arg sap_url "$SAP_URL" \
+            --arg env_name "$ENV_NAME" \
             '(
               (if $main_btn != "" then [
                 {
