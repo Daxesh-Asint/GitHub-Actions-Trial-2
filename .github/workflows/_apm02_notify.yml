@@ -230,6 +230,7 @@ jobs:
             --arg cicd_commit "$CICD_COMMIT_ID" \
             --arg eft "$EXTRA_FACT_TITLE" \
             --arg efv "$EXTRA_FACT_VALUE" \
+            --arg env_name "$ENV_NAME" \
             '[
               { title: "Repository",       value: $repo },
               { title: "Changes By",       value: $changes_by },
@@ -237,7 +238,7 @@ jobs:
             ] +
             (if $tenant_pr != "" then [
               { title: "Main PR",          value: $tracking_pr },
-              { title: "APM-02 PR",        value: $tenant_pr }
+              { title: "\($env_name) PR",  value: $tenant_pr }
             ] else [
               { title: "Main PR",          value: $tracking_pr }
             ] end) +
@@ -292,7 +293,7 @@ jobs:
               (if $show_sap == "true" then [
                 {
                   type: "Action.OpenUrl",
-                  title: "Track APM-02 Deployment Status in SAP CI/CD Dashboard",
+                  title: "Track \($env_name) Deployment Status in SAP CI/CD Dashboard",
                   url: $sap_url
                 }
               ] else [] end)
