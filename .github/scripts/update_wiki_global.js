@@ -33,8 +33,11 @@ function normalizeEnv(name) {
     .split(/\s+/)
     .map(word => {
       const upper = word.toUpperCase();
-      if (['QA', 'PROD', 'AIS', 'APM', 'EIOT', 'HSC', 'IRC', 'ST', 'ENV', 'DEMO', 'BAYSTAR', 'VMOS'].includes(upper)) {
+      if (['QA', 'PROD', 'AIS', 'APM', 'EIOT', 'HSC', 'IRC', 'ST', 'ENV', 'DEMO', 'BAYSTAR', 'VMOS', 'DC'].includes(upper)) {
         return upper;
+      }
+      if (upper === 'ADDIN' || upper === 'ADD-IN') {
+        return 'AddIn';
       }
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
