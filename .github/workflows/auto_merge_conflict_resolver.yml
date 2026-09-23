@@ -703,6 +703,131 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}")
               ;;
+            "ais02dcaddin"|"asintais02dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_3 }}")
+              ;;
+            "apmeiotdc"|"asintapmeiotdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_3 }}")
+              ;;
+            "apmeiotdcaddin"|"asintapmeiotdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3 }}")
+              ;;
+            "asintdemodc"|"demodc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_3 }}")
+              ;;
+            "asintdemodcaddin"|"demodcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_3 }}")
+              ;;
+            "baystardc"|"asintbaystardc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_3 }}")
+              ;;
+            "baystardcaddin"|"asintbaystardcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3 }}")
+              ;;
+            "hscnonproddc"|"hemlocknonproddc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_3 }}")
+              ;;
+            "hscnonproddcaddin"|"hemlocknonproddcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3 }}")
+              ;;
+            "hscproddc"|"hemlockproddc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_3 }}")
+              ;;
+            "hscproddcaddin"|"hemlockproddcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3 }}")
+              ;;
+            "indoramaprod900dc"|"prod900dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3 }}")
+              ;;
+            "indoramaprod900dcaddin"|"prod900dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3 }}")
+              ;;
+            "indoramaprod933dc"|"prod933dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3 }}")
+              ;;
+            "indoramaprod933dcaddin"|"prod933dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3 }}")
+              ;;
+            "indoramaqa233dc"|"qa233dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3 }}")
+              ;;
+            "indoramaqa233dcaddin"|"qa233dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3 }}")
+              ;;
+            "indoramaqa234dc"|"qa234dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3 }}")
+              ;;
+            "indoramaqa234dcaddin"|"qa234dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3 }}")
+              ;;
+            "ircdc"|"asintircdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_3 }}")
+              ;;
+            "ircdcaddin"|"asintircdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_3 }}")
+              ;;
+            "stenvdc"|"asintstdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_3 }}")
+              ;;
+            "stenvdcaddin"|"asintstdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3 }}")
+              ;;
+            "vmosdc"|"asintvmosdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_3 }}")
+              ;;
+            "vmosdcaddin"|"asintvmosdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_3 }}")
+              ;;
           esac
 
           # Always include Global Webhook URLs for universal notification broadcast
@@ -936,6 +1061,131 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}")
+              ;;
+            "ais02dcaddin"|"asintais02dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_3 }}")
+              ;;
+            "apmeiotdc"|"asintapmeiotdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_3 }}")
+              ;;
+            "apmeiotdcaddin"|"asintapmeiotdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3 }}")
+              ;;
+            "asintdemodc"|"demodc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_3 }}")
+              ;;
+            "asintdemodcaddin"|"demodcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_3 }}")
+              ;;
+            "baystardc"|"asintbaystardc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_3 }}")
+              ;;
+            "baystardcaddin"|"asintbaystardcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3 }}")
+              ;;
+            "hscnonproddc"|"hemlocknonproddc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_3 }}")
+              ;;
+            "hscnonproddcaddin"|"hemlocknonproddcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3 }}")
+              ;;
+            "hscproddc"|"hemlockproddc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_3 }}")
+              ;;
+            "hscproddcaddin"|"hemlockproddcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3 }}")
+              ;;
+            "indoramaprod900dc"|"prod900dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3 }}")
+              ;;
+            "indoramaprod900dcaddin"|"prod900dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3 }}")
+              ;;
+            "indoramaprod933dc"|"prod933dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3 }}")
+              ;;
+            "indoramaprod933dcaddin"|"prod933dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3 }}")
+              ;;
+            "indoramaqa233dc"|"qa233dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3 }}")
+              ;;
+            "indoramaqa233dcaddin"|"qa233dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3 }}")
+              ;;
+            "indoramaqa234dc"|"qa234dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3 }}")
+              ;;
+            "indoramaqa234dcaddin"|"qa234dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3 }}")
+              ;;
+            "ircdc"|"asintircdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_3 }}")
+              ;;
+            "ircdcaddin"|"asintircdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_3 }}")
+              ;;
+            "stenvdc"|"asintstdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_3 }}")
+              ;;
+            "stenvdcaddin"|"asintstdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_ST_ENV_3 }}")
+              ;;
+            "vmosdc"|"asintvmosdc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_3 }}")
+              ;;
+            "vmosdcaddin"|"asintvmosdcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_3 }}")
               ;;
           esac
 
