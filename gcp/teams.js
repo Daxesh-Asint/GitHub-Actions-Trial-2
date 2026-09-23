@@ -84,8 +84,8 @@ function buildHelpCard(botName, channelEnv, allEnvs) {
   let commands = [];
 
   if (channelEnv && channelEnv.isApm02) {
-    headerTitle = `${name} - APM-02 Command Centre`;
-    headerSubtitle = 'APM-02 Cherry-Pick Snapshot Window & CI/CD Bot';
+    headerTitle = `${name} - ${channelEnv.name} Command Centre`;
+    headerSubtitle = `${channelEnv.name} Cherry-Pick Snapshot Window & CI/CD Bot`;
     commands = [
       {
         syntax: `@${name} share snapshot`,
@@ -94,7 +94,7 @@ function buildHelpCard(botName, channelEnv, allEnvs) {
       },
       {
         syntax: `@${name} deploy now`,
-        desc: 'Bypasses the remaining wait countdown and immediately merges the snapshot into APM-02 to trigger SAP CI/CD build.',
+        desc: `Bypasses the remaining wait countdown and immediately merges the snapshot into ${channelEnv.name} to trigger SAP CI/CD build.`,
         color: 'Good'
       },
       {
@@ -109,17 +109,17 @@ function buildHelpCard(botName, channelEnv, allEnvs) {
       },
       {
         syntax: `@${name} re-trigger`,
-        desc: 'Restarts SAP CI/CD build without code changes. (Strictly works only when PR has "APM-02 Failed" label).',
+        desc: `Restarts SAP CI/CD build without code changes. (Strictly works only when PR has "${channelEnv.name} Failed" label).`,
         color: 'Attention'
       },
       {
         syntax: `@${name} deployment fix pushed, re-deploy`,
-        desc: 'Re-merges snapshot into APM-02 after pushing a code fix. (Strictly works only when PR has "APM-02 Failed" label).',
+        desc: `Re-merges snapshot into ${channelEnv.name} after pushing a code fix. (Strictly works only when PR has "${channelEnv.name} Failed" label).`,
         color: 'Attention'
       },
       {
         syntax: `@${name} status`,
-        desc: 'Queries real-time APM-02 deployment state and tracking PR status.',
+        desc: `Queries real-time ${channelEnv.name} deployment state and tracking PR status.`,
         color: 'Default'
       }
     ];
@@ -136,6 +136,11 @@ function buildHelpCard(botName, channelEnv, allEnvs) {
         syntax: `@${name} deploy ${channelEnv.name.toLowerCase()}`,
         desc: `Explicit syntax to trigger deployment for ${channelEnv.name}.`,
         color: 'Accent'
+      },
+      {
+        syntax: `@${name} re-trigger`,
+        desc: `Re-triggers SAP CI/CD pipeline without code changes (via empty sync commit on ${channelEnv.tenantBranch || 'tenant branch'}).`,
+        color: 'Warning'
       },
       {
         syntax: `@${name} help`,
