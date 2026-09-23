@@ -491,6 +491,16 @@ jobs:
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}")
               [ -n "${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}")
               ;;
+            "apm02dc"|"asintapm02dc")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}")
+              ;;
+            "apm02dcaddin"|"asintapm02dcaddin")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}")
+              [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}")
+              ;;
           esac
 
           # Always include Global Webhook URLs for universal notification broadcast
