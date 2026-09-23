@@ -25,6 +25,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Ensure Workflow Automation Scripts
+        run: |
+          if [ ! -f ".github/scripts/notify_conflict_resolved.sh" ] || [ ! -f ".github/cf-apps.json" ]; then
+            echo "Automation scripts missing in checked out ref. Fetching from default branch..."
+            git fetch origin dev main 2>/dev/null || true
+            git checkout origin/${{ github.event.repository.default_branch || 'dev' }} -- .github/scripts .github/cf-apps.json 2>/dev/null || \
+            git checkout origin/dev -- .github/scripts .github/cf-apps.json 2>/dev/null || \
+            git checkout origin/main -- .github/scripts .github/cf-apps.json 2>/dev/null || true
+          fi
+
       - name: Inspect PR & Determine Action
         id: inspect
         env:
