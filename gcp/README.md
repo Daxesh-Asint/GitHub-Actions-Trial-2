@@ -1,70 +1,82 @@
 # GCP Cloud Function / Cloud Run - MS Teams Deployment Bot (Jarvis)
 
-This directory contains the source code for the Microsoft Teams bot webhook hosted on Google Cloud Platform (Cloud Functions / Cloud Run).
+This directory contains the source code for the Microsoft Teams bot webhook hosted on Google Cloud Platform (Cloud Functions / Cloud Run). It supports deployment commands for all 14 environments with strict channel isolation.
 
 ---
 
 ## 📁 Modular File Architecture
 
-Instead of having everything bundled into a single monolithic `index.js`, the code is organized into modular files:
-
-* **`index.js`**: Clean entry point (`deployBot`) and request router. Dispatches user commands to respective modules and manages the anti-spam debounce lock.
-* **`config.js`**: Centralized configuration reading environment variables (`GITHUB_REPO`, `GITHUB_PAT`, `TEAMS_WEBHOOK_URL`, `BOT_NAME`, and debounce lock duration).
-* **`teams.js`**: Microsoft Teams communication handler. Contains `sendBotResponse()` and `postToTeamsWebhook()` using Adaptive Cards to deliver responses directly into the main channel feed (preventing collapsed thread replies).
+* **`index.js`**: Clean entry point (`deployBot`) and request router. Extracts channel context, enforces channel boundaries, dispatches commands, and manages anti-spam debounce locks.
+* **`environments.js`**: Comprehensive registry of all 14 environments, their dedicated MS Teams channel names, aliases, and GitHub Action `repository_dispatch` event triggers.
+* **`config.js`**: Centralized configuration reading environment variables (`GITHUB_REPO`, `GITHUB_PAT`, `TEAMS_WEBHOOK_URL`, `BOT_NAME`), plus per-channel webhook resolution.
+* **`teams.js`**: Microsoft Teams communication handler. Builds and broadcasts rich Adaptive Cards to channel incoming webhooks or returns direct HTTP 200 card responses.
 * **`github.js`**: GitHub REST & Search API client. Contains `callGitHubAPI()`, `getActiveDeploymentPR()`, `extractSnapshotBranch()`, and `triggerWorkflowDispatch()`.
-* **`messages.js`**: User-facing message templates, blocked reason formatters, real-time status card bodies, and command help text.
+* **`messages.js`**: User-facing message templates, channel mismatch warnings, deploy confirmation cards, real-time status cards, and channel-aware help guides.
+* **`test_routing.js`**: Automated verification test suite for multi-environment routing and channel boundary enforcement.
 * **`package.json`**: Node.js package specification for GCP Cloud Functions / Cloud Run runtime.
 * **`.env.example`**: Reference template for required environment variables.
 
 ---
 
+## 🔒 Channel Boundary Isolation Rules
+
+Every environment has its own dedicated MS Teams channel:
+1. When a user runs `@Jarvis deploy` in `AIS-02 Deployment POC`, it deploys **AIS-02**.
+2. If a user attempts to run `@Jarvis deploy apm-01` inside the `AIS-02 Deployment POC` channel, Jarvis blocks the command and instructs them to go to the `APM-01 Deployment POC` channel.
+3. Snapshot and cherry-picking commands (`@Jarvis share snapshot`, `@Jarvis extend`, etc.) are strictly isolated to the **APM-02 Deployment POC** channel.
+
+---
+
+## 🗺️ Channel & Environment Mapping
+
+| Channel Name (MS Teams) | Target Environment | Dispatch Event Triggered |
+| :--- | :--- | :--- |
+| **AIS-02 Deployment POC** | AIS-02 | `trigger_ais02_deployment` |
+| **APM-01 Deployment POC** | APM-01 | `trigger_apm01_deployment` |
+| **APM-02 Deployment POC** | APM-02 | *(Dedicated snapshot & cherry-pick cycle)* |
+| **APM-EIOT Deployment POC** | APM-EIOT | `trigger_apm_eiot_deployment` |
+| **AsInt Demo Deployment POC** | AsInt Demo | `trigger_asint_demo_deployment` |
+| **BAYSTAR Deployment POC** | BAYSTAR | `trigger_baystar_deployment` |
+| **HSC Non-Prod Deployment POC** | HSC Non-Prod | `trigger_hsc_non_prod_deployment` |
+| **HSC Prod Deployment POC** | HSC Prod | `trigger_hsc_prod_deployment` |
+| **Indorama Prod 900 Deployment POC** | Indorama Prod 900 | `trigger_indorama_prod_900_deployment` |
+| **Indorama Prod 933 Deployment POC** | Indorama Prod 933 | `trigger_indorama_prod_933_deployment` |
+| **Indorama QA 233 Deployment POC** | Indorama QA 233 | `trigger_indorama_qa_233_deployment` |
+| **Indorama QA 234 Deployment POC** | Indorama QA 234 | `trigger_indorama_qa_234_deployment` |
+| **IRC Deployment POC** | IRC | `trigger_irc_deployment` |
+| **ST-ENV Deployment POC** | ST-ENV | `trigger_st_env_deployment` |
+
+---
+
 ## ⚙️ Cloud Function Configuration
 
-When configuring or deploying the Cloud Function in the GCP Console:
-
-* **Function Name:** `deploybot-apm02-poc` (or your chosen function name)
-* **Trigger:** HTTPS (Allow unauthenticated invocations so MS Teams can send webhooks)
+* **Function Name:** `deploybot-poc` (or your chosen function name)
+* **Trigger:** HTTPS (Allow unauthenticated invocations so MS Teams can post webhooks)
 * **Runtime:** Node.js 20 or Node.js 22
 * **Entry Point:** `deployBot`
 
 ### Environment Variables
 
-Set the following in **Runtime, build, connections and security settings** -> **Environment variables**:
-
 | Variable | Description | Example |
 | :--- | :--- | :--- |
 | `GITHUB_PAT` | **(Required)** GitHub Personal Access Token with `repo` and `workflow` scopes | `github_pat_...` |
-| `GITHUB_REPO` | Target GitHub repository (`owner/repo`) | `Daxesh-Asint/GitHub-Actions-Trial-2` *(or `StillSomehowSane/asint_ais`)* |
+| `GITHUB_REPO` | Target GitHub repository (`owner/repo`) | `Daxesh-Asint/GitHub-Actions-Trial-2` |
 | `BOT_NAME` | *(Optional)* Fallback bot name if not extracted from Teams mention | `Jarvis` |
-| `TEAMS_WEBHOOK_URL` | *(Recommended)* Channel Incoming Webhook URL to post responses directly into the main channel feed (prevents collapsed "1 reply" thread) | `https://asint.webhook.office.com/webhookb2/...` |
+| `TEAMS_WEBHOOK_URL` | *(Optional)* Fallback Incoming Webhook URL | `https://asint.webhook.office.com/...` |
+| `TEAMS_WEBHOOK_<ENV>_1` | *(Optional)* Per-channel Incoming Webhook URLs for direct feed delivery | `https://asint.webhook.office.com/...` |
 
 ---
 
-## 📋 Copying Files into GCP Cloud Run Console
+## 📋 Copying Files into GCP Cloud Run / Functions Console
 
 In the GCP Cloud Run / Cloud Functions inline source editor:
-1. Click the `+` icon or use the file explorer to add each file next to `index.js` and `package.json`:
+1. Create and copy over each file:
+   - `environments.js`
    - `config.js`
    - `teams.js`
    - `github.js`
    - `messages.js`
    - `index.js`
    - `package.json`
-2. Paste the corresponding code into each file.
-3. Ensure **Function entry point** is set to `deployBot`.
-4. Click **Save and redeploy**.
-
----
-
-## 🚀 Supported Commands & Suggestions Reference
-
-| Command | Short Suggestion Text | Description & Behavior Rules |
-| :--- | :--- | :--- |
-| **`share snapshot`** *(or e.g. `share snapshot 85m`)* | Start snapshot deployment (default: 60m, or specify wait time like 85m) | Initiates snapshot deployment. Defaults to a **60-minute** countdown window. If you want an explicit wait time as per your choice, specify it (e.g., `share snapshot 85m`, `share snapshot 30m`). |
-| **`deploy now`** | Deploy snapshot to APM-02 immediately | Bypasses the remaining wait countdown and triggers immediate merge and SAP CI/CD build to APM-02. |
-| **`extend`** *(or e.g. `extend 15m`)* | Add minutes to waiting window (default: +10m, or specify like 15m) | Adds extra minutes to the countdown window (default: **+10 minutes**, or custom like `extend 15m`, `extend 30m`). |
-| **`reduce`** *(or e.g. `reduce 5m`)* | Subtract minutes from waiting window (default: -10m, or specify like 5m) | Subtracts minutes from the countdown window (default: **-10 minutes**, or custom like `reduce 5m`, `reduce 20m`). |
-| **`re-trigger`** | Restart pipeline without code changes (only when APM-02 Failed) | Restarts the SAP CI/CD pipeline without code changes for transient timeout/flaky failures. **Strictly only works when tracking PR has label `APM-02 Failed`**. In IDLE stage or active stages, it will not work. |
-| **`deployment fix pushed, re-deploy`** | Re-deploy to APM-02 after pushing fix to snapshot branch (only when APM-02 Failed) | Merges the latest snapshot commits into APM-02 and triggers a new build after fixing code in the snapshot branch. **Strictly only works when tracking PR has label `APM-02 Failed`**. In IDLE stage, it will not work. |
-| **`status`** | Query real-time APM-02 deployment status | Displays current deployment state, tracking PR link, snapshot branch, and initiator. |
-| **`help`** | View list of bot commands & guide | Displays full command usage guide and rules. |
+2. Ensure **Function entry point** is set to `deployBot`.
+3. Click **Save and redeploy**.
