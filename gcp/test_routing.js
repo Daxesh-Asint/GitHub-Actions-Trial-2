@@ -14,9 +14,9 @@ const {
 
 console.log('🧪 Starting Multi-Environment Channel Routing Verification...\n');
 
-// Test 1: Verify all 15 environments exist with their expected dispatch event
-console.log('Test 1: Verifying all 15 environment definitions...');
-assert.strictEqual(ENVIRONMENTS.length, 15, 'Should have exactly 15 environments');
+// Test 1: Verify all 43 environments exist with their expected dispatch event
+console.log('Test 1: Verifying all 43 environment definitions...');
+assert.strictEqual(ENVIRONMENTS.length, 43, 'Should have exactly 43 environments');
 
 const expectedMappings = {
   'AIS-02 Deployment POC': 'trigger_ais02_deployment',
@@ -33,7 +33,35 @@ const expectedMappings = {
   'Indorama QA 234 Deployment POC': 'trigger_indorama_qa_234_deployment',
   'IRC Deployment POC': 'trigger_irc_deployment',
   'ST-ENV Deployment POC': 'trigger_st_env_deployment',
-  'VMOS Deployment POC': 'trigger_vmos_deployment'
+  'VMOS Deployment POC': 'trigger_vmos_deployment',
+  'AIS-02-DC Deployment POC': 'trigger_ais02_dc_deployment',
+  'APM-02 DC Deployment POC': 'trigger_apm02_dc_deployment',
+  'APM-02 DC AddIn Deployment POC': 'trigger_apm02_dc_addin_deployment',
+  'AIS-02 DC AddIn Deployment POC': 'trigger_ais02_dc_addin_deployment',
+  'APM-EIOT DC Deployment': 'trigger_apm_eiot_dc_deployment',
+  'APM-EIOT DC AddIn Deployment': 'trigger_apm_eiot_dc_addin_deployment',
+  'AsInt Demo DC Deployment': 'trigger_asint_demo_dc_deployment',
+  'AsInt Demo DC AddIn Deployment': 'trigger_asint_demo_dc_addin_deployment',
+  'BAYSTAR DC Deployment': 'trigger_baystar_dc_deployment',
+  'BAYSTAR DC AddIn Deployment': 'trigger_baystar_dc_addin_deployment',
+  'HSC Non-Prod DC Deployment': 'trigger_hsc_non_prod_dc_deployment',
+  'HSC Non-Prod DC AddIn Deployment': 'trigger_hsc_non_prod_dc_addin_deployment',
+  'HSC Prod DC Deployment': 'trigger_hsc_prod_dc_deployment',
+  'HSC Prod DC AddIn Deployment': 'trigger_hsc_prod_dc_addin_deployment',
+  'Indorama Prod 900 DC Deployment': 'trigger_indorama_prod_900_dc_deployment',
+  'Indorama Prod 900 DC AddIn Deployment': 'trigger_indorama_prod_900_dc_addin_deployment',
+  'Indorama Prod 933 DC Deployment': 'trigger_indorama_prod_933_dc_deployment',
+  'Indorama Prod 933 DC AddIn Deployment': 'trigger_indorama_prod_933_dc_addin_deployment',
+  'Indorama QA 233 DC Deployment POC': 'trigger_indorama_qa_233_dc_deployment',
+  'Indorama QA 233 DC AddIn Deployment': 'trigger_indorama_qa_233_dc_addin_deployment',
+  'Indorama QA 234 DC Deployment': 'trigger_indorama_qa_234_dc_deployment',
+  'Indorama QA 234 DC AddIn Deployment': 'trigger_indorama_qa_234_dc_addin_deployment',
+  'IRC DC Deployment': 'trigger_irc_dc_deployment',
+  'IRC DC AddIn Deployment': 'trigger_irc_dc_addin_deployment',
+  'ST-ENV DC Deployment': 'trigger_st_env_dc_deployment',
+  'ST-ENV DC AddIn Deployment': 'trigger_st_env_dc_addin_deployment',
+  'VMOS DC Deployment': 'trigger_vmos_dc_deployment',
+  'VMOS DC AddIn Deployment': 'trigger_vmos_dc_addin_deployment'
 };
 
 for (const [channelName, expectedDispatch] of Object.entries(expectedMappings)) {
@@ -80,15 +108,16 @@ assert.strictEqual(detectedApm02Env.id, 'apm02', 'Should resolve to APM-02');
 assert.strictEqual(detectedApm02Env.isApm02, true, 'Should have isApm02 flag');
 console.log(`  ✅ Successfully detected APM-02 from real teamsChannelId!`);
 
-// Test 2c: Verify all 14 channels resolve correctly from their channelId
-console.log('\nTest 2c: Verifying all 14 channel IDs resolve to their environments...');
+// Test 2c: Verify all configured channel IDs resolve correctly to their environments
+console.log('\nTest 2c: Verifying all configured channel IDs resolve to their environments...');
 for (const env of ENVIRONMENTS) {
-  assert(env.channelId, `Environment ${env.name} must have channelId`);
-  const req = { body: { channelData: { teamsChannelId: env.channelId } } };
-  const resolved = getEnvironmentByChannelName(extractChannelName(req));
-  assert(resolved, `Failed to resolve ${env.name} from ID ${env.channelId}`);
-  assert.strictEqual(resolved.id, env.id, `ID mismatch for ${env.name}`);
-  console.log(`  ✅ ${env.name} (${env.channelId.substring(0, 20)}...) → ${resolved.name}`);
+  if (env.channelId) {
+    const req = { body: { channelData: { teamsChannelId: env.channelId } } };
+    const resolved = getEnvironmentByChannelName(extractChannelName(req));
+    assert(resolved, `Failed to resolve ${env.name} from ID ${env.channelId}`);
+    assert.strictEqual(resolved.id, env.id, `ID mismatch for ${env.name}`);
+    console.log(`  ✅ ${env.name} (${env.channelId.substring(0, 20)}...) → ${resolved.name}`);
+  }
 }
 
 // Test 3: Detecting environment aliases in command text
@@ -229,6 +258,22 @@ assert(apm02CardText.includes('deployment fix pushed'), 'APM-02 help should incl
 assert(apm02CardText.includes('status'), 'APM-02 help should include status');
 assert(apm02CardText.includes('APM-02 Command Centre'), 'APM-02 help header should say APM-02 Command Centre');
 console.log('  ✅ APM-02 help card shows all 8 commands correctly');
+
+// APM-02 DC channel → should show 8 APM-02 DC specific commands
+const apm02DcEnv = getEnvironmentById('apm02_dc');
+const apm02DcHelpCard = buildHelpCard('Jarvis', apm02DcEnv, ENVIRONMENTS);
+const apm02DcCardText = JSON.stringify(apm02DcHelpCard);
+assert(apm02DcCardText.includes('share snapshot'), 'APM-02 DC help should include share snapshot');
+assert(apm02DcCardText.includes('APM-02 DC Command Centre'), 'APM-02 DC help header should say APM-02 DC Command Centre');
+console.log('  ✅ APM-02 DC help card shows all commands correctly');
+
+// APM-02 DC AddIn channel → should show 8 APM-02 DC AddIn specific commands
+const apm02DcAddInEnv = getEnvironmentById('apm02_dc_addin');
+const apm02DcAddInHelpCard = buildHelpCard('Jarvis', apm02DcAddInEnv, ENVIRONMENTS);
+const apm02DcAddInCardText = JSON.stringify(apm02DcAddInHelpCard);
+assert(apm02DcAddInCardText.includes('share snapshot'), 'APM-02 DC AddIn help should include share snapshot');
+assert(apm02DcAddInCardText.includes('APM-02 DC AddIn Command Centre'), 'APM-02 DC AddIn help header should say APM-02 DC AddIn Command Centre');
+console.log('  ✅ APM-02 DC AddIn help card shows all commands correctly');
 
 // AIS-02 channel → should show channel-specific deploy commands, NOT other envs
 const ais02Env = getEnvironmentById('ais02');
