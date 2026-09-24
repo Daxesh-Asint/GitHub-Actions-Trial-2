@@ -38,7 +38,7 @@ const {
 // =========================================================================
 // 🔒 ANTI-SPAM DEBOUNCE LOCKS
 // =========================================================================
-let lastSnapshotTriggerTime = 0;
+const lastSnapshotTriggerTimes = {};
 const lastDirectDeployTimes = {};
 const DEPLOY_LOCK_DURATION_MS = 20 * 1000; // 20 seconds anti-double-click lock
 
@@ -107,7 +107,7 @@ exports.deployBot = (req, res) => {
         return sendBotResponse(res, mismatchInfo.body, mismatchInfo.title, targetWebhookUrl);
       }
 
-      // If user is NOT in APM-02 channel, but attempted APM-02 snapshot commands:
+      // If user is in a non-snapshot channel, but attempted snapshot commands:
       if (
         !currentChannelEnv.isApm02 &&
         (cleanText.includes('share snapshot') ||
@@ -116,11 +116,13 @@ exports.deployBot = (req, res) => {
          cleanText.includes('deployment fix pushed') ||
          cleanText.includes('fix pushed'))
       ) {
-        const apm02Env = ENVIRONMENTS.find((e) => e.isApm02);
+        const targetApmEnv = targetEnvInText && targetEnvInText.isApm02
+          ? targetEnvInText
+          : (ENVIRONMENTS.find((e) => e.isApm02) || { name: 'APM-02', channelName: 'APM-02 Deployment POC' });
         const mismatchInfo = getChannelMismatchMessage(
           currentChannelEnv.channelName,
-          'APM-02 Snapshot',
-          apm02Env ? apm02Env.channelName : 'APM-02 Deployment POC'
+          `${targetApmEnv.name} Snapshot`,
+          targetApmEnv.channelName
         );
         return sendBotResponse(res, mismatchInfo.body, mismatchInfo.title, targetWebhookUrl);
       }
@@ -130,8 +132,8 @@ exports.deployBot = (req, res) => {
     // 🔒 FAIL-CLOSED: Block deploy commands when channel is UNDETECTED
     // =======================================================================
     // If channel name could not be determined, block deploy commands targeting
-    // non-APM-02 environments. APM-02-exclusive commands (share snapshot, etc.)
-    // are exempt — they're handled by the APM-02 section below.
+    // non-snapshot environments. Snapshot-exclusive commands (share snapshot, etc.)
+    // are handled by the Snapshot section below.
     if (!currentChannelEnv && targetEnvInText) {
       if (cleanText.includes('deploy') || cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
         console.warn('[SECURITY] Deploy/Re-trigger command blocked — channel not detected.', {
@@ -154,12 +156,14 @@ exports.deployBot = (req, res) => {
     }
 
     // =======================================================================
-    // 🤖 APM-02 SPECIFIC LOGIC (For APM-02 Deployment POC)
+    // 🤖 SNAPSHOT MODULE LOGIC (APM-02, APM-02 DC, APM-02 DC AddIn)
     // =======================================================================
-    // APM-02-exclusive commands that no other environment uses.
-    // When these are detected, we know the user intends APM-02 regardless of
-    // channel detection (restores pre-refactor behavior).
-    const isApm02ExclusiveCommand =
+    // Determine active snapshot environment in context
+    const snapshotEnv = (currentChannelEnv && currentChannelEnv.isApm02)
+      ? currentChannelEnv
+      : ((targetEnvInText && targetEnvInText.isApm02) ? targetEnvInText : (ENVIRONMENTS.find((e) => e.id === 'apm02')));
+
+    const isSnapshotExclusiveCommand =
       cleanText.includes('share snapshot') ||
       cleanText.includes('deploy now') ||
       cleanText.includes('force start') ||
@@ -169,20 +173,28 @@ exports.deployBot = (req, res) => {
       cleanText.includes('redeploy fix') ||
       /(?:extend|reduce|decrease)\s+\d+/.test(cleanText);
 
-    // re-trigger in APM-02 channel or explicitly targeting APM-02
-    const isApm02Retrigger =
+    // re-trigger in a snapshot channel or explicitly targeting a snapshot environment
+    const isSnapshotRetrigger =
       (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) &&
       ((currentChannelEnv && currentChannelEnv.isApm02) || (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02));
 
-    const isApm02Context =
+    const isSnapshotContext =
       (currentChannelEnv && currentChannelEnv.isApm02) ||
       (!currentChannelEnv && targetEnvInText && targetEnvInText.isApm02) ||
-      isApm02ExclusiveCommand ||
-      isApm02Retrigger;
+      isSnapshotExclusiveCommand ||
+      isSnapshotRetrigger;
 
-    if (isApm02Context) {
+    if (isSnapshotContext && snapshotEnv) {
+      const activeEnv = snapshotEnv;
+      const envName = activeEnv.name;
+      const baseBranch = activeEnv.baseBranch || 'main';
+      const dispatchEvent = activeEnv.dispatchEvent || 'trigger_apm02_deployment';
+      const adjustDispatchEvent = activeEnv.adjustDispatchEvent || 'adjust_apm02_wait';
+      const retriggerDispatchEvent = activeEnv.retriggerDispatchEvent || 'retrigger_apm02_deployment';
+      const redeployFixDispatchEvent = activeEnv.redeployFixDispatchEvent || 'redeploy_apm02_fix';
+
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 1: share snapshot __m
+      // SNAPSHOT COMMAND 1: share snapshot __m
       // ---------------------------------------------------------------------
       if (
         cleanText.includes('share snapshot') ||
@@ -190,7 +202,8 @@ exports.deployBot = (req, res) => {
         cleanText.includes('deploy apm02')
       ) {
         const now = Date.now();
-        const timeSinceLastTrigger = now - lastSnapshotTriggerTime;
+        const lastTrigger = lastSnapshotTriggerTimes[activeEnv.id] || 0;
+        const timeSinceLastTrigger = now - lastTrigger;
 
         if (timeSinceLastTrigger < config.SNAPSHOT_LOCK_DURATION_MS) {
           const secondsLeft = Math.ceil(
@@ -198,7 +211,7 @@ exports.deployBot = (req, res) => {
           );
           return sendBotResponse(
             res,
-            `A snapshot request was initiated just a moment ago.\n\n` +
+            `A snapshot request for **${envName}** was initiated just a moment ago.\n\n` +
             `Please wait **${secondsLeft} seconds** for the GitHub Actions workflow to finish creating the snapshot branch and tracking PR.\n\n` +
             `📢 *The notification card will appear in this channel shortly.*`,
             `⏳ Snapshot Creation in Progress!`,
@@ -206,10 +219,10 @@ exports.deployBot = (req, res) => {
           );
         }
 
-        const match = cleanText.match(/(?:share\s+snapshot|deploy\s+apm-?02).*?(\d+)\s*(?:m|min|mins|minutes)?/);
+        const match = cleanText.match(/(?:share\s+snapshot|deploy\s+apm-?02(?:-?dc)?(?:-?addin)?).*?(\d+)\s*(?:m|min|mins|minutes)?/);
         const waitingMinutes = match ? match[1] : '60';
 
-        getActiveDeploymentPR((err, activePr) => {
+        getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
             return sendBotResponse(
               res,
@@ -220,18 +233,18 @@ exports.deployBot = (req, res) => {
           }
 
           if (activePr) {
-            const blockedInfo = getBlockedExplanation(activePr, botName);
+            const blockedInfo = getBlockedExplanation(activePr, botName, activeEnv);
             return sendBotResponse(res, blockedInfo.body, blockedInfo.title, targetWebhookUrl);
           }
 
-          lastSnapshotTriggerTime = Date.now();
+          lastSnapshotTriggerTimes[activeEnv.id] = Date.now();
 
           triggerWorkflowDispatch(
-            'trigger_apm02_deployment',
-            { waiting_minutes: waitingMinutes },
+            dispatchEvent,
+            { waiting_minutes: waitingMinutes, env_id: activeEnv.id, env_name: envName },
             (dispatchErr, statusCode) => {
               if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
-                lastSnapshotTriggerTime = 0;
+                lastSnapshotTriggerTimes[activeEnv.id] = 0;
                 return sendBotResponse(
                   res,
                   `❌ **Failed to trigger workflow.** GitHub API returned status: ${statusCode || dispatchErr.message}`,
@@ -242,9 +255,9 @@ exports.deployBot = (req, res) => {
               sendBotResponse(
                 res,
                 `* **Waiting Window:** ${waitingMinutes} minutes\n\n` +
-                `* **Source Branch:** \`main\`\n\n` +
+                `* **Source Branch:** \`${baseBranch}\`\n\n` +
                 `📢 *An active deployment card will be posted to this channel shortly.*`,
-                `🚀 On it! Initiating APM-02 Snapshot Deployment...`,
+                `🚀 On it! Initiating ${envName} Snapshot Deployment...`,
                 targetWebhookUrl
               );
             }
@@ -253,10 +266,10 @@ exports.deployBot = (req, res) => {
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 2: deploy now / force start
+      // SNAPSHOT COMMAND 2: deploy now / force start
       // ---------------------------------------------------------------------
       } else if (cleanText.includes('deploy now') || cleanText.includes('force start')) {
-        triggerWorkflowDispatch('adjust_apm02_wait', { deploy_now: 'true' }, (err, statusCode) => {
+        triggerWorkflowDispatch(adjustDispatchEvent, { deploy_now: 'true', env_id: activeEnv.id }, (err, statusCode) => {
           if (err || (statusCode !== 204 && statusCode !== 200)) {
             return sendBotResponse(
               res,
@@ -267,7 +280,7 @@ exports.deployBot = (req, res) => {
           }
           sendBotResponse(
             res,
-            `Bypassing the remaining waiting window. Merging snapshot into APM-02 and initiating SAP CI/CD immediately.`,
+            `Bypassing the remaining waiting window. Merging snapshot into ${envName} and initiating SAP CI/CD immediately.`,
             `⚡ Immediate Deployment Triggered!`,
             targetWebhookUrl
           );
@@ -275,15 +288,15 @@ exports.deployBot = (req, res) => {
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 3: extend __m
+      // SNAPSHOT COMMAND 3: extend __m
       // ---------------------------------------------------------------------
       } else if (cleanText.includes('extend')) {
         const match = cleanText.match(/extend\s+(\d+)/);
         const extendMinutes = match ? match[1] : '10';
 
         triggerWorkflowDispatch(
-          'adjust_apm02_wait',
-          { deploy_now: 'false', adjust_minutes: extendMinutes },
+          adjustDispatchEvent,
+          { deploy_now: 'false', adjust_minutes: extendMinutes, env_id: activeEnv.id },
           (err, statusCode) => {
             if (err || (statusCode !== 204 && statusCode !== 200)) {
               return sendBotResponse(
@@ -295,7 +308,7 @@ exports.deployBot = (req, res) => {
             }
             sendBotResponse(
               res,
-              `Added **+${extendMinutes} minutes** to the cherry-picking window.`,
+              `Added **+${extendMinutes} minutes** to the cherry-picking window for ${envName}.`,
               `⏳ Waiting Window Extended`,
               targetWebhookUrl
             );
@@ -304,15 +317,15 @@ exports.deployBot = (req, res) => {
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 4: reduce __m
+      // SNAPSHOT COMMAND 4: reduce __m
       // ---------------------------------------------------------------------
       } else if (cleanText.includes('reduce') || cleanText.includes('decrease')) {
         const match = cleanText.match(/(?:reduce|decrease)\s+(\d+)/);
         const reduceMinutes = match ? `-${match[1]}` : '-10';
 
         triggerWorkflowDispatch(
-          'adjust_apm02_wait',
-          { deploy_now: 'false', adjust_minutes: reduceMinutes },
+          adjustDispatchEvent,
+          { deploy_now: 'false', adjust_minutes: reduceMinutes, env_id: activeEnv.id },
           (err, statusCode) => {
             if (err || (statusCode !== 204 && statusCode !== 200)) {
               return sendBotResponse(
@@ -324,7 +337,7 @@ exports.deployBot = (req, res) => {
             }
             sendBotResponse(
               res,
-              `Reduced the waiting window by **${Math.abs(parseInt(reduceMinutes, 10))} minutes**.`,
+              `Reduced the waiting window by **${Math.abs(parseInt(reduceMinutes, 10))} minutes** for ${envName}.`,
               `⏩ Waiting Window Reduced`,
               targetWebhookUrl
             );
@@ -333,10 +346,10 @@ exports.deployBot = (req, res) => {
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 5: re-trigger
+      // SNAPSHOT COMMAND 5: re-trigger
       // ---------------------------------------------------------------------
       } else if (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
-        getActiveDeploymentPR((err, activePr) => {
+        getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
             return sendBotResponse(
               res,
@@ -349,8 +362,8 @@ exports.deployBot = (req, res) => {
           if (!activePr) {
             return sendBotResponse(
               res,
-              `Cannot re-trigger: No failed deployment detected.\n\n` +
-              `* \`@${botName} re-trigger\` **only works when the tracking PR has the \`APM-02 Failed\` label** (for transient/timeout CI/CD failures).\n` +
+              `Cannot re-trigger: No failed deployment detected for ${envName}.\n\n` +
+              `* \`@${botName} re-trigger\` **only works when the tracking PR has the \`${envName} Failed\` label** (for transient/timeout CI/CD failures).\n` +
               `* Since the system is currently **IDLE**, please start a new snapshot deployment using \`@${botName} share snapshot\` instead.`,
               `🟢 System is currently IDLE`,
               targetWebhookUrl
@@ -358,27 +371,27 @@ exports.deployBot = (req, res) => {
           }
 
           const labels = (activePr.labels || []).map((l) => l.name);
-          if (labels.includes('APM-02 Deploying')) {
+          if (labels.some((l) => l.includes('Deploying'))) {
             return sendBotResponse(
               res,
-              `SAP CI/CD is currently building and deploying APM-02. Please wait for the pipeline to finish before attempting a retry.`,
+              `SAP CI/CD is currently building and deploying ${envName}. Please wait for the pipeline to finish before attempting a retry.`,
               `🔵 Deployment is already in progress!`,
               targetWebhookUrl
             );
           }
 
-          if (!labels.includes('APM-02 Failed')) {
+          if (!labels.some((l) => l.includes('Failed'))) {
             return sendBotResponse(
               res,
               `Cannot re-trigger: Tracking PR is in state \`${labels.join(', ')}\`.\n\n` +
-              `* \`@${botName} re-trigger\` **only works when the tracking PR has the \`APM-02 Failed\` label**.\n` +
+              `* \`@${botName} re-trigger\` **only works when the tracking PR has the \`${envName} Failed\` label**.\n` +
               `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})`,
               `⚠️ Re-trigger Not Allowed`,
               targetWebhookUrl
             );
           }
 
-          triggerWorkflowDispatch('retrigger_apm02_deployment', null, (dispatchErr, statusCode) => {
+          triggerWorkflowDispatch(retriggerDispatchEvent, { env_id: activeEnv.id }, (dispatchErr, statusCode) => {
             if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
               return sendBotResponse(
                 res,
@@ -389,9 +402,9 @@ exports.deployBot = (req, res) => {
             }
             sendBotResponse(
               res,
-              `Restarting SAP CI/CD pipeline without code changes (transient/timeout retry).\n\n` +
+              `Restarting SAP CI/CD pipeline without code changes (transient/timeout retry) for ${envName}.\n\n` +
               `📢 *Status card will appear in this channel once the build begins.*`,
-              `🔁 On it! Re-triggering APM-02 deployment...`,
+              `🔁 On it! Re-triggering ${envName} deployment...`,
               targetWebhookUrl
             );
           });
@@ -399,7 +412,7 @@ exports.deployBot = (req, res) => {
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 6: deployment fix pushed, re-deploy
+      // SNAPSHOT COMMAND 6: deployment fix pushed, re-deploy
       // ---------------------------------------------------------------------
       } else if (
         cleanText.includes('deployment fix pushed') ||
@@ -407,7 +420,7 @@ exports.deployBot = (req, res) => {
         cleanText.includes('re-deploy fix') ||
         cleanText.includes('redeploy fix')
       ) {
-        getActiveDeploymentPR((err, activePr) => {
+        getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
             return sendBotResponse(
               res,
@@ -420,8 +433,8 @@ exports.deployBot = (req, res) => {
           if (!activePr) {
             return sendBotResponse(
               res,
-              `Cannot re-deploy fix: No failed deployment detected.\n\n` +
-              `* \`@${botName} deployment fix pushed, re-deploy\` **only works when the tracking PR has the \`APM-02 Failed\` label** and a build fix was pushed to the snapshot branch.\n` +
+              `Cannot re-deploy fix: No failed deployment detected for ${envName}.\n\n` +
+              `* \`@${botName} deployment fix pushed, re-deploy\` **only works when the tracking PR has the \`${envName} Failed\` label** and a build fix was pushed to the snapshot branch.\n` +
               `* Since the system is currently **IDLE**, please start a new snapshot deployment using \`@${botName} share snapshot\` instead.`,
               `🟢 System is currently IDLE`,
               targetWebhookUrl
@@ -429,27 +442,27 @@ exports.deployBot = (req, res) => {
           }
 
           const labels = (activePr.labels || []).map((l) => l.name);
-          if (labels.includes('APM-02 Deploying')) {
+          if (labels.some((l) => l.includes('Deploying'))) {
             return sendBotResponse(
               res,
-              `SAP CI/CD is currently building and deploying APM-02. Please wait for the current build to finish.`,
+              `SAP CI/CD is currently building and deploying ${envName}. Please wait for the current build to finish.`,
               `🔵 Deployment is already in progress!`,
               targetWebhookUrl
             );
           }
 
-          if (!labels.includes('APM-02 Failed')) {
+          if (!labels.some((l) => l.includes('Failed'))) {
             return sendBotResponse(
               res,
               `Cannot re-deploy fix: Tracking PR is in state \`${labels.join(', ')}\`.\n\n` +
-              `* \`@${botName} deployment fix pushed, re-deploy\` **only works when the tracking PR has the \`APM-02 Failed\` label**.\n` +
+              `* \`@${botName} deployment fix pushed, re-deploy\` **only works when the tracking PR has the \`${envName} Failed\` label**.\n` +
               `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})`,
               `⚠️ Re-deploy Fix Not Allowed`,
               targetWebhookUrl
             );
           }
 
-          triggerWorkflowDispatch('redeploy_apm02_fix', null, (dispatchErr, statusCode) => {
+          triggerWorkflowDispatch(redeployFixDispatchEvent, { env_id: activeEnv.id }, (dispatchErr, statusCode) => {
             if (dispatchErr || (statusCode !== 204 && statusCode !== 200)) {
               return sendBotResponse(
                 res,
@@ -460,9 +473,9 @@ exports.deployBot = (req, res) => {
             }
             sendBotResponse(
               res,
-              `Merging latest snapshot commits into APM-02 tenant branch and initiating SAP CI/CD build.\n\n` +
+              `Merging latest snapshot commits into ${envName} tenant branch and initiating SAP CI/CD build.\n\n` +
               `📢 *Status card will appear in this channel shortly.*`,
-              `🛠️ Deployment fix detected! Re-deploying to APM-02...`,
+              `🛠️ Deployment fix detected! Re-deploying to ${envName}...`,
               targetWebhookUrl
             );
           });
@@ -470,20 +483,20 @@ exports.deployBot = (req, res) => {
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 7: status
+      // SNAPSHOT COMMAND 7: status
       // ---------------------------------------------------------------------
       } else if (cleanText.includes('status')) {
-        getActiveDeploymentPR((err, activePr) => {
+        getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
             return sendBotResponse(res, `❌ **Error querying status:** ${err.message}`, 'Error', targetWebhookUrl);
           }
-          const statusInfo = getStatusMessage(activePr);
+          const statusInfo = getStatusMessage(activePr, activeEnv);
           sendBotResponse(res, statusInfo.body, statusInfo.title, targetWebhookUrl);
         });
         return;
 
       // ---------------------------------------------------------------------
-      // APM-02 COMMAND 8: help
+      // SNAPSHOT COMMAND 8: help
       // ---------------------------------------------------------------------
       } else if (cleanText.includes('help')) {
         return sendHelpCard(res, botName, currentChannelEnv, ENVIRONMENTS, targetWebhookUrl);
