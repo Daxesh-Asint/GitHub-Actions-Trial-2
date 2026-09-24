@@ -44,6 +44,11 @@ on:
         required: false
         type: string
         default: ""
+      merge_method:
+        description: "Preferred merge method: 'merge' or 'squash'. If set to 'squash', only squash merging will be attempted."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   process:
@@ -346,7 +351,19 @@ jobs:
           gh label create "$DEPLOYING_LABEL" --color "#1d76db" --description "Deployment is in progress" 2>/dev/null || true
           gh pr edit "$PR_NUMBER" --add-label "$DEPLOYING_LABEL" 2>/dev/null || true
 
-          if gh pr merge "$PR_NUMBER" --merge --admin; then
+          MERGE_METHOD="${{ inputs.merge_method }}"
+          if [ "$MERGE_METHOD" = "squash" ] || [ "${{ inputs.base }}" = "tenant/asint-ais-02-dc-addin" ]; then
+            echo "Squash merge requested/enforced for ${{ inputs.base }}."
+            if gh pr merge "$PR_NUMBER" --squash --admin; then
+              echo "Pull request '$PR_NUMBER' merged successfully using squash merge into ${{ inputs.base }}"
+            elif gh pr merge "$PR_NUMBER" --squash; then
+              echo "Pull request '$PR_NUMBER' merged successfully using squash merge into ${{ inputs.base }}"
+            else
+              gh pr comment "$PR_NUMBER" --body "Auto-merge failed during squash merge step. Please check the workflow logs."
+              echo "Failed to squash merge pull request '$PR_NUMBER'"
+              exit 1
+            fi
+          elif gh pr merge "$PR_NUMBER" --merge --admin; then
             echo "Pull request '$PR_NUMBER' merged successfully using standard merge into ${{ inputs.base }}"
           elif gh pr merge "$PR_NUMBER" --squash --admin; then
             echo "Standard merge disallowed; pull request '$PR_NUMBER' merged successfully using squash merge into ${{ inputs.base }}"

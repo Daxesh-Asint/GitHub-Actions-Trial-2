@@ -263,7 +263,17 @@ jobs:
           PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
           if [ "$PR_STATE" = "OPEN" ]; then
             echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
-            if gh pr merge "$PR_NUMBER" --merge --admin; then
+            if [ "$BASE_BRANCH" = "tenant/asint-ais-02-dc-addin" ]; then
+              echo "Squash merge enforced for $BASE_BRANCH."
+              if gh pr merge "$PR_NUMBER" --squash --admin; then
+                echo "PR #$PR_NUMBER successfully merged using squash merge!"
+              elif gh pr merge "$PR_NUMBER" --squash; then
+                echo "PR #$PR_NUMBER successfully merged using squash merge!"
+              else
+                echo "Failed to squash merge PR #$PR_NUMBER"
+                exit 1
+              fi
+            elif gh pr merge "$PR_NUMBER" --merge --admin; then
               echo "PR #$PR_NUMBER successfully merged using standard merge!"
             elif gh pr merge "$PR_NUMBER" --squash --admin; then
               echo "Standard merge disallowed; PR #$PR_NUMBER successfully merged using squash merge!"
