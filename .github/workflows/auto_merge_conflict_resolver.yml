@@ -90,6 +90,7 @@ jobs:
           CF_API="https://api.cf.eu10-004.hana.ondemand.com"
           IS_PROTECTED="false"
           REVIEWERS=""
+          DEFAULT_REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
 
           case "$BASE_BRANCH" in
             # ── 1. Core Module Branches ─────────────────────────
@@ -135,38 +136,26 @@ jobs:
             # 9.
             "tenant/hemlock-non-prod")
               DEPLOY_NAME="HSC Non-Prod"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 10.
             "tenant/hemlock-prod")
               DEPLOY_NAME="HSC Prod"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 11.
             "tenant/indorama-prod-900")
               DEPLOY_NAME="Indorama Prod 900"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 12.
             "tenant/indorama-prod-933")
               DEPLOY_NAME="Indorama Prod 933"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 13.
             "tenant/indorama-qa-233")
               DEPLOY_NAME="Indorama QA 233"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 14.
             "tenant/indorama-qa-234")
               DEPLOY_NAME="Indorama QA 234"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 15.
             "tenant/vmos-dev")
@@ -177,8 +166,6 @@ jobs:
             # 1.
             "tenant/asint-ais-02-dc")
               DEPLOY_NAME="AIS-02 DC"
-              IS_PROTECTED="true"
-              REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
               ;;
             # 2.
             "tenant/asint-apm-01-dc")
@@ -299,6 +286,15 @@ jobs:
               DEPLOY_NAME="VMOS DC AddIn"
               ;;
           esac
+
+          # ── Dynamically resolve branch protection status from GitHub ──
+          # No hardcoding needed: any branch protected on GitHub is auto-detected.
+          ENCODED_BRANCH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$BASE_BRANCH', safe=''))" 2>/dev/null || echo "$BASE_BRANCH")
+          IS_PROTECTED=$(gh api "repos/${{ github.repository }}/branches/$ENCODED_BRANCH" --jq '.protected' 2>/dev/null || echo "false")
+          echo "Branch '$BASE_BRANCH' protected status: $IS_PROTECTED"
+          if [ "$IS_PROTECTED" = "true" ]; then
+            REVIEWERS="$DEFAULT_REVIEWERS"
+          fi
 
           # Resolve CF configuration from .github/cf-apps.json
           CONFIG_FILE=".github/cf-apps.json"
@@ -458,20 +454,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
           PR_NUMBER: ${{ env.pr_number }}
-          BASE_BRANCH: ${{ env.base_branch }}
         run: |
-          echo "Auto-merging PR #$PR_NUMBER into $BASE_BRANCH..."
-          if [ "$BASE_BRANCH" = "tenant/asint-ais-02-dc-addin" ]; then
-            echo "Squash merge enforced for $BASE_BRANCH."
-            if gh pr merge "$PR_NUMBER" --squash --admin; then
-              echo "PR #$PR_NUMBER merged successfully using squash merge!"
-            elif gh pr merge "$PR_NUMBER" --squash; then
-              echo "PR #$PR_NUMBER merged successfully using squash merge!"
-            else
-              echo "Failed to squash merge PR #$PR_NUMBER"
-              exit 1
-            fi
-          elif gh pr merge "$PR_NUMBER" --merge --admin; then
+          echo "Auto-merging PR #$PR_NUMBER..."
+          if gh pr merge "$PR_NUMBER" --merge --admin; then
             echo "PR #$PR_NUMBER merged successfully using standard merge!"
           elif gh pr merge "$PR_NUMBER" --squash --admin; then
             echo "Standard merge disallowed; PR #$PR_NUMBER merged successfully using squash merge!"
