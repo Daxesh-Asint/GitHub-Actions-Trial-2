@@ -45,6 +45,7 @@ jobs:
           EV_HEAD: ${{ github.event.pull_request.head.ref }}
           EV_ACTION: ${{ github.event.action }}
           EV_MERGED: ${{ github.event.pull_request.merged }}
+          DEFAULT_REVIEWERS: ${{ secrets.DEFAULT_REVIEWERS || vars.DEFAULT_REVIEWERS }}
         run: |
           PR_NUMBER="${EV_PR:-$INPUT_PR}"
           BASE_BRANCH="$EV_BASE"
@@ -90,7 +91,7 @@ jobs:
           CF_API="https://api.cf.eu10-004.hana.ondemand.com"
           IS_PROTECTED="false"
           REVIEWERS=""
-          DEFAULT_REVIEWERS="Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
+          DEFAULT_REVIEWERS="${DEFAULT_REVIEWERS}"
 
           case "$BASE_BRANCH" in
             # ── 1. Core Module Branches ─────────────────────────
@@ -516,7 +517,11 @@ jobs:
             fi
           done
 
-          gh pr comment "$PR_NUMBER" --body "🟡 **Conflicts Resolved & Awaiting Approval:** Merge conflicts have been resolved and the PR is now mergeable! Assigned reviewers: \`$REVIEWERS\`. Once approved by any 1 reviewer, the PR will be automatically merged and deployment will resume." 2>/dev/null || true
+          if [ -n "$REVIEWERS" ]; then
+            gh pr comment "$PR_NUMBER" --body "🟡 **Conflicts Resolved & Awaiting Approval:** Merge conflicts have been resolved and the PR is now mergeable! Assigned reviewers: \`$REVIEWERS\`. Once approved by any 1 reviewer, the PR will be automatically merged and deployment will resume." 2>/dev/null || true
+          else
+            gh pr comment "$PR_NUMBER" --body "🟡 **Conflicts Resolved & Awaiting Approval:** Merge conflicts have been resolved and the PR is now mergeable! Once approved, the PR will be automatically merged and deployment will resume." 2>/dev/null || true
+          fi
 
       # ──────────────────────────────────────────────────────────
       # Update Labels on Merged PR

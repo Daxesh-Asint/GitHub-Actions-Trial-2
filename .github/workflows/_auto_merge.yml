@@ -205,7 +205,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN || github.token }}
           PR_NUMBER: ${{ env.pr_number }}
           INPUT_REVIEWERS: ${{ inputs.reviewers }}
-          DEFAULT_REVIEWERS: "Daxesh-Prajapati, Daxesh-Prajapati2, mohnishkhoja, naimish-harkhani, Neel-Asint"
+          DEFAULT_REVIEWERS: ${{ secrets.DEFAULT_REVIEWERS || vars.DEFAULT_REVIEWERS }}
         run: |
           TARGET_BRANCH="${{ inputs.base }}"
           echo "Checking protection status for target branch: '$TARGET_BRANCH'..."
@@ -237,6 +237,13 @@ jobs:
             gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Assigned $ASSIGN_REVIEWERS as reviewer(s). Once approved by any 1 reviewer, deployment will proceed automatically." 2>/dev/null || true
             echo "awaiting_approval=true" >> $GITHUB_ENV
             echo "assigned_reviewers=$ASSIGN_REVIEWERS" >> $GITHUB_ENV
+            echo "pr_mergeable=false" >> $GITHUB_ENV
+          elif [ "$IS_PROTECTED" = "true" ]; then
+            echo "Target branch is protected. Awaiting peer approval..."
+            gh label create "awaiting approval" --color "#fbca04" --description "Awaiting required peer approval" 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --add-label "awaiting approval" 2>/dev/null || true
+            gh pr comment "$PR_NUMBER" --body "🟡 **Awaiting Approval:** This target branch is protected and requires review. Once approved, deployment will proceed automatically." 2>/dev/null || true
+            echo "awaiting_approval=true" >> $GITHUB_ENV
             echo "pr_mergeable=false" >> $GITHUB_ENV
           else
             echo "Target branch is not protected or no reviewers required. Proceeding with immediate merge."
