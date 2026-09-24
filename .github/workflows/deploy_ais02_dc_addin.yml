@@ -15,5 +15,4 @@ jobs:
       compare: "dev"
       deployment_name: "AIS-02 DC AddIn"
       dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-      merge_method: "squash"
     secrets: inherit
