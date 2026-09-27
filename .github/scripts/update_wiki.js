@@ -139,6 +139,24 @@ if (action === 'create') {
 
 fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
 
+// ── Stale File Cleanup ───────────────────────────────────────────────────────
+// Delete any old *-Deployment-History.md files for this environment that were
+// written before we renamed the suffix to -Snapshot-History.md.
+// Covers two variants:
+//   1. Mixed-case slug  e.g. APM-02-DC-AddIn-Deployment-History.md
+//   2. All-caps slug    e.g. APM-02-DC-ADDIN-Deployment-History.md (legacy)
+const staleFiles = [
+  path.join(wikiDir, `${envSlug}-Deployment-History.md`),
+  path.join(wikiDir, `${rawEnv.replace(/^AsInt[-_ ]?/i, '').replace(/\s+/g, '-').toUpperCase()}-Deployment-History.md`)
+];
+for (const stale of staleFiles) {
+  if (fs.existsSync(stale)) {
+    fs.unlinkSync(stale);
+    console.log(`🗑️  Removed stale file: ${path.basename(stale)}`);
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // ── Render Markdown table ────────────────────────────────────────────────────
 const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial-2';
 
@@ -191,11 +209,12 @@ fs.writeFileSync(mdFile, md);
 try {
   execSync(`git config user.name "github-actions[bot]"`, { cwd: wikiDir });
   execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`, { cwd: wikiDir });
-  execSync(`git add "${path.basename(historyFile)}" "${path.basename(mdFile)}"`, { cwd: wikiDir });
+  // Stage the new snapshot file, the JSON, and also any deleted stale files
+  execSync(`git add -A`, { cwd: wikiDir });
 
   const status = execSync(`git status --porcelain`, { cwd: wikiDir }).toString();
   if (status.trim() !== '') {
-    execSync(`git commit -m "docs: Update ${envTitle} Deployment History for ${snapshot}"`, { cwd: wikiDir });
+    execSync(`git commit -m "docs: Update ${cleanEnv} Snapshot History for ${snapshot}"`, { cwd: wikiDir });
     execSync(`git push`, { cwd: wikiDir });
     console.log("✅ Wiki updated successfully.");
   } else {
