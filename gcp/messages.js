@@ -2,19 +2,21 @@ const { extractSnapshotBranch } = require('./github');
 
 /**
  * Generates tailored explanation with clean spacing and line breaks for MS Teams
- * when an APM-02 deployment is blocked or in progress.
+ * when an APM-02 (or APM-02 DC / DC AddIn) deployment is blocked or in progress.
  */
-function getBlockedExplanation(activePr, botName) {
+function getBlockedExplanation(activePr, botName, env) {
+  const envName = (env && env.name) ? env.name : 'APM-02';
+  const baseBranch = (env && env.baseBranch) ? env.baseBranch : 'main';
   const labelNames = (activePr.labels || []).map((l) => l.name);
   const snapshotBranch = extractSnapshotBranch(activePr);
 
   // 1️⃣ When SAP CI/CD is currently running
-  if (labelNames.some((l) => /APM-02 Deploying/i.test(l))) {
+  if (labelNames.some((l) => /Deploying/i.test(l))) {
     return {
-      title: '🚫 APM-02 Deployment Blocked!',
+      title: `🚫 ${envName} Deployment Blocked!`,
       body:
         `**🔵 Deployment Currently in Progress!**\n\n` +
-        `SAP CI/CD is currently building and deploying the snapshot to APM-02.\n\n` +
+        `SAP CI/CD is currently building and deploying the snapshot to ${envName}.\n\n` +
         `* **Active PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
         `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
         `⏱️ *Deployment typically takes ~55–60 minutes. Please wait for the current cycle to finish before triggering a new one.*`
@@ -22,17 +24,17 @@ function getBlockedExplanation(activePr, botName) {
   }
 
   // 2️⃣ When Previous Deployment Failed
-  if (labelNames.some((l) => /APM-02 Failed/i.test(l))) {
+  if (labelNames.some((l) => /Failed/i.test(l))) {
     return {
-      title: '🚫 APM-02 Deployment Blocked!',
+      title: `🚫 ${envName} Deployment Blocked!`,
       body:
         `**🔴 Previous SAP CI/CD Deployment Failed!**\n\n` +
-        `The previous deployment did not complete successfully. Snapshot was **not merged into \`main\`**.\n\n` +
+        `The previous deployment did not complete successfully. Snapshot was **not merged into \`${baseBranch}\`**.\n\n` +
         `* **Failed Tracking PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
         `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
         `💡 **How to Recover (Choose an option):**\n\n` +
         `1. **If timeout / flaky CI/CD (No code changes):**\n` +
-        `   Type \`@${botName} re-trigger\` to restart the pipeline. *(Only works when label is APM-02 Failed)*\n\n` +
+        `   Type \`@${botName} re-trigger\` to restart the pipeline. *(Only works when label is ${envName} Failed)*\n\n` +
         `2. **If code fix is needed:**\n` +
         `   Push fix commit to \`${snapshotBranch}\` *(auto-deploys)*, or type \`@${botName} deployment fix pushed, re-deploy\`\n\n` +
         `📢 *You can retry as many times as needed until deployment succeeds!*`
@@ -40,9 +42,9 @@ function getBlockedExplanation(activePr, botName) {
   }
 
   // 3️⃣ When Blocked by Merge Conflicts
-  if (labelNames.some((l) => /APM-02 Blocked|Pre-Deploy Blocked|Conflicts/i.test(l))) {
+  if (labelNames.some((l) => /Blocked|Pre-Deploy Blocked|Conflicts/i.test(l))) {
     return {
-      title: '🚫 APM-02 Deployment Blocked!',
+      title: `🚫 ${envName} Deployment Blocked!`,
       body:
         `**🟠 Deployment Blocked by Merge Conflicts!**\n\n` +
         `Merge conflicts were detected between the snapshot and the target branch.\n\n` +
@@ -54,7 +56,7 @@ function getBlockedExplanation(activePr, botName) {
 
   // 4️⃣ When an Active Snapshot is Waiting for Cherry-Picks
   return {
-    title: '🚫 APM-02 Deployment Blocked!',
+    title: `🚫 ${envName} Deployment Blocked!`,
     body:
       `**⏳ Active Cherry-Pick Window in Progress!**\n\n` +
       `A snapshot deployment is currently active and accepting cherry-picks.\n\n` +
@@ -198,7 +200,10 @@ function getChannelHelpMessage(channelEnv, botName, allEnvs) {
 /**
  * Generates Status message for active PR
  */
-function getStatusMessage(activePr) {
+function getStatusMessage(activePr, env) {
+  const envName = (env && env.name) ? env.name : 'APM-02';
+  const baseBranch = (env && env.baseBranch) ? env.baseBranch : 'main';
+
   if (!activePr) {
     return {
       title: '🟢 System Status: IDLE',
@@ -212,10 +217,10 @@ function getStatusMessage(activePr) {
   const snapshotBranch = extractSnapshotBranch(activePr);
   const initiatedBy = activePr.user ? activePr.user.login : 'github-actions';
 
-  // 1️⃣ State: APM-02 Deploying (SAP CI/CD Running)
-  if (labelNames.some((l) => /APM-02 Deploying/i.test(l))) {
+  // 1️⃣ State: Deploying (SAP CI/CD Running)
+  if (labelNames.some((l) => /Deploying/i.test(l))) {
     return {
-      title: '🚀 APM-02 Deployment in Progress',
+      title: `🚀 ${envName} Deployment in Progress`,
       body:
         `* **Status:** 🔵 Deployment is in progress. Merged snapshot into tenant branch and building in SAP CI/CD.\n\n` +
         `* **Tracking PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
@@ -225,12 +230,12 @@ function getStatusMessage(activePr) {
     };
   }
 
-  // 2️⃣ State: APM-02 Failed (Build/Deploy Failed)
-  if (labelNames.some((l) => /APM-02 Failed/i.test(l))) {
+  // 2️⃣ State: Failed (Build/Deploy Failed)
+  if (labelNames.some((l) => /Failed/i.test(l))) {
     return {
-      title: '❌ APM-02 Deployment Failed',
+      title: `❌ ${envName} Deployment Failed`,
       body:
-        `* **Status:** 🔴 SAP CI/CD pipeline failed. Snapshot was **not** merged into \`main\`.\n\n` +
+        `* **Status:** 🔴 SAP CI/CD pipeline failed. Snapshot was **not** merged into \`${baseBranch}\`.\n\n` +
         `* **Failed PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
         `* **Snapshot Branch:** \`${snapshotBranch}\`\n\n` +
         `* **Initiated By:** @${initiatedBy}\n\n` +
@@ -240,10 +245,10 @@ function getStatusMessage(activePr) {
     };
   }
 
-  // 3️⃣ State: APM-02 Blocked (Merge Conflicts)
-  if (labelNames.some((l) => /APM-02 Blocked|Pre-Deploy Blocked|Conflicts/i.test(l))) {
+  // 3️⃣ State: Blocked (Merge Conflicts)
+  if (labelNames.some((l) => /Blocked|Pre-Deploy Blocked|Conflicts/i.test(l))) {
     return {
-      title: '⚠️ APM-02 Deployment Blocked by Conflicts',
+      title: `⚠️ ${envName} Deployment Blocked by Conflicts`,
       body:
         `* **Status:** 🟠 Merge conflicts detected between snapshot branch and target branch.\n\n` +
         `* **Conflicting PR:** [PR #${activePr.number}](${activePr.html_url})\n\n` +
@@ -253,7 +258,7 @@ function getStatusMessage(activePr) {
     };
   }
 
-  // 4️⃣ State: APM-02 Active (Cherry-Pick Window Open)
+  // 4️⃣ State: Active (Cherry-Pick Window Open)
   return {
     title: '⏳ Active Snapshot Waiting for Cherry-Picks',
     body:

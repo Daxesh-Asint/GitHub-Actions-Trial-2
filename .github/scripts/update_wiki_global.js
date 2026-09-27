@@ -172,12 +172,15 @@ function renderMarkdownTable(title, list) {
   return md;
 }
 
-// Environments that follow the Snapshot Cycle deployment process (like APM-02)
-// These manage their own dedicated snapshot cycle tables and are excluded here from individual wiki overwrites,
-// while still being tracked in General Deployment History.
+// Environments that follow the Snapshot Cycle deployment process (APM-02 family).
+// These manage their own dedicated snapshot-cycle tables (via update_wiki.js) and
+// are excluded here from individual Deployment-History wiki pages.
+// They are still tracked in General Deployment History.
 const SNAPSHOT_CYCLE_ENVS = [
-  'apm02',
-  'asintapm02'
+  'apm02',       // APM-02 Core
+  'asintapm02',  // alias
+  'apm02dc',     // APM-02 DC
+  'apm02dcaddin' // APM-02 DC AddIn
 ];
 
 // 1. Update individual environment history
@@ -216,19 +219,36 @@ for (const target of targets) {
 const homeMdFile = path.join(wikiDir, 'Home.md');
 let homeContent = `# Welcome to the Repository Deployment Wiki\n\n`;
 homeContent += `Auto-generated deployment logs and tracking across all configured tenant environments.\n\n`;
-homeContent += `### 🌐 Environment Deployment Histories\n\n`;
+
+// ── Section A: Individual Tenant Deployment Histories ───────────────────────
+homeContent += `### 🌐 Tenant Deployment Histories\n\n`;
 homeContent += `| Environment | Wiki History Page | Last Activity (IST) |\n`;
 homeContent += `|:---|:---|:---|\n`;
 
 const files = fs.readdirSync(wikiDir);
-const historyPages = files.filter(f => f.endsWith('-Deployment-History.md')).sort();
+const deploymentPages = files.filter(f => f.endsWith('-Deployment-History.md')).sort();
 
-for (const page of historyPages) {
-  const envTitle = page.replace(/-Deployment-History\.md$/, '').replace(/-/g, ' ');
+for (const page of deploymentPages) {
+  const label = page.replace(/-Deployment-History\.md$/, '').replace(/-/g, ' ');
   const pageNameNoExt = page.replace(/\.md$/, '');
   const pagePath = path.join(wikiDir, page);
   const mtime = fs.statSync(pagePath).mtime.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }) + ' IST';
-  homeContent += `| **${envTitle}** | [${envTitle} Deployment History](${pageNameNoExt}) | ${mtime} |\n`;
+  homeContent += `| **${label}** | [${label} Deployment History](${pageNameNoExt}) | ${mtime} |\n`;
+}
+
+// ── Section B: APM-02 Family Snapshot Histories (managed by update_wiki.js) ──
+const snapshotPages = files.filter(f => f.endsWith('-Snapshot-History.md')).sort();
+if (snapshotPages.length > 0) {
+  homeContent += `\n### 📸 APM-02 Snapshot Deployment Histories\n\n`;
+  homeContent += `| Environment | Wiki History Page | Last Activity (IST) |\n`;
+  homeContent += `|:---|:---|:---|\n`;
+  for (const page of snapshotPages) {
+    const label = page.replace(/-Snapshot-History\.md$/, '').replace(/-/g, ' ');
+    const pageNameNoExt = page.replace(/\.md$/, '');
+    const pagePath = path.join(wikiDir, page);
+    const mtime = fs.statSync(pagePath).mtime.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }) + ' IST';
+    homeContent += `| **${label}** | [${label} Snapshot History](${pageNameNoExt}) | ${mtime} |\n`;
+  }
 }
 
 homeContent += `\n*Page dynamically maintained by GitHub Actions automation workflows.*\n`;
