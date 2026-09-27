@@ -21,15 +21,35 @@ if (!snapshot || snapshot === 'undefined' || snapshot.trim() === '') {
 // ────────────────────────────────────────────────────────────────────────────
 
 const rawEnv = payload.environment || payload.deployment_name || 'APM-02';
-const envTitle = rawEnv.replace(/^AsInt[-_ ]?/i, '').replace(/[-_]/g, ' ').trim().toUpperCase();
-const envSlug  = rawEnv.replace(/^AsInt[-_ ]?/i, '').replace(/\s+/g, '-').toUpperCase();
+
+// normalizeEnv: strip AsInt prefix, preserve well-known acronyms & "AddIn" casing.
+// Produces e.g. "APM-02 DC AddIn" → "APM-02-DC-AddIn" slug.
+function normalizeEnv(name) {
+  if (!name) return 'APM-02';
+  const clean = name.replace(/^AsInt[-_ ]?/i, '').replace(/[-_]/g, ' ').trim();
+  return clean
+    .split(/\s+/)
+    .map(word => {
+      const upper = word.toUpperCase();
+      if (['APM', 'DC', 'AIS', 'EIOT', 'IRC', 'ST', 'QA'].includes(upper)) return upper;
+      if (upper === 'ADDIN' || upper === 'ADD-IN') return 'AddIn';
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+const cleanEnv  = normalizeEnv(rawEnv);        // e.g. "APM-02 DC AddIn"
+const envSlug   = cleanEnv.replace(/\s+/g, '-'); // e.g. "APM-02-DC-AddIn"
+const envTitle  = cleanEnv.toUpperCase();         // e.g. "APM-02 DC ADDIN" (for table headers)
 // envKey is used for the history JSON filename — must stay identical to the original
 // so existing wiki files are read correctly (e.g. "apm02dcaddin_history.json")
-const envKey   = rawEnv.toLowerCase().replace(/[^a-z0-9]/g, '');
+const envKey    = rawEnv.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const wikiDir     = path.join(process.cwd(), 'wiki');
 const historyFile = path.join(wikiDir, `${envKey}_history.json`);
-const mdFile      = path.join(wikiDir, `${envSlug}-Deployment-History.md`);
+// Use -Snapshot-History suffix to keep these pages visually distinct from
+// the global -Deployment-History pages written by update_wiki_global.js.
+const mdFile      = path.join(wikiDir, `${envSlug}-Snapshot-History.md`);
 
 if (!fs.existsSync(wikiDir)) {
   console.error("Wiki directory not found.");
@@ -122,9 +142,10 @@ fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
 // ── Render Markdown table ────────────────────────────────────────────────────
 const REPO = process.env.GITHUB_REPOSITORY || 'Daxesh-Asint/GitHub-Actions-Trial-2';
 
-let md = `# ${envTitle} Deployment History\n\n`;
-md += `> Auto-updated by GitHub Actions after every deployment cycle.\n\n`;
-md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | ${envTitle}<br>PR | Main PR | snapshot merged into ${envTitle}? | snapshot merged into main? | Completed? | Status |\n`;
+let md = `# ${envSlug} Snapshot History\n\n`;
+md += `> Auto-updated by GitHub Actions after every APM-02 snapshot deployment cycle.\n`;
+md += `> Each row represents one snapshot cycle: branch creation → tenant merge → SAP CI/CD → base-branch sync.\n\n`;
+md += `| # | 📅 Date (IST) | 🌿 Snapshot Branch | ${cleanEnv}<br>PR | Main PR | merged into ${cleanEnv}? | merged into main? | Completed? | Status |\n`;
 md += `|---|---|---|---|---|---|---|---|---|\n`;
 
 for (const r of history) {
