@@ -183,6 +183,24 @@ const SNAPSHOT_CYCLE_ENVS = [
   'apm02dcaddin' // APM-02 DC AddIn
 ];
 
+// ── Stale File Cleanup ───────────────────────────────────────────────────────
+// If any *-Deployment-History.md files still exist for snapshot-cycle environments
+// (written before those envs were added to SNAPSHOT_CYCLE_ENVS), delete them now.
+// Converts filename slug back to envKey: remove suffix, lowercase, strip non-alphanumeric.
+// e.g. "APM-02-DC-AddIn-Deployment-History.md" → slug "APM-02-DC-AddIn" → key "apm02dcaddin" → match!
+const allWikiFiles = fs.readdirSync(wikiDir);
+for (const f of allWikiFiles) {
+  if (!f.endsWith('-Deployment-History.md')) continue;
+  const slug = f.replace(/-Deployment-History\.md$/, '');
+  const key  = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (SNAPSHOT_CYCLE_ENVS.includes(key)) {
+    const stalePath = path.join(wikiDir, f);
+    fs.unlinkSync(stalePath);
+    console.log(`🗑️  Removed stale deployment history page for snapshot env: ${f}`);
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // 1. Update individual environment history
 const targets = [];
 if (cleanEnv && cleanEnv !== 'General' && !SNAPSHOT_CYCLE_ENVS.includes(envKey)) {
