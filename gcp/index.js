@@ -111,10 +111,10 @@ exports.deployBot = (req, res) => {
       if (
         !currentChannelEnv.isApm02 &&
         (cleanText.includes('share snapshot') ||
-         cleanText.includes('extend') ||
-         cleanText.includes('reduce') ||
-         cleanText.includes('deployment fix pushed') ||
-         cleanText.includes('fix pushed'))
+          cleanText.includes('extend') ||
+          cleanText.includes('reduce') ||
+          cleanText.includes('deployment fix pushed') ||
+          cleanText.includes('fix pushed'))
       ) {
         const targetApmEnv = targetEnvInText && targetEnvInText.isApm02
           ? targetEnvInText
@@ -220,7 +220,7 @@ exports.deployBot = (req, res) => {
         }
 
         const match = cleanText.match(/(?:share\s+snapshot|deploy\s+apm-?02(?:-?dc)?(?:-?addin)?).*?(\d+)\s*(?:m|min|mins|minutes)?/);
-        const waitingMinutes = match ? match[1] : '60';
+        const waitingMinutes = match ? match[1] : '200';
 
         getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
@@ -265,9 +265,9 @@ exports.deployBot = (req, res) => {
         });
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 2: deploy now / force start
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 2: deploy now / force start
+        // ---------------------------------------------------------------------
       } else if (cleanText.includes('deploy now') || cleanText.includes('force start')) {
         triggerWorkflowDispatch(adjustDispatchEvent, { deploy_now: 'true', env_id: activeEnv.id }, (err, statusCode) => {
           if (err || (statusCode !== 204 && statusCode !== 200)) {
@@ -287,9 +287,9 @@ exports.deployBot = (req, res) => {
         });
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 3: extend __m
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 3: extend __m
+        // ---------------------------------------------------------------------
       } else if (cleanText.includes('extend')) {
         const match = cleanText.match(/extend\s+(\d+)/);
         const extendMinutes = match ? match[1] : '10';
@@ -316,9 +316,9 @@ exports.deployBot = (req, res) => {
         );
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 4: reduce __m
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 4: reduce __m
+        // ---------------------------------------------------------------------
       } else if (cleanText.includes('reduce') || cleanText.includes('decrease')) {
         const match = cleanText.match(/(?:reduce|decrease)\s+(\d+)/);
         const reduceMinutes = match ? `-${match[1]}` : '-10';
@@ -345,9 +345,9 @@ exports.deployBot = (req, res) => {
         );
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 5: re-trigger
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 5: re-trigger
+        // ---------------------------------------------------------------------
       } else if (cleanText.includes('re-trigger') || cleanText.includes('retrigger')) {
         getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
@@ -411,9 +411,9 @@ exports.deployBot = (req, res) => {
         });
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 6: deployment fix pushed, re-deploy
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 6: deployment fix pushed, re-deploy
+        // ---------------------------------------------------------------------
       } else if (
         cleanText.includes('deployment fix pushed') ||
         cleanText.includes('fix pushed') ||
@@ -482,9 +482,9 @@ exports.deployBot = (req, res) => {
         });
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 7: status
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 7: status
+        // ---------------------------------------------------------------------
       } else if (cleanText.includes('status')) {
         getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
@@ -495,9 +495,9 @@ exports.deployBot = (req, res) => {
         });
         return;
 
-      // ---------------------------------------------------------------------
-      // SNAPSHOT COMMAND 8: help
-      // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // SNAPSHOT COMMAND 8: help
+        // ---------------------------------------------------------------------
       } else if (cleanText.includes('help')) {
         return sendHelpCard(res, botName, currentChannelEnv, ENVIRONMENTS, targetWebhookUrl);
       }
