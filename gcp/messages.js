@@ -137,7 +137,7 @@ function getHelpMessage(botName) {
     title: `⚡ ${botName} - APM-02 Command Centre`,
     body:
       `* **\`@${botName} share snapshot\`** *(or custom e.g. \`@${botName} share snapshot 85m\`)*\n\n` +
-      `  Starts snapshot deployment with default **60m** window, or specify any custom wait time as per your choice (e.g. \`85m\`, \`45m\`, \`30m\`).\n\n` +
+      `  Starts snapshot deployment with default **200m** window, or specify any custom wait time as per your choice (e.g. \`85m\`, \`45m\`, \`30m\`).\n\n` +
       `* **\`@${botName} deploy now\`**\n\n` +
       `  Bypasses the remaining wait countdown and immediately deploys snapshot to APM-02.\n\n` +
       `* **\`@${botName} extend\`** *(or custom e.g. \`@${botName} extend 15m\`)*\n\n` +

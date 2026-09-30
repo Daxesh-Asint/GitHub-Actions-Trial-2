@@ -66,7 +66,7 @@ exports.deployBot = (req, res) => {
             }
 
             const match = cleanText.match(/(?:share\s+snapshot|deploy\s+apm-?02).*?(\d+)\s*(?:m|min|mins|minutes)?/);
-            const waitingMinutes = match ? match[1] : '60';
+            const waitingMinutes = match ? match[1] : '200';
 
             // 🛡️ Pre-Check across ALL open PRs using Search API
             getActiveDeploymentPR((err, activePr) => {
