@@ -14,13 +14,15 @@ const {
 
 console.log('🧪 Starting Multi-Environment Channel Routing Verification...\n');
 
-// Test 1: Verify all 43 environments exist with their expected dispatch event
-console.log('Test 1: Verifying all 43 environment definitions...');
-assert.strictEqual(ENVIRONMENTS.length, 43, 'Should have exactly 43 environments');
+// Test 1: Verify all 45 environments exist with their expected dispatch event
+console.log('Test 1: Verifying all 45 environment definitions...');
+assert.strictEqual(ENVIRONMENTS.length, 45, 'Should have exactly 45 environments');
 
 const expectedMappings = {
   'AIS-02 Deployment POC': 'trigger_ais02_deployment',
   'APM-01 Deployment POC': 'trigger_apm01_deployment',
+  'APM-01 DC Deployment': 'trigger_apm01_dc_deployment',
+  'APM-01 DC AddIn Deployment': 'trigger_apm01_dc_addin_deployment',
   'APM-02 Deployment POC': 'trigger_apm02_deployment',
   'APM-EIOT Deployment POC': 'trigger_apm_eiot_deployment',
   'AsInt Demo Deployment POC': 'trigger_asint_demo_deployment',
