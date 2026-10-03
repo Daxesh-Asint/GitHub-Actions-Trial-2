@@ -53,6 +53,22 @@ on:
         required: false
         type: boolean
         default: false
+      env_name:
+        required: false
+        type: string
+        default: "APM-02"
+      base_branch:
+        required: false
+        type: string
+        default: "main"
+      tenant_branch:
+        required: false
+        type: string
+        default: "tenant/asint-apm-02-v2"
+      show_jarvis_recovery:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   notify:
@@ -73,11 +89,16 @@ jobs:
           EXTRA_FACT_TITLE="${{ inputs.extra_fact_title }}"
           EXTRA_FACT_VALUE="${{ inputs.extra_fact_value }}"
           ACTION_LABEL="${{ inputs.action_label }}"
+          SHOW_JARVIS_RECOVERY="${{ inputs.show_jarvis_recovery }}"
+
+          BASE_BRANCH="${{ inputs.base_branch || 'main' }}"
+          TENANT_BRANCH="${{ inputs.tenant_branch || 'tenant/asint-apm-02-v2' }}"
+          ENV_NAME="${{ inputs.env_name || 'APM-02' }}"
 
           # Auto-discover PR numbers if not passed
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ] || [ "$PR_NUMBER" = "N/A" ]; then
             if [ -n "$SNAPSHOT" ]; then
-              DISCOVERED_PR=$(gh pr list --repo "$REPO" -s all --base main -H "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
+              DISCOVERED_PR=$(gh pr list --repo "$REPO" -s all --base "$BASE_BRANCH" -H "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
               if [ -n "$DISCOVERED_PR" ] && [ "$DISCOVERED_PR" != "null" ]; then
                 PR_NUMBER="$DISCOVERED_PR"
               fi
@@ -86,7 +107,7 @@ jobs:
 
           if [ -z "$TENANT_PR_NUMBER" ] || [ "$TENANT_PR_NUMBER" = "null" ]; then
             if [ -n "$SNAPSHOT" ]; then
-              DISCOVERED_TENANT_PR=$(gh pr list --repo "$REPO" -s all --base tenant/asint-apm-02-v2 -H "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
+              DISCOVERED_TENANT_PR=$(gh pr list --repo "$REPO" -s all --base "$TENANT_BRANCH" -H "$SNAPSHOT" --json number --jq '.[0].number' 2>/dev/null || echo "")
               if [ -n "$DISCOVERED_TENANT_PR" ] && [ "$DISCOVERED_TENANT_PR" != "null" ]; then
                 TENANT_PR_NUMBER="$DISCOVERED_TENANT_PR"
               fi
@@ -124,7 +145,15 @@ jobs:
             SNAPSHOT_URL="https://github.com/$REPO/tree/$SNAPSHOT"
           fi
           MAIN_PR_URL="https://github.com/$REPO/pull/$PR_NUMBER"
-          SAP_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/AsInt-APM-02/TwoColumnsBeginExpanded"
+
+          # Determine SAP CI/CD job name based on env_name
+          SAP_JOB="AsInt-APM-02"
+          if echo "$ENV_NAME" | grep -qi "addin"; then
+            SAP_JOB="AsInt-APM-02-DC-AddIn"
+          elif echo "$ENV_NAME" | grep -qi "dc"; then
+            SAP_JOB="AsInt-APM-02-DC"
+          fi
+          SAP_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#/detail/${SAP_JOB}/TwoColumnsBeginExpanded"
 
           # Build PR fact values (include commit count in brackets if available)
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "N/A" ]; then
@@ -133,7 +162,7 @@ jobs:
             else
               TRACKING_PR_FACT="PR #$PR_NUMBER"
             fi
-            MAIN_PR_BTN="Review main PR #$PR_NUMBER"
+            MAIN_PR_BTN="Review $BASE_BRANCH PR #$PR_NUMBER"
           else
             TRACKING_PR_FACT="N/A"
             MAIN_PR_BTN=""
@@ -145,7 +174,7 @@ jobs:
             else
               TENANT_PR_FACT="PR #$TENANT_PR_NUMBER"
             fi
-            TENANT_PR_BTN="Review APM-02 PR #$TENANT_PR_NUMBER"
+            TENANT_PR_BTN="Review $ENV_NAME PR #$TENANT_PR_NUMBER"
             TENANT_PR_URL="https://github.com/$REPO/pull/$TENANT_PR_NUMBER"
           else
             TENANT_PR_FACT=""
@@ -201,6 +230,7 @@ jobs:
             --arg cicd_commit "$CICD_COMMIT_ID" \
             --arg eft "$EXTRA_FACT_TITLE" \
             --arg efv "$EXTRA_FACT_VALUE" \
+            --arg env_name "$ENV_NAME" \
             '[
               { title: "Repository",       value: $repo },
               { title: "Changes By",       value: $changes_by },
@@ -208,7 +238,7 @@ jobs:
             ] +
             (if $tenant_pr != "" then [
               { title: "Main PR",          value: $tracking_pr },
-              { title: "APM-02 PR",        value: $tenant_pr }
+              { title: "\($env_name) PR",  value: $tenant_pr }
             ] else [
               { title: "Main PR",          value: $tracking_pr }
             ] end) +
@@ -231,6 +261,7 @@ jobs:
             --arg custom_url "$CUSTOM_BTN_URL" \
             --arg show_sap "$SHOW_SAP_BTN" \
             --arg sap_url "$SAP_URL" \
+            --arg env_name "$ENV_NAME" \
             '(
               (if $main_btn != "" then [
                 {
@@ -263,7 +294,7 @@ jobs:
               (if $show_sap == "true" then [
                 {
                   type: "Action.OpenUrl",
-                  title: "Track APM-02 Deployment Status in SAP CI/CD Dashboard",
+                  title: "Track \($env_name) Deployment Status in SAP CI/CD Dashboard",
                   url: $sap_url
                 }
               ] else [] end)
@@ -274,6 +305,7 @@ jobs:
             --arg subtitle "$SUBTITLE" \
             --arg status "$STATUS" \
             --arg color "$COLOR" \
+            --arg show_jarvis "$SHOW_JARVIS_RECOVERY" \
             --argjson facts "$FACTS" \
             --argjson actions "$ACTIONS" \
             '{
@@ -320,21 +352,43 @@ jobs:
                         type: "FactSet",
                         facts: $facts
                       }
-                    ]
+                    ] +
+                    (if $show_jarvis == "true" then [
+                      {
+                        type: "TextBlock",
+                        text: "**🤖 Jarvis Commands:**\n\n1. **`re-trigger`** — If you feel like it is a timeout issue or temporary issue and want to re-trigger without any code changes then execute this re-trigger command, this will re-trigger job without any code changes.\n\n2. **`deployment fix pushed, re-deploy`** — If you feel like it is a build related or any similar issue then please push your fix on snapshot branch then run this command.",
+                        wrap: true,
+                        separator: true,
+                        spacing: "Medium"
+                      }
+                    ] else [] end)
                   ),
                   actions: $actions
                 }
               }]
             }')
 
-          # Send to all configured webhook URLs (channel webhooks + global webhooks)
-          for WEBHOOK_URL in \
-            "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" \
-            "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}"; do
+          # Send to configured environment webhook URLs + global webhooks
+          TARGET_WEBHOOKS=()
+          if echo "$ENV_NAME" | grep -qi "addin"; then
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}")
+          elif echo "$ENV_NAME" | grep -qi "dc"; then
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}")
+          else
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_1 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_2 }}")
+            [ -n "${{ secrets.TEAMS_WEBHOOK_APM02_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_APM02_3 }}")
+          fi
+
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}")
+          [ -n "${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}" ] && TARGET_WEBHOOKS+=("${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}")
+
+          for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
             if [ -n "$WEBHOOK_URL" ]; then
               curl -s -X POST \
                 -H "Content-Type: application/json" \
