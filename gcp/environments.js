@@ -215,6 +215,28 @@ const ENVIRONMENTS = [
     webhookEnvVar: 'TEAMS_WEBHOOK_AIS02_DC_ADDIN_1'
   },
   {
+    id: 'apm01_dc',
+    name: 'APM-01 DC',
+    channelId: '',
+    channelName: 'APM-01 DC Deployment',
+    dispatchEvent: 'trigger_apm01_dc_deployment',
+    tenantBranch: 'tenant/asint-apm-01-dc',
+    baseBranch: 'main-dc',
+    aliases: ['apm-01 dc', 'apm01 dc', 'apm-01-dc', 'apm01-dc', 'apm01dc', 'asint-apm-01-dc', 'apm 01 dc'],
+    webhookEnvVar: 'TEAMS_WEBHOOK_APM01_DC_1'
+  },
+  {
+    id: 'apm01_dc_addin',
+    name: 'APM-01 DC AddIn',
+    channelId: '',
+    channelName: 'APM-01 DC AddIn Deployment',
+    dispatchEvent: 'trigger_apm01_dc_addin_deployment',
+    tenantBranch: 'tenant/asint-apm-01-dc-addin',
+    baseBranch: 'main-dc-addin',
+    aliases: ['apm-01 dc addin', 'apm01 dc addin', 'apm-01-dc-addin', 'apm01-dc-addin', 'apm01dcaddin', 'asint-apm-01-dc-addin', 'apm 01 dc addin', 'apm01 addin', 'apm-01 addin', 'apm01-addin'],
+    webhookEnvVar: 'TEAMS_WEBHOOK_APM01_DC_ADDIN_1'
+  },
+  {
     id: 'apmeiot_dc',
     name: 'APM-EIOT DC',
     channelId: '',
