@@ -47,20 +47,43 @@ function callGitHubAPI(path, method, data, callback) {
 }
 
 /**
- * Checks GitHub using Search API: Searches across ALL open APM-02 PRs
+ * Checks GitHub for an active deployment PR for a specific APM-02 environment (Core, DC, DC AddIn)
  */
-function getActiveDeploymentPR(callback) {
-  const query = encodeURIComponent(
-    `repo:${config.GITHUB_REPO} is:pr is:open label:"APM-02 Active","APM-02 Deploying","APM-02 Failed","APM-02 Blocked","APM-02 Pre-Deploy Blocked","auto merge for APM02"`
-  );
+function getActiveDeploymentPR(env, callback) {
+  // Support legacy call: getActiveDeploymentPR(callback)
+  if (typeof env === 'function') {
+    callback = env;
+    env = null;
+  }
 
-  callGitHubAPI(`/search/issues?q=${query}`, 'GET', null, (err, statusCode, res) => {
+  const labelPrefix = (env && env.labelPrefix) ? env.labelPrefix : 'APM-02';
+  const autoMergeLabel = (env && env.id === 'apm02_dc')
+    ? 'auto merge for APM-02-DC'
+    : (env && env.id === 'apm02_dc_addin')
+      ? 'auto merge for APM-02-DC-AddIn'
+      : 'auto merge for APM02';
+
+  const labels = [
+    `${labelPrefix} Active`,
+    `${labelPrefix} Deploying`,
+    `${labelPrefix} Failed`,
+    `${labelPrefix} Blocked`,
+    `${labelPrefix} Pre-Deploy Blocked`,
+    autoMergeLabel
+  ];
+
+  // Fetch open pull requests (up to 50 most recent)
+  callGitHubAPI(`/repos/${config.GITHUB_REPO}/pulls?state=open&per_page=50&sort=created&direction=desc`, 'GET', null, (err, statusCode, pulls) => {
     if (err) return callback(err);
-    if (!res || !Array.isArray(res.items)) {
-      return callback(new Error('Invalid response from GitHub Search API'));
+    if (!Array.isArray(pulls)) {
+      return callback(new Error(`Failed to fetch pulls from GitHub: ${statusCode}`));
     }
 
-    const activePr = res.items.length > 0 ? res.items[0] : null;
+    const activePr = pulls.find((pr) => {
+      const prLabels = (pr.labels || []).map((l) => l.name);
+      return labels.some((targetLabel) => prLabels.includes(targetLabel));
+    }) || null;
+
     callback(null, activePr);
   });
 }
@@ -72,7 +95,7 @@ function checkActiveEnvironmentDeployment(env, callback) {
   if (!env) return callback(null, null);
 
   if (env.isApm02) {
-    return getActiveDeploymentPR(callback);
+    return getActiveDeploymentPR(env, callback);
   }
 
   // Check for active deploying label or auto-merge PR for this environment
@@ -80,15 +103,18 @@ function checkActiveEnvironmentDeployment(env, callback) {
     `auto merge for ${env.name}`,
     `${env.name} Deploying`
   ];
-  const labelQuery = labels.map((l) => `label:"${l}"`).join(',');
-  const query = encodeURIComponent(`repo:${config.GITHUB_REPO} is:pr is:open ${labelQuery}`);
 
-  callGitHubAPI(`/search/issues?q=${query}`, 'GET', null, (err, statusCode, res) => {
+  callGitHubAPI(`/repos/${config.GITHUB_REPO}/pulls?state=open&per_page=50&sort=created&direction=desc`, 'GET', null, (err, statusCode, pulls) => {
     if (err) return callback(err);
-    if (!res || !Array.isArray(res.items)) {
-      return callback(null, null);
+    if (!Array.isArray(pulls)) {
+      return callback(new Error(`Failed to fetch pulls from GitHub: ${statusCode}`));
     }
-    const activePr = res.items.length > 0 ? res.items[0] : null;
+
+    const activePr = pulls.find((pr) => {
+      const prLabels = (pr.labels || []).map((l) => l.name);
+      return labels.some((targetLabel) => prLabels.includes(targetLabel));
+    }) || null;
+
     callback(null, activePr);
   });
 }
@@ -97,11 +123,12 @@ function checkActiveEnvironmentDeployment(env, callback) {
  * Extracts the snapshot branch name from PR labels or body
  */
 function extractSnapshotBranch(activePr) {
+  if (!activePr) return 'snapshot branch';
   if (activePr.head && activePr.head.ref) {
     return activePr.head.ref;
   }
-  const match = (activePr.body || '').match(/`?(snapshot\/main-[^`\s]+)`?/);
-  return match ? match[1] : (activePr.title.match(/snapshot\/main-[^\s]+/)?.[0] || 'snapshot branch');
+  const match = (activePr.body || '').match(/`?(snapshot\/main(?:-[a-z0-9]+)?-[^`\s]+)`?/i);
+  return match ? match[1] : (activePr.title ? (activePr.title.match(/snapshot\/main(?:-[a-z0-9]+)?-[^\s]+/i)?.[0] || 'snapshot branch') : 'snapshot branch');
 }
 
 /**
