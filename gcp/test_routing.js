@@ -96,9 +96,9 @@ console.log('\nTest 2b: Testing channel ID detection from Teams Outgoing Webhook
 const realApm02TeamsReq = {
   body: {
     channelData: {
-      teamsChannelId: '19:lSAZ2F1bhcVqFh6zoLafU-RovkCK6uhoMM4sBBaQMcY1@thread.tacv2',
+      teamsChannelId: '19:orYvpVf5SIS40jOJkOxYBSeUUxGQqslONvMWAIFrc381@thread.tacv2',
       channel: {
-        id: '19:lSAZ2F1bhcVqFh6zoLafU-RovkCK6uhoMM4sBBaQMcY1@thread.tacv2'
+        id: '19:orYvpVf5SIS40jOJkOxYBSeUUxGQqslONvMWAIFrc381@thread.tacv2'
       }
     }
   }

@@ -26,8 +26,8 @@ const ENVIRONMENTS = [
   {
     id: 'apm02',
     name: 'APM-02',
-    channelId: '19:lSAZ2F1bhcVqFh6zoLafU-RovkCK6uhoMM4sBBaQMcY1@thread.tacv2',
-    channelName: 'APM-02 Deployment POC',
+    channelId: '19:orYvpVf5SIS40jOJkOxYBSeUUxGQqslONvMWAIFrc381@thread.tacv2',
+    channelName: 'APM-02 Deployment',
     isApm02: true,
     baseBranch: 'main',
     snapshotPrefix: 'snapshot/main-',
@@ -37,7 +37,7 @@ const ENVIRONMENTS = [
     redeployFixDispatchEvent: 'redeploy_apm02_fix',
     tenantBranch: 'tenant/asint-apm-02-v2',
     labelPrefix: 'APM-02',
-    aliases: ['apm-02', 'apm02', 'asint-apm-02'],
+    aliases: ['apm-02', 'apm02', 'asint-apm-02', 'apm-02 deployment', 'apm-02 deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APM02_1'
   },
   {
