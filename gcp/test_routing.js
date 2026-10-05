@@ -149,14 +149,14 @@ for (const tc of testCases) {
 
 // Test 4: Channel boundary enforcement
 console.log('\nTest 4: Channel boundary enforcement...');
-const aisEnv = getEnvironmentByChannelName('AIS-02 Deployment POC');
+const aisEnv = getEnvironmentByChannelName('AIS-02 Deployment');
 const apm01InText = findEnvironmentInText('@jarvis deploy apm-01');
 
 // When user is in AIS-02 and tries to deploy APM-01
 assert.notStrictEqual(aisEnv.id, apm01InText.id, 'Environments should differ');
 const mismatchCard = getChannelMismatchMessage(aisEnv.channelName, apm01InText.name, apm01InText.channelName);
 assert(mismatchCard.title.includes('Restricted to APM-01'));
-assert(mismatchCard.body.includes('AIS-02 Deployment POC'));
+assert(mismatchCard.body.includes('AIS-02 Deployment'));
 console.log(`  ✅ Cross-channel deployment correctly blocked:`);
 console.log(`     Title: ${mismatchCard.title}`);
 
