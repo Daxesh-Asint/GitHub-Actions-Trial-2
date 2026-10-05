@@ -270,7 +270,7 @@ jobs:
   # ──────────────────────────────────────────────────────────
   notify-success:
     needs: [guard, execute-recovery]
-    if: success() && needs.execute-recovery.outputs.has_conflicts != 'true'
+    if: always() && needs.execute-recovery.result == 'success'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       env_name: ${{ needs.guard.outputs.env_name }}
@@ -291,7 +291,7 @@ jobs:
 
   notify-conflict:
     needs: [guard, execute-recovery]
-    if: failure() && needs.execute-recovery.outputs.has_conflicts == 'true'
+    if: always() && needs.execute-recovery.result == 'failure' && needs.execute-recovery.outputs.has_conflicts == 'true'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       env_name: ${{ needs.guard.outputs.env_name }}

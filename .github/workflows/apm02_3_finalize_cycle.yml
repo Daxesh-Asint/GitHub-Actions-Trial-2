@@ -234,7 +234,7 @@ jobs:
 
   notify-success:
     needs: [guard, finalize, update-wiki-finalize]
-    if: success() && needs.guard.outputs.is_target_job == 'true'
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
       env_name: ${{ needs.guard.outputs.env_name }}
