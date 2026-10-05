@@ -3,7 +3,6 @@ name: "Deploy: IRC"
 on:
   repository_dispatch:
     types: [trigger_irc_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:

@@ -1,0 +1,13 @@
+{
+  "environments": {
+    "APM-01": {
+      "aliases": ["AsInt-APM-01", "apm-01", "apm01"],
+      "api": "https://api.cf.eu10-004.hana.ondemand.com",
+      "org": "asint-apm-01",
+      "space": "demo",
+      "apps": [
+        "crawler-layer-backend"
+      ]
+    }
+  }
+}

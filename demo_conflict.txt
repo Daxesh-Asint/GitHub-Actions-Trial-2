@@ -1,0 +1,2 @@
+DEV: Development branch conflicting line 1
+DEV: Development branch conflicting line 2

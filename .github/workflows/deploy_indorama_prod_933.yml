@@ -3,7 +3,6 @@ name: "Deploy: Indorama Prod 933"
 on:
   repository_dispatch:
     types: [trigger_indorama_prod_933_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
