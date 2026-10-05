@@ -36,35 +36,43 @@ jobs:
           echo "Received resource_name: [$JOB_NAME]"
           echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
 
-          # Match from most specific to least specific
-          if echo "$JOB_NAME" | grep -qi "AsInt-APM-02-DC-AddIn"; then
-            echo "✅ Target job matched: APM-02 DC AddIn"
-            echo "is_target_job=true" >> $GITHUB_OUTPUT
-            echo "env_id=apm02_dc_addin" >> $GITHUB_OUTPUT
-            echo "env_name=APM-02 DC AddIn" >> $GITHUB_OUTPUT
-            echo "base_branch=main-dc-addin" >> $GITHUB_OUTPUT
-            echo "tenant_branch=tenant/asint-apm-02-dc-addin" >> $GITHUB_OUTPUT
-            echo "label_prefix=APM-02 DC AddIn" >> $GITHUB_OUTPUT
-          elif echo "$JOB_NAME" | grep -qi "AsInt-APM-02-DC"; then
-            echo "✅ Target job matched: APM-02 DC"
-            echo "is_target_job=true" >> $GITHUB_OUTPUT
-            echo "env_id=apm02_dc" >> $GITHUB_OUTPUT
-            echo "env_name=APM-02 DC" >> $GITHUB_OUTPUT
-            echo "base_branch=main-dc" >> $GITHUB_OUTPUT
-            echo "tenant_branch=tenant/asint-apm-02-dc" >> $GITHUB_OUTPUT
-            echo "label_prefix=APM-02 DC" >> $GITHUB_OUTPUT
-          elif echo "$JOB_NAME" | grep -qi "AsInt-APM-02"; then
-            echo "✅ Target job matched: APM-02"
-            echo "is_target_job=true" >> $GITHUB_OUTPUT
-            echo "env_id=apm02" >> $GITHUB_OUTPUT
-            echo "env_name=APM-02" >> $GITHUB_OUTPUT
-            echo "base_branch=main" >> $GITHUB_OUTPUT
-            echo "tenant_branch=tenant/asint-apm-02-v2" >> $GITHUB_OUTPUT
-            echo "label_prefix=APM-02" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ Not an APM-02 family job. Skipping finalize."
-            echo "is_target_job=false" >> $GITHUB_OUTPUT
-          fi
+          # Normalize job name for case-insensitive, punctuation-stripped exact matching
+          NORM_JOB=$(echo "$JOB_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]//g')
+
+          # Strict exact matching (Layer 1) - eliminates substring collisions
+          case "$NORM_JOB" in
+            "asintapm02dcaddin"|"apm02dcaddin")
+              echo "✅ Target job matched: APM-02 DC AddIn"
+              echo "is_target_job=true" >> $GITHUB_OUTPUT
+              echo "env_id=apm02_dc_addin" >> $GITHUB_OUTPUT
+              echo "env_name=APM-02 DC AddIn" >> $GITHUB_OUTPUT
+              echo "base_branch=main-dc-addin" >> $GITHUB_OUTPUT
+              echo "tenant_branch=tenant/asint-apm-02-dc-addin" >> $GITHUB_OUTPUT
+              echo "label_prefix=APM-02 DC AddIn" >> $GITHUB_OUTPUT
+              ;;
+            "asintapm02dc"|"apm02dc")
+              echo "✅ Target job matched: APM-02 DC"
+              echo "is_target_job=true" >> $GITHUB_OUTPUT
+              echo "env_id=apm02_dc" >> $GITHUB_OUTPUT
+              echo "env_name=APM-02 DC" >> $GITHUB_OUTPUT
+              echo "base_branch=main-dc" >> $GITHUB_OUTPUT
+              echo "tenant_branch=tenant/asint-apm-02-dc" >> $GITHUB_OUTPUT
+              echo "label_prefix=APM-02 DC" >> $GITHUB_OUTPUT
+              ;;
+            "asintapm02"|"apm02")
+              echo "✅ Target job matched: APM-02"
+              echo "is_target_job=true" >> $GITHUB_OUTPUT
+              echo "env_id=apm02" >> $GITHUB_OUTPUT
+              echo "env_name=APM-02" >> $GITHUB_OUTPUT
+              echo "base_branch=main" >> $GITHUB_OUTPUT
+              echo "tenant_branch=tenant/asint-apm-02-v2" >> $GITHUB_OUTPUT
+              echo "label_prefix=APM-02" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "⚠️ Not an APM-02 family job (raw: [$JOB_NAME], norm: [$NORM_JOB]). Skipping finalize."
+              echo "is_target_job=false" >> $GITHUB_OUTPUT
+              ;;
+          esac
 
   finalize:
     needs: guard
