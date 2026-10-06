@@ -93,41 +93,41 @@ const ENVIRONMENTS = [
   {
     id: 'indorama_prod_900',
     name: 'Indorama Prod 900',
-    channelId: '19:3a5753030bd64fcda34f6958adeadb95@thread.tacv2',
-    channelName: 'Indorama Prod 900 Deployment POC',
+    channelId: '19:5fdabbc849d341c4b0f62f3badc1c33b@thread.tacv2',
+    channelName: 'Indo Prod 900',
     dispatchEvent: 'trigger_indorama_prod_900_deployment',
     tenantBranch: 'tenant/indorama-prod-900',
-    aliases: ['indorama prod 900', 'indorama 900', 'indoramaprod900', 'prod 900', 'prod900', '900'],
+    aliases: ['indorama prod 900', 'indorama 900', 'indoramaprod900', 'prod 900', 'prod900', '900', 'indo prod 900', 'indo 900', 'indorama prod 900 deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_PROD_900_1'
   },
   {
     id: 'indorama_prod_933',
     name: 'Indorama Prod 933',
-    channelId: '19:a18bcd98d0364070b1dcf79a9068a718@thread.tacv2',
-    channelName: 'Indorama Prod 933 Deployment POC',
+    channelId: '19:ceb4720fc074402d81220d08d8b47659@thread.tacv2',
+    channelName: 'Indo Prod 933',
     dispatchEvent: 'trigger_indorama_prod_933_deployment',
     tenantBranch: 'tenant/indorama-prod-933',
-    aliases: ['indorama prod 933', 'indorama 933', 'indoramaprod933', 'prod 933', 'prod933', '933'],
+    aliases: ['indorama prod 933', 'indorama 933', 'indoramaprod933', 'prod 933', 'prod933', '933', 'indo prod 933', 'indo 933', 'indorama prod 933 deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_PROD_933_1'
   },
   {
     id: 'indorama_qa_233',
     name: 'Indorama QA 233',
-    channelId: '19:6f5a4f7ad9c2421287523647750d67f2@thread.tacv2',
-    channelName: 'Indorama QA 233 Deployment POC',
+    channelId: '19:bb18e18244114eadab31f5ada6d9bbc1@thread.tacv2',
+    channelName: 'Indo QA 233',
     dispatchEvent: 'trigger_indorama_qa_233_deployment',
     tenantBranch: 'tenant/indorama-qa-233',
-    aliases: ['indorama qa 233', 'indorama 233', 'indoramaqa233', 'qa 233', 'qa233', '233'],
+    aliases: ['indorama qa 233', 'indorama 233', 'indoramaqa233', 'qa 233', 'qa233', '233', 'indo qa 233', 'indo 233', 'indorama qa 233 deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_QA_233_1'
   },
   {
     id: 'indorama_qa_234',
     name: 'Indorama QA 234',
-    channelId: '19:827ca67584574137b1732016390486bb@thread.tacv2',
-    channelName: 'Indorama QA 234 Deployment POC',
+    channelId: '19:e8407bd15435445fa84a26b682902b33@thread.tacv2',
+    channelName: 'Indo QA 234',
     dispatchEvent: 'trigger_indorama_qa_234_deployment',
     tenantBranch: 'tenant/indorama-qa-234',
-    aliases: ['indorama qa 234', 'indorama 234', 'indoramaqa234', 'qa 234', 'qa234', '234'],
+    aliases: ['indorama qa 234', 'indorama 234', 'indoramaqa234', 'qa 234', 'qa234', '234', 'indo qa 234', 'indo 234', 'indorama qa 234 deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_INDORAMA_QA_234_1'
   },
   {
