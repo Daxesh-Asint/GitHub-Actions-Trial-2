@@ -16,11 +16,11 @@ const ENVIRONMENTS = [
   {
     id: 'apm01',
     name: 'APM-01',
-    channelId: '19:d9b3cf62547548908f82dbff737d5add@thread.tacv2',
-    channelName: 'APM-01 Deployment POC',
+    channelId: '19:c5235b12e7ce4b6b82ff6ad35296c9eb@thread.tacv2',
+    channelName: 'APM-01',
     dispatchEvent: 'trigger_apm01_deployment',
     tenantBranch: 'tenant/asint-apm-01-new',
-    aliases: ['apm-01', 'apm01', 'asint-apm-01'],
+    aliases: ['apm-01', 'apm01', 'asint-apm-01', 'apm-01 deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APM01_1'
   },
   {
@@ -63,11 +63,11 @@ const ENVIRONMENTS = [
   {
     id: 'baystar',
     name: 'BAYSTAR',
-    channelId: '19:1389d10242a3438681fde9ae77861661@thread.tacv2',
-    channelName: 'BAYSTAR Deployment POC',
+    channelId: '19:64ad722e77114551a1dc4891a929c3a7@thread.tacv2',
+    channelName: 'Baystar',
     dispatchEvent: 'trigger_baystar_deployment',
     tenantBranch: 'tenant/baystar',
-    aliases: ['baystar', 'asint-baystar'],
+    aliases: ['baystar', 'asint-baystar', 'baystar deployment poc'],
     webhookEnvVar: 'TEAMS_WEBHOOK_BAYSTAR_1'
   },
   {
