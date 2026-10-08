@@ -239,21 +239,21 @@ const ENVIRONMENTS = [
   {
     id: 'apmeiot_dc',
     name: 'APM-EIOT DC',
-    channelId: '',
-    channelName: 'APM-EIOT DC Deployment',
+    channelId: '19:b1b670c815a148868ff6882a7892ddf3@thread.tacv2',
+    channelName: 'APM-EIOT DC',
     dispatchEvent: 'trigger_apm_eiot_dc_deployment',
     tenantBranch: 'tenant/asint-apm-eiot-dc',
-    aliases: ['apm-eiot dc', 'apmeiot dc', 'eiot dc', 'asint-apm-eiot-dc', 'apm-eiot-dc', 'apmeiotdc'],
+    aliases: ['apm-eiot dc', 'apmeiot dc', 'eiot dc', 'asint-apm-eiot-dc', 'apm-eiot-dc', 'apmeiotdc', 'apm-eiot dc deployment'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APMEIOT_DC_1'
   },
   {
     id: 'apmeiot_dc_addin',
     name: 'APM-EIOT DC AddIn',
-    channelId: '',
-    channelName: 'APM-EIOT DC AddIn Deployment',
+    channelId: '19:16fda9d64e62405985e3391e29977305@thread.tacv2',
+    channelName: 'APM-EIOT DC AddIn',
     dispatchEvent: 'trigger_apm_eiot_dc_addin_deployment',
     tenantBranch: 'tenant/asint-apm-eiot-dc-addin',
-    aliases: ['apm-eiot dc addin', 'apmeiot dc addin', 'eiot dc addin', 'asint-apm-eiot-dc-addin', 'apm-eiot-dc-addin', 'apmeiotdcaddin', 'apm-eiot addin'],
+    aliases: ['apm-eiot dc addin', 'apmeiot dc addin', 'eiot dc addin', 'asint-apm-eiot-dc-addin', 'apm-eiot-dc-addin', 'apmeiotdcaddin', 'apm-eiot addin', 'apm-eiot dc addin deployment'],
     webhookEnvVar: 'TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1'
   },
   {
