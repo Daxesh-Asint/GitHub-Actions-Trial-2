@@ -141,6 +141,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
   notify:
@@ -315,6 +317,54 @@ jobs:
         run: |
           chmod +x .github/scripts/notify_sap_event.sh
           ./.github/scripts/notify_sap_event.sh
+
+      # ──────────────────────────────────────────────────────────
+      # 🔁 Auto-Detect SAP CI/CD Dashboard Re-Trigger (APM-02 Family)
+      # ──────────────────────────────────────────────────────────
+      - name: Auto-Detect SAP CI/CD Dashboard Re-Trigger and Resume Tracking
+        if: steps.process.outputs.event_type == 'sap_cicd_started'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESOURCE_NAME: ${{ steps.process.outputs.resource_name }}
+        run: |
+          LABEL_PREFIX=""
+          BASE_BRANCH=""
+
+          if echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC-AddIn"; then
+            LABEL_PREFIX="APM-02 DC AddIn"
+            BASE_BRANCH="main-dc-addin"
+          elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC"; then
+            LABEL_PREFIX="APM-02 DC"
+            BASE_BRANCH="main-dc"
+          elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02"; then
+            LABEL_PREFIX="APM-02"
+            BASE_BRANCH="main"
+          fi
+
+          if [ -n "$LABEL_PREFIX" ]; then
+            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Failed' state..."
+            FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels \
+              --jq "[.[] | select(.labels[].name == \"${LABEL_PREFIX} Failed\")][0]")
+
+            PR_NUMBER=$(echo "$FAILED_PR" | jq -r '.number // empty')
+            SNAPSHOT=$(echo "$FAILED_PR" | jq -r '.headRefName // empty')
+
+            if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+              echo "🔁 Detected SAP CI/CD Dashboard re-trigger for PR #$PR_NUMBER ($SNAPSHOT)!"
+
+              gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
+                --title "🟡 ${LABEL_PREFIX} Deploying: Merging from ${SNAPSHOT} to ${BASE_BRANCH}" \
+                --remove-label "${LABEL_PREFIX} Failed" \
+                --add-label "${LABEL_PREFIX} Deploying"
+
+              gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} \
+                --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned from \`${LABEL_PREFIX} Failed\` back to \`${LABEL_PREFIX} Deploying\`. Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
+
+              echo "✅ Successfully transitioned Tracking PR #$PR_NUMBER from '${LABEL_PREFIX} Failed' to '${LABEL_PREFIX} Deploying'."
+            else
+              echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Failed' state."
+            fi
+          fi
 
       # ──────────────────────────────────────────────────────────
       # 📖 Global Wiki Deployment History Update

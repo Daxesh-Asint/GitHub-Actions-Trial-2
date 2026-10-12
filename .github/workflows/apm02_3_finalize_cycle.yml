@@ -82,13 +82,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           LABEL_PREFIX: ${{ needs.guard.outputs.label_prefix }}
         run: |
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,labels --jq ".[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked)$\")) | .number" | head -n 1)
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,labels --jq ".[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked|Failed)$\")) | .number" | head -n 1)
           
           if [ -z "$DEPLOYING_PR" ]; then
-            echo "❌ ERROR: No active deployment found (No PR with '${LABEL_PREFIX} Deploying' or '${LABEL_PREFIX} Blocked' label). State is IDLE."
+            echo "❌ ERROR: No active deployment found (No PR with '${LABEL_PREFIX} Deploying', '${LABEL_PREFIX} Blocked', or '${LABEL_PREFIX} Failed' label). State is IDLE."
             exit 1
           fi
-          echo "✅ State is DEPLOYING. Proceeding."
+          echo "✅ State is ACTIVE (Deploying/Blocked/Failed). Proceeding."
 
       - name: Evaluate SAP CI/CD Payload and Get Snapshot
         id: eval
@@ -100,7 +100,7 @@ jobs:
           STATUS="${{ github.event.client_payload.status }}"
           
           # Extract the snapshot branch name securely from our Tracking PR!
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels --jq "[.[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked)$\"))][0]")
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels --jq "[.[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked|Failed)$\"))][0]")
           SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
           PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
@@ -164,7 +164,7 @@ jobs:
           if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
             echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
             echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
-            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Protected Files): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --add-label "${LABEL_PREFIX} Blocked"
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Protected Files): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Blocked"
             gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Manual confirmation required."
             exit 1
           fi
@@ -173,7 +173,7 @@ jobs:
             echo "ℹ️ No new commits to sync back to ${BASE_BRANCH}. Closing PR."
             gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
             gh label create "${LABEL_PREFIX} Deployed" --color "#0E8A16" --description "${ENV_NAME} deployment completed successfully" --repo ${{ github.repository }} 2>/dev/null || true
-            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --add-label "${LABEL_PREFIX} Deployed"
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Deployed"
           else
             for i in {1..10}; do
               STATUS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
@@ -182,14 +182,14 @@ jobs:
                 if gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge; then
                   echo "✅ PR #$PR_NUMBER merged into ${BASE_BRANCH} successfully"
                   gh label create "${LABEL_PREFIX} Deployed" --color "#0E8A16" --description "${ENV_NAME} deployment completed successfully" --repo ${{ github.repository }} 2>/dev/null || true
-                  gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --add-label "${LABEL_PREFIX} Deployed"
+                  gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Deployed"
                 else
                   gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "Auto-merge into ${BASE_BRANCH} failed."
                   exit 1
                 fi
                 break
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
-                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Conflicts): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --add-label "${LABEL_PREFIX} Blocked"
+                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Conflicts): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Blocked"
                 gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
                 echo "failure_reason=conflict" >> $GITHUB_OUTPUT
                 exit 1
