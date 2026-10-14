@@ -324,7 +324,7 @@ jobs:
       - name: Auto-Detect SAP CI/CD Dashboard Re-Trigger and Resume Tracking
         if: steps.process.outputs.event_type == 'sap_cicd_started'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           RESOURCE_NAME: ${{ steps.process.outputs.resource_name }}
         run: |
           LABEL_PREFIX=""
@@ -342,27 +342,36 @@ jobs:
           fi
 
           if [ -n "$LABEL_PREFIX" ]; then
-            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Failed' state..."
-            FAILED_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels \
-              --jq "[.[] | select(.labels[].name == \"${LABEL_PREFIX} Failed\")][0]")
+            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Blocked' or '${LABEL_PREFIX} Failed' state..."
+            TARGET_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels \
+              --jq "[.[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Blocked|Failed|Pre-Deploy Blocked)\"))][0]")
 
-            PR_NUMBER=$(echo "$FAILED_PR" | jq -r '.number // empty')
-            SNAPSHOT=$(echo "$FAILED_PR" | jq -r '.headRefName // empty')
+            PR_NUMBER=$(echo "$TARGET_PR" | jq -r '.number // empty')
+            SNAPSHOT=$(echo "$TARGET_PR" | jq -r '.headRefName // empty')
 
             if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
               echo "🔁 Detected SAP CI/CD Dashboard re-trigger for PR #$PR_NUMBER ($SNAPSHOT)!"
 
+              # Collect all existing labels matching this prefix to cleanly remove them (preventing dual or stuck labels)
+              REMOVE_ARGS=()
+              while IFS= read -r lbl; do
+                if [ -n "$lbl" ] && [ "$lbl" != "${LABEL_PREFIX} Deploying" ]; then
+                  REMOVE_ARGS+=(--remove-label "$lbl")
+                fi
+              done < <(echo "$TARGET_PR" | jq -r --arg prefix "$LABEL_PREFIX" '.labels[].name | select(startswith($prefix))')
+
+              # Update Tracking PR: set Deploying title, remove old labels, and apply single Deploying label
               gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
                 --title "🟡 ${LABEL_PREFIX} Deploying: Merging from ${SNAPSHOT} to ${BASE_BRANCH}" \
-                --remove-label "${LABEL_PREFIX} Failed" \
+                "${REMOVE_ARGS[@]}" \
                 --add-label "${LABEL_PREFIX} Deploying"
 
               gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} \
-                --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned from \`${LABEL_PREFIX} Failed\` back to \`${LABEL_PREFIX} Deploying\`. Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
+                --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned to \`${LABEL_PREFIX} Deploying\` (all previous Blocked/Failed status labels cleared). Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
 
-              echo "✅ Successfully transitioned Tracking PR #$PR_NUMBER from '${LABEL_PREFIX} Failed' to '${LABEL_PREFIX} Deploying'."
+              echo "✅ Successfully transitioned Tracking PR #$PR_NUMBER to '${LABEL_PREFIX} Deploying' (clean single label)."
             else
-              echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Failed' state."
+              echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Blocked' or '${LABEL_PREFIX} Failed' state."
             fi
           fi
 
