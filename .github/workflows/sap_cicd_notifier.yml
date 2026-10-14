@@ -342,9 +342,8 @@ jobs:
           fi
 
           if [ -n "$LABEL_PREFIX" ]; then
-            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Failed' state..."
-            TARGET_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels \
-              --jq "[.[] | select(.labels[].name == \"${LABEL_PREFIX} Failed\")][0]")
+            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Failed' state (base: ${BASE_BRANCH})..."
+            TARGET_PR=$(gh pr list --repo ${{ github.repository }} --state open --base "$BASE_BRANCH" --label "${LABEL_PREFIX} Failed" --limit 1 --json number,headRefName,labels --jq '.[0]')
 
             PR_NUMBER=$(echo "$TARGET_PR" | jq -r '.number // empty')
             SNAPSHOT=$(echo "$TARGET_PR" | jq -r '.headRefName // empty')
