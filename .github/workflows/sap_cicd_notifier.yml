@@ -332,6 +332,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           RESOURCE_NAME: ${{ steps.process.outputs.resource_name }}
+          TEAMS_WEBHOOK_APM02_1: ${{ secrets.TEAMS_WEBHOOK_APM02_1 }}
+          TEAMS_WEBHOOK_APM02_2: ${{ secrets.TEAMS_WEBHOOK_APM02_2 }}
+          TEAMS_WEBHOOK_APM02_3: ${{ secrets.TEAMS_WEBHOOK_APM02_3 }}
+          TEAMS_WEBHOOK_APM02_DC_1: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}
+          TEAMS_WEBHOOK_APM02_DC_2: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}
+          TEAMS_WEBHOOK_APM02_DC_3: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_GLOBAL_1: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}
+          TEAMS_WEBHOOK_GLOBAL_2: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}
+          TEAMS_WEBHOOK_GLOBAL_3: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}
         run: |
           LABEL_PREFIX=""
           BASE_BRANCH=""
@@ -375,6 +387,120 @@ jobs:
                 --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned from \`${LABEL_PREFIX} Failed\` to \`${LABEL_PREFIX} Deploying\`. Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
 
               echo "✅ Successfully transitioned Tracking PR #$PR_NUMBER to '${LABEL_PREFIX} Deploying' (clean single label)."
+
+              # Broadcast '🔄 Deployment Re-Triggered' card to MS Teams
+              TARGET_WEBHOOKS=()
+              if echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC-AddIn"; then
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_1")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_2")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_3")
+              elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC"; then
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_1")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_2")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_3")
+              elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02"; then
+                [ -n "$TEAMS_WEBHOOK_APM02_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_1")
+                [ -n "$TEAMS_WEBHOOK_APM02_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_2")
+                [ -n "$TEAMS_WEBHOOK_APM02_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_3")
+              fi
+
+              [ -n "$TEAMS_WEBHOOK_GLOBAL_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_1")
+              [ -n "$TEAMS_WEBHOOK_GLOBAL_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_2")
+              [ -n "$TEAMS_WEBHOOK_GLOBAL_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_3")
+
+              if [ "${#TARGET_WEBHOOKS[@]}" -gt 0 ]; then
+                TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
+                PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+                DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+
+                RETRIGGER_PAYLOAD=$(jq -n \
+                  --arg title "🔄 ${LABEL_PREFIX} Deployment Re-Triggered" \
+                  --arg subtitle "A new build was triggered directly from the SAP CI/CD portal." \
+                  --arg status "${LABEL_PREFIX} Deployment In Progress — SAP CI/CD Running (~55-60m)" \
+                  --arg repo "${{ github.repository }}" \
+                  --arg env_name "$LABEL_PREFIX" \
+                  --arg pr_url "$PR_URL" \
+                  --arg pr_num "#$PR_NUMBER" \
+                  --arg snapshot "$SNAPSHOT" \
+                  --arg base "$BASE_BRANCH" \
+                  --arg time "$TIMESTAMP" \
+                  --arg dashboard "$DASHBOARD_URL" \
+                  '{
+                    type: "message",
+                    attachments: [{
+                      contentType: "application/vnd.microsoft.card.adaptive",
+                      content: {
+                        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                        type: "AdaptiveCard",
+                        version: "1.4",
+                        body: [
+                          {
+                            type: "TextBlock",
+                            size: "Large",
+                            weight: "Bolder",
+                            text: $title,
+                            wrap: true
+                          },
+                          {
+                            type: "TextBlock",
+                            text: $subtitle,
+                            size: "Small",
+                            isSubtle: true,
+                            wrap: true
+                          },
+                          {
+                            type: "ColumnSet",
+                            columns: [
+                              {
+                                type: "Column",
+                                width: "auto",
+                                items: [{
+                                  type: "TextBlock",
+                                  text: $status,
+                                  weight: "Bolder",
+                                  color: "good"
+                                }]
+                              }
+                            ]
+                          },
+                          {
+                            type: "FactSet",
+                            facts: [
+                              { title: "Environment", value: $env_name },
+                              { title: "Main PR", value: ("[" + $pr_num + "](" + $pr_url + ")") },
+                              { title: "Snapshot Branch", value: $snapshot },
+                              { title: "Trigger Source", value: "SAP CI/CD Dashboard (Manual Re-Trigger)" },
+                              { title: "Recovery Status", value: ("Tracking state reset to Deploying. Snapshot will automatically merge to " + $base + " upon completion.") },
+                              { title: "Timestamp", value: $time }
+                            ]
+                          }
+                        ],
+                        actions: [
+                          {
+                            type: "Action.OpenUrl",
+                            title: ("Review " + $base + " PR " + $pr_num),
+                            url: $pr_url
+                          },
+                          {
+                            type: "Action.OpenUrl",
+                            title: "Open SAP CI/CD Dashboard",
+                            url: $dashboard
+                          }
+                        ]
+                      }
+                    }]
+                  }')
+
+                for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
+                  if [ -n "$WEBHOOK_URL" ]; then
+                    curl -s -X POST \
+                      -H "Content-Type: application/json" \
+                      -d "$RETRIGGER_PAYLOAD" \
+                      "$WEBHOOK_URL" || true
+                  fi
+                done
+                echo "📢 Successfully sent '🔄 ${LABEL_PREFIX} Deployment Re-Triggered' card to Teams."
+              fi
             else
               echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Failed' state."
             fi
