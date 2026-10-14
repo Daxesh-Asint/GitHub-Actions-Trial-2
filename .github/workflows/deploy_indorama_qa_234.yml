@@ -15,8 +15,4 @@ jobs:
       compare: "main"
       deployment_name: "Indorama QA 234"
       dashboard_url: "https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
-      cf_stop_app: "asint-ais-backend"
-      cf_api: "https://api.cf.us10-001.hana.ondemand.com"
-      cf_org: "indorama-ais-qa-234"
-      cf_space: "ais-qa-234"
     secrets: inherit
