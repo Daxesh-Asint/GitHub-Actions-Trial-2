@@ -342,9 +342,9 @@ jobs:
           fi
 
           if [ -n "$LABEL_PREFIX" ]; then
-            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Blocked' or '${LABEL_PREFIX} Failed' state..."
+            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Failed' state..."
             TARGET_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels \
-              --jq "[.[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Blocked|Failed|Pre-Deploy Blocked)\"))][0]")
+              --jq "[.[] | select(.labels[].name == \"${LABEL_PREFIX} Failed\")][0]")
 
             PR_NUMBER=$(echo "$TARGET_PR" | jq -r '.number // empty')
             SNAPSHOT=$(echo "$TARGET_PR" | jq -r '.headRefName // empty')
@@ -367,11 +367,11 @@ jobs:
                 --add-label "${LABEL_PREFIX} Deploying"
 
               gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} \
-                --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned to \`${LABEL_PREFIX} Deploying\` (all previous Blocked/Failed status labels cleared). Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
+                --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned from \`${LABEL_PREFIX} Failed\` to \`${LABEL_PREFIX} Deploying\`. Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
 
               echo "✅ Successfully transitioned Tracking PR #$PR_NUMBER to '${LABEL_PREFIX} Deploying' (clean single label)."
             else
-              echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Blocked' or '${LABEL_PREFIX} Failed' state."
+              echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Failed' state."
             fi
           fi
 
