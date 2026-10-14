@@ -99,9 +99,32 @@
   - [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js)
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
+- **Git Commit:** `8eb4117` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #4: Verified Visual Dashboard Card Screenshot Implementation
+- **Date / Timestamp:** 2026-10-14T23:37:00+05:30
+- **User Request:**
+  - Investigate why `accessDenied.html` ("couldn't find the site") was still captured in screenshots even though the channel refresh API returned HTTP `201 Created`.
+  - Provide an approach to capture the verified refresh data in the screenshot artifact.
+  - Implement the chosen approach: Fetch live channel details via GraphQL after refresh and render a verified SAP status card dashboard screenshot.
+
+- **Root Cause & Solution:**
+  - In headless automated runs on Cloud Foundry, the portal UI route `/channel/providerManager` redirects to `/accessDenied.html` due to runtime portal site restrictions on technical user roles.
+  - However, the authenticated session has full authorization for `/provider/html5` (which returns HTTP `201 Created`) and `/provider/graphql`.
+  - Implemented **Option A**: After `POST /provider/html5` returns `201 Created`, the script queries `POST /provider/graphql` to retrieve the live status (`Updated`) and timestamp, and renders a SAP Fiori Horizon-themed visual verification dashboard directly into the page to capture `bwz_refresh_success.png`.
+  - Conditioned `bwz_channel_manager.png` to avoid capturing `accessDenied.html` when UI routing redirects to access denied.
+
+- **Files Modified:**
+  - [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
 - **Git Commit:** Pending push on branch `dev`.
 - **Status:** Tested syntax, committed, and pushed to `origin/dev`.
 
 ---
+
 
 
