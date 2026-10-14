@@ -109,21 +109,45 @@ async function run() {
     // Step 2: Handle SAP IAS credentials login form
     const usernameInput = page.locator('input#j_username');
     if (await usernameInput.isVisible({ timeout: 15000 }).catch(() => false)) {
-      log('🔑 Filling login credentials into SAP IAS form...');
+      log('🔑 Filling username into SAP IAS form...');
       await usernameInput.fill(username);
 
-      const passwordInput = page.locator('input#j_password');
-      await passwordInput.fill(password);
+      const passwordInput = page.locator('input#j_password, input[type="password"]');
+      const isPasswordVisible = await passwordInput.first().isVisible().catch(() => false);
 
-      const submitBtn = page.locator('button#logOnFormSubmit, button[type="submit"]');
+      if (!isPasswordVisible) {
+        log('👉 Two-step login detected: clicking Continue button to reveal password field...');
+        const continueBtn = page.locator('button:has-text("Continue"), button#logOnFormSubmit, button[type="submit"]');
+        if (await continueBtn.first().isVisible().catch(() => false)) {
+          await continueBtn.first().click();
+        } else {
+          log('⌨️ Pressing Enter on username input...');
+          await usernameInput.press('Enter');
+        }
+
+        log('⏳ Waiting for password field to appear...');
+        await passwordInput.first().waitFor({ state: 'visible', timeout: 20000 });
+      }
+
+      log('🔑 Filling password into SAP IAS form...');
+      await passwordInput.first().fill(password);
+
+      const submitBtn = page.locator('button#logOnFormSubmit, button:has-text("Log On"), button:has-text("Sign In"), button:has-text("Continue"), button[type="submit"]');
       log('🔓 Submitting login form...');
       await submitBtn.first().click();
 
       // Wait for navigation back to launchpad
       log('⏳ Waiting for authentication and redirection to Channel Manager...');
-      await page.waitForURL(url => url.toString().includes(envConfig.launchpad_url.replace('https://', '')), {
-        timeout: 60000
-      });
+      try {
+        await page.waitForURL(url => url.toString().includes(envConfig.launchpad_url.replace('https://', '')), {
+          timeout: 60000
+        });
+      } catch (navErr) {
+        log(`ℹ️ waitForURL note: ${navErr.message}. Current URL: ${page.url()}`);
+        if (!page.url().includes(envConfig.launchpad_url.replace('https://', ''))) {
+          throw navErr;
+        }
+      }
     }
 
     // Step 3: Wait for Channel Manager UI to settle

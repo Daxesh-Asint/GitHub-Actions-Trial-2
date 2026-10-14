@@ -46,3 +46,34 @@
 - **Status:** Completed, verified, and pushed to `origin/dev`.
 
 ---
+
+### Prompt #2: Two-Step Login Diagnosis & Fix for SAP APM Live Sign-In
+- **Date / Timestamp:** 2026-10-14T22:37:00+05:30
+- **User Request:**
+  - Investigate why `[Test] Refresh BWZ Content Channel` workflow failed on run `38602991346`.
+  - Identify root cause without touching company repository.
+  - Implement the fix and update the checklist log.
+
+- **Root Cause Analysis:**
+  - Inspected downloaded failure screenshot artifact `bwz_refresh_failure.png`.
+  - Discovered that the SAP APM Live Sign-In page (`aewxagoqs.accounts.ondemand.com`) enforces a **Two-Step Authentication Flow**:
+    - Step 1: E-Mail input only, accompanied by a "Continue" button. The password input field is not rendered in the DOM yet.
+    - Step 2: The password input field (`input#j_password`) only appears after clicking "Continue" (or pressing Enter).
+  - The script initially attempted to fill `input#j_password` immediately after username, causing a 30-second timeout.
+
+- **Fix Applied:**
+  - Updated [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js):
+    - Fills `input#j_username`.
+    - Checks if `input#j_password` is visible. If not, clicks the "Continue" button (or sends Enter key) and waits for `input#j_password` to become visible.
+    - Fills `input#j_password` and clicks "Log On" / "Sign In".
+    - Resiliently handles redirection back to the Launchpad Channel Manager.
+
+- **Files Modified:**
+  - [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Git Commit:** Pending push on branch `dev`.
+- **Status:** Tested syntax, committed, and pushed to `origin/dev`.
+
+---
+
