@@ -137,7 +137,7 @@ async function run() {
       await submitBtn.first().click();
 
       // Wait for navigation back to launchpad
-      log('⏳ Waiting for authentication and redirection to Channel Manager...');
+      log('⏳ Waiting for authentication callback to complete...');
       try {
         await page.waitForURL(url => url.toString().includes(envConfig.launchpad_url.replace('https://', '')), {
           timeout: 60000
@@ -148,19 +148,30 @@ async function run() {
           throw navErr;
         }
       }
+      log(`📍 Post-login landing URL: ${page.url()}`);
     }
 
-    // Step 3: Wait for Channel Manager UI to settle
+    // Step 3: Explicitly navigate to Channel Manager design-time URL
+    const channelManagerUrl = `${envConfig.launchpad_url}/channel/providerManager?&sap-locale=en&sap-theme=sap_horizon`;
+    log(`🧭 Navigating directly to Channel Manager UI: ${channelManagerUrl}`);
+    await page.goto(channelManagerUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    log(`📍 Active Channel Manager Page URL: ${page.url()}`);
+
+    // Wait for Channel Manager table / content to load
     log('📋 Channel Manager loaded. Waiting for network idle...');
     await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {
       log('⚠️ Network idle timed out, proceeding to check table...');
     });
-    await page.waitForTimeout(4000);
+    // Wait for table or channel content to render
+    await page.locator('table, [role="grid"], [role="table"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+      log('ℹ️ Table locator wait ended, continuing...');
+    });
+    await page.waitForTimeout(3000);
 
-    // Save state screenshot for visibility
+    // Save state screenshot of Channel Manager table
     const managerScreenshot = path.join(artifactsDir, 'bwz_channel_manager.png');
     await page.screenshot({ path: managerScreenshot, fullPage: true });
-    log(`📸 Captured screenshot: ${managerScreenshot}`);
+    log(`📸 Captured Channel Manager screenshot: ${managerScreenshot}`);
 
     // Step 4: Refresh Channel
     // We will attempt native UI refresh button first, with in-page API fallback

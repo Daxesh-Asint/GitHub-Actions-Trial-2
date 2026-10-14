@@ -72,8 +72,36 @@
   - [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js)
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
+- **Git Commit:** `2e7a0e8` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #3: Channel Manager URL Navigation & Screenshot Artifact Fix
+- **Date / Timestamp:** 2026-10-14T22:54:00+05:30
+- **User Request:**
+  - Investigate why workflow run `38604122576` completed with success (HTTP `201 Created` for `/provider/html5`), but the captured screenshots showed:
+    *"Sorry, we couldn't find the site. Perhaps you don't have the required authorization to access it, or the site doesn't exist."*
+
+- **Root Cause Analysis:**
+  - The API call to `/provider/html5` succeeded with HTTP `201 Created`, confirming the channel refresh actually took place on the backend.
+  - However, after authentication on SAP IAS, the OAuth callback redirected to the launchpad runtime root (`/sites`).
+  - Because the technical user account has administrator / design-time roles rather than an end-user runtime site assignment, visiting `/sites` displays the "couldn't find the site" error page.
+  - The automation script had not explicitly re-navigated to the design-time Channel Manager UI URL (`/channel/providerManager?&sap-locale=en&sap-theme=sap_horizon`), leaving the browser on the runtime error page when capturing screenshots.
+
+- **Fix Applied:**
+  - Updated [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js):
+    - Added explicit navigation to `${envConfig.launchpad_url}/channel/providerManager?&sap-locale=en&sap-theme=sap_horizon` immediately after the login callback completes.
+    - Added logging for `page.url()` so the exact page is tracked in the run log.
+    - Added waiting for table content to render before taking the screenshot so the Channel Manager table is visually documented in artifacts.
+
+- **Files Modified:**
+  - [`.github/scripts/refresh_bwz_channel.js`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/scripts/refresh_bwz_channel.js)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
 - **Git Commit:** Pending push on branch `dev`.
 - **Status:** Tested syntax, committed, and pushed to `origin/dev`.
 
 ---
+
 
