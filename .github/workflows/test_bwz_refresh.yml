@@ -1,0 +1,50 @@
+name: "[Test] Refresh BWZ Content Channel"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Target Environment to Refresh"
+        required: true
+        type: choice
+        options:
+          - "APM-02"
+        default: "APM-02"
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-channel:
+    name: "Refresh BWZ Channel (${{ inputs.target_env }})"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Execute BWZ Channel Refresh
+        env:
+          TARGET_ENV: ${{ inputs.target_env }}
+          BWZ_USERNAME: ${{ secrets.BWZ_USERNAME }}
+          BWZ_PASSWORD: ${{ secrets.BWZ_PASSWORD }}
+          STRICT_AUTH: "true"
+        run: |
+          node .github/scripts/refresh_bwz_channel.js
+
+      - name: Upload Screenshot Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bwz-refresh-screenshots-${{ inputs.target_env }}
+          path: bwz_artifacts/
+          if-no-files-found: ignore

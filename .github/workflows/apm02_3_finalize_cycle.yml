@@ -232,8 +232,43 @@ jobs:
         env:
           WIKI_PAYLOAD: '{"action": "${{ needs.finalize.result == ''success'' && ''finalize-success'' || ''finalize-fail'' }}", "environment": "${{ needs.guard.outputs.env_name }}", "snapshot": "${{ needs.finalize.outputs.snapshot }}", "pr_number": "${{ needs.finalize.outputs.pr_number }}"}'
 
+  refresh-bwz-channel:
+    name: "Refresh BWZ Content Channel"
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Execute BWZ Channel Refresh
+        env:
+          TARGET_ENV: ${{ needs.guard.outputs.env_name }}
+          BWZ_USERNAME: ${{ secrets.BWZ_USERNAME }}
+          BWZ_PASSWORD: ${{ secrets.BWZ_PASSWORD }}
+        run: |
+          node .github/scripts/refresh_bwz_channel.js
+
+      - name: Upload Screenshot Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bwz-refresh-screenshots-${{ needs.guard.outputs.env_id }}
+          path: bwz_artifacts/
+          if-no-files-found: ignore
+
   notify-success:
-    needs: [guard, finalize, update-wiki-finalize]
+    needs: [guard, finalize, update-wiki-finalize, refresh-bwz-channel]
     if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
