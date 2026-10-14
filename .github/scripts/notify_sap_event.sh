@@ -136,6 +136,13 @@ SUBJECT="$PAYLOAD_SUBJECT"
 BODY="$PAYLOAD_BODY"
 CATEGORY="$PAYLOAD_CATEGORY"
 
+STAGE="${PAYLOAD_STAGE:-$INPUT_STAGE}"
+if [ -z "$STAGE" ]; then
+  if [[ "$SUBJECT $BODY" =~ [sS]tage[[:space:]]*[\'\"\`]?([a-zA-Z0-9_-]+) ]]; then
+    STAGE="${BASH_REMATCH[1]}"
+  fi
+fi
+
 # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
 CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 
@@ -362,25 +369,38 @@ fi
 echo "commit_id=$COMMIT_ID" >> $GITHUB_OUTPUT
 echo "status=$STATUS" >> $GITHUB_OUTPUT
 echo "clean_name=$CLEAN_NAME" >> $GITHUB_OUTPUT
+echo "stage=$STAGE" >> $GITHUB_OUTPUT
 
 DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
 TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
 
 # 2. Configure Card Header, Color, and Subtitle based on Event Type
 if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
-  CARD_TITLE="🟡 SAP CI/CD Pipeline Started"
+  CARD_TITLE="🟡 SAP CI/CD Job Started"
   CARD_COLOR="warning"
-  STATUS_BADGE="⏳ Running Build & Deployment"
+  if [ -n "$STAGE" ]; then
+    STATUS_BADGE="⏳ Running $STAGE Stage"
+  else
+    STATUS_BADGE="⏳ Running Build & Deployment"
+  fi
   CARD_SUBTITLE="Build execution is now in progress for $CLEAN_NAME."
 elif [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
   CARD_TITLE="✅ SAP CI/CD Deployment Succeeded"
   CARD_COLOR="good"
-  STATUS_BADGE="🚀 Deployed Successfully"
+  if [ -n "$STAGE" ]; then
+    STATUS_BADGE="🚀 $STAGE Succeeded"
+  else
+    STATUS_BADGE="🚀 Deployed Successfully"
+  fi
   CARD_SUBTITLE="Pipeline build and deployment completed without errors."
 else
   CARD_TITLE="❌ SAP CI/CD Deployment Failed"
   CARD_COLOR="attention"
-  STATUS_BADGE="⚠️ Build / Deployment Failed"
+  if [ -n "$STAGE" ]; then
+    STATUS_BADGE="⚠️ $STAGE Failed"
+  else
+    STATUS_BADGE="⚠️ Build / Deployment Failed"
+  fi
   CARD_SUBTITLE="Pipeline execution encountered an error. Please inspect logs."
 fi
 
@@ -787,6 +807,7 @@ PAYLOAD=$(jq -n \
   --arg status "$STATUS_BADGE" \
   --arg job "$RESOURCE_NAME" \
   --arg env_name "$CLEAN_NAME" \
+  --arg stage "$STAGE" \
   --arg commit_id "$COMMIT_ID" \
   --arg time "$TIMESTAMP" \
   --arg dashboard "$DASHBOARD_URL" \
@@ -834,7 +855,12 @@ PAYLOAD=$(jq -n \
             facts: (
               [
                 { title: "Environment", value: $env_name },
-                { title: "SAP CI/CD Job", value: $job },
+                { title: "SAP CI/CD Job", value: $job }
+              ] +
+              (if $stage != "" then [
+                { title: "Stage", value: $stage }
+              ] else [] end) +
+              [
                 { title: "CI/CD Commit ID", value: $commit_id },
                 { title: "Timestamp", value: $time }
               ] +

@@ -134,6 +134,10 @@ on:
         description: "Git Commit ID (optional)"
         required: false
         default: ""
+      stage:
+        description: "Stage Name (optional, e.g. Build, Release, Acceptance)"
+        required: false
+        default: ""
       app_name:
         description: "CF App Name (optional, defaults to repo var or mapped app)"
         required: false
@@ -171,6 +175,8 @@ jobs:
           INPUT_RESOURCE_NAME: ${{ github.event.inputs.resource_name }}
           PAYLOAD_STATUS: ${{ github.event.client_payload.status }}
           INPUT_STATUS: ${{ github.event.inputs.status }}
+          PAYLOAD_STAGE: ${{ github.event.client_payload.stage }}
+          INPUT_STAGE: ${{ github.event.inputs.stage }}
           PAYLOAD_SUBJECT: ${{ github.event.client_payload.subject }}
           INPUT_SUBJECT: ${{ github.event.inputs.subject }}
           PAYLOAD_BODY: ${{ github.event.client_payload.body }}
