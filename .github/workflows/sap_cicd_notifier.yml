@@ -28,26 +28,103 @@ on:
         required: true
         type: choice
         options:
+          # ── 1. Core Module Jobs ───────────────────────────
+          # 1.
           - "AsInt-AIS-02"
-          - "AsInt-AIS-02-Safety-Test-DND"
-          - "AsInt-AIS-02-mta-fix"
+          # 2.
           - "AsInt-APM-01"
+          # 3.
           - "AsInt-APM-02"
+          # 4.
           - "AsInt-APM-EIOT"
+          # 5.
           - "AsInt-DEMO"
+          # 6.
           - "AsInt-IRC"
           - "IRC"
+          # 7.
           - "AsInt-ST"
+          # 8.
           - "BAYSTAR"
           - "Baystar"
+          # 9.
           - "Hemlock-NON-PROD"
+          # 10.
           - "Hemlock-PROD"
+          # 11.
           - "Indorama-PROD-900"
+          # 12.
           - "Indorama-PROD-933"
+          # 13.
           - "Indorama-QA-233"
+          # 14.
           - "Indorama-QA-234"
+          # 15.
           - "VMOS"
+
+          # ── 2. DC Module Jobs ─────────────────────────────
+          # 1.
           - "AsInt-AIS-02-DC"
+          # 2.
+          - "AsInt-APM-01-DC"
+          # 3.
+          - "AsInt-APM-02-DC"
+          # 4.
+          - "AsInt-APM-EIOT-DC"
+          # 5.
+          - "AsInt-DEMO-DC"
+          # 6.
+          - "IRC-DC"
+          # 7.
+          - "AsInt-ST-DC"
+          # 8.
+          - "Baystar-DC"
+          # 9.
+          - "Hemlock-NON-PROD-DC"
+          # 10.
+          - "Hemlock-PROD-DC"
+          # 11.
+          - "Indorama-PROD-900-DC"
+          # 12.
+          - "Indorama-PROD-933-DC"
+          # 13.
+          - "Indorama-QA-233-DC"
+          # 14.
+          - "Indorama-QA-234-DC"
+          # 15.
+          - "VMOS-DC"
+
+          # ── 3. DC AddIn Module Jobs ───────────────────────
+          # 1.
+          - "AsInt-AIS-02-DC-AddIn"
+          # 2.
+          - "AsInt-APM-01-DC-AddIn"
+          # 3.
+          - "AsInt-APM-02-DC-AddIn"
+          # 4.
+          - "AsInt-APM-EIOT-DC-AddIn"
+          # 5.
+          - "AsInt-DEMO-DC-AddIn"
+          # 6.
+          - "IRC-DC-AddIn"
+          # 7.
+          - "AsInt-ST-DC-AddIn"
+          # 8.
+          - "Baystar-DC-AddIn"
+          # 9.
+          - "Hemlock-NON-PROD-DC-AddIn"
+          # 10.
+          - "Hemlock-PROD-DC-AddIn"
+          # 11.
+          - "Indorama-PROD-900-DC-AddIn"
+          # 12.
+          - "Indorama-PROD-933-DC-AddIn"
+          # 13.
+          - "Indorama-QA-233-DC-AddIn"
+          # 14.
+          - "Indorama-QA-234-DC-AddIn"
+          # 15.
+          - "VMOS-DC-AddIn"
         default: "AsInt-AIS-02"
       subject:
         description: "Subject / Description"
@@ -57,6 +134,10 @@ on:
         description: "Git Commit ID (optional)"
         required: false
         default: ""
+      stage:
+        description: "Stage Name (optional, e.g. Build, Release, Acceptance)"
+        required: false
+        default: ""
       app_name:
         description: "CF App Name (optional, defaults to repo var or mapped app)"
         required: false
@@ -64,6 +145,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
   notify:
@@ -92,6 +175,8 @@ jobs:
           INPUT_RESOURCE_NAME: ${{ github.event.inputs.resource_name }}
           PAYLOAD_STATUS: ${{ github.event.client_payload.status }}
           INPUT_STATUS: ${{ github.event.inputs.status }}
+          PAYLOAD_STAGE: ${{ github.event.client_payload.stage }}
+          INPUT_STAGE: ${{ github.event.inputs.stage }}
           PAYLOAD_SUBJECT: ${{ github.event.client_payload.subject }}
           INPUT_SUBJECT: ${{ github.event.inputs.subject }}
           PAYLOAD_BODY: ${{ github.event.client_payload.body }}
@@ -151,12 +236,275 @@ jobs:
           TEAMS_WEBHOOK_AIS02_DC_1: ${{ secrets.TEAMS_WEBHOOK_AIS02_DC_1 }}
           TEAMS_WEBHOOK_AIS02_DC_2: ${{ secrets.TEAMS_WEBHOOK_AIS02_DC_2 }}
           TEAMS_WEBHOOK_AIS02_DC_3: ${{ secrets.TEAMS_WEBHOOK_AIS02_DC_3 }}
+          TEAMS_WEBHOOK_APM02_DC_1: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}
+          TEAMS_WEBHOOK_APM02_DC_2: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}
+          TEAMS_WEBHOOK_APM02_DC_3: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_AIS02_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_AIS02_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_AIS02_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_AIS02_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_APMEIOT_DC_1: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_1 }}
+          TEAMS_WEBHOOK_APMEIOT_DC_2: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_2 }}
+          TEAMS_WEBHOOK_APMEIOT_DC_3: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_3 }}
+          TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_DEMO_DC_1: ${{ secrets.TEAMS_WEBHOOK_DEMO_DC_1 }}
+          TEAMS_WEBHOOK_DEMO_DC_2: ${{ secrets.TEAMS_WEBHOOK_DEMO_DC_2 }}
+          TEAMS_WEBHOOK_DEMO_DC_3: ${{ secrets.TEAMS_WEBHOOK_DEMO_DC_3 }}
+          TEAMS_WEBHOOK_DEMO_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_DEMO_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_DEMO_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_DEMO_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_BAYSTAR_DC_1: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_1 }}
+          TEAMS_WEBHOOK_BAYSTAR_DC_2: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_2 }}
+          TEAMS_WEBHOOK_BAYSTAR_DC_3: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_3 }}
+          TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_DC_1: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_1 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_DC_2: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_2 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_DC_3: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_3 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_HSC_PROD_DC_1: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_1 }}
+          TEAMS_WEBHOOK_HSC_PROD_DC_2: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_2 }}
+          TEAMS_WEBHOOK_HSC_PROD_DC_3: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_3 }}
+          TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_IRC_DC_1: ${{ secrets.TEAMS_WEBHOOK_IRC_DC_1 }}
+          TEAMS_WEBHOOK_IRC_DC_2: ${{ secrets.TEAMS_WEBHOOK_IRC_DC_2 }}
+          TEAMS_WEBHOOK_IRC_DC_3: ${{ secrets.TEAMS_WEBHOOK_IRC_DC_3 }}
+          TEAMS_WEBHOOK_IRC_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_IRC_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_IRC_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_IRC_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_ST_ENV_DC_1: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_1 }}
+          TEAMS_WEBHOOK_ST_ENV_DC_2: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_2 }}
+          TEAMS_WEBHOOK_ST_ENV_DC_3: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_3 }}
+          TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_VMOS_DC_1: ${{ secrets.TEAMS_WEBHOOK_VMOS_DC_1 }}
+          TEAMS_WEBHOOK_VMOS_DC_2: ${{ secrets.TEAMS_WEBHOOK_VMOS_DC_2 }}
+          TEAMS_WEBHOOK_VMOS_DC_3: ${{ secrets.TEAMS_WEBHOOK_VMOS_DC_3 }}
+          TEAMS_WEBHOOK_VMOS_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_VMOS_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_VMOS_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_VMOS_DC_ADDIN_3 }}
           TEAMS_WEBHOOK_GLOBAL_1: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}
           TEAMS_WEBHOOK_GLOBAL_2: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}
           TEAMS_WEBHOOK_GLOBAL_3: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}
         run: |
           chmod +x .github/scripts/notify_sap_event.sh
           ./.github/scripts/notify_sap_event.sh
+
+      # ──────────────────────────────────────────────────────────
+      # 🔁 Auto-Detect SAP CI/CD Dashboard Re-Trigger (APM-02 Family)
+      # ──────────────────────────────────────────────────────────
+      - name: Auto-Detect SAP CI/CD Dashboard Re-Trigger and Resume Tracking
+        if: steps.process.outputs.event_type == 'sap_cicd_started'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          RESOURCE_NAME: ${{ steps.process.outputs.resource_name }}
+          TEAMS_WEBHOOK_APM02_1: ${{ secrets.TEAMS_WEBHOOK_APM02_1 }}
+          TEAMS_WEBHOOK_APM02_2: ${{ secrets.TEAMS_WEBHOOK_APM02_2 }}
+          TEAMS_WEBHOOK_APM02_3: ${{ secrets.TEAMS_WEBHOOK_APM02_3 }}
+          TEAMS_WEBHOOK_APM02_DC_1: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_1 }}
+          TEAMS_WEBHOOK_APM02_DC_2: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_2 }}
+          TEAMS_WEBHOOK_APM02_DC_3: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_3 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_1: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_1 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_2: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_2 }}
+          TEAMS_WEBHOOK_APM02_DC_ADDIN_3: ${{ secrets.TEAMS_WEBHOOK_APM02_DC_ADDIN_3 }}
+          TEAMS_WEBHOOK_GLOBAL_1: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_1 }}
+          TEAMS_WEBHOOK_GLOBAL_2: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_2 }}
+          TEAMS_WEBHOOK_GLOBAL_3: ${{ secrets.TEAMS_WEBHOOK_GLOBAL_3 }}
+        run: |
+          LABEL_PREFIX=""
+          BASE_BRANCH=""
+
+          if echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC-AddIn"; then
+            LABEL_PREFIX="APM-02 DC AddIn"
+            BASE_BRANCH="main-dc-addin"
+          elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC"; then
+            LABEL_PREFIX="APM-02 DC"
+            BASE_BRANCH="main-dc"
+          elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02"; then
+            LABEL_PREFIX="APM-02"
+            BASE_BRANCH="main"
+          fi
+
+          if [ -n "$LABEL_PREFIX" ]; then
+            echo "🔍 Checking for open tracking PR in '${LABEL_PREFIX} Failed' state (base: ${BASE_BRANCH})..."
+            TARGET_PR=$(gh pr list --repo ${{ github.repository }} --state open --base "$BASE_BRANCH" --label "${LABEL_PREFIX} Failed" --limit 1 --json number,headRefName,labels --jq '.[0]')
+
+            PR_NUMBER=$(echo "$TARGET_PR" | jq -r '.number // empty')
+            SNAPSHOT=$(echo "$TARGET_PR" | jq -r '.headRefName // empty')
+
+            if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+              echo "🔁 Detected SAP CI/CD Dashboard re-trigger for PR #$PR_NUMBER ($SNAPSHOT)!"
+
+              # Collect all existing labels matching this prefix to cleanly remove them (preventing dual or stuck labels)
+              REMOVE_ARGS=()
+              while IFS= read -r lbl; do
+                if [ -n "$lbl" ] && [ "$lbl" != "${LABEL_PREFIX} Deploying" ]; then
+                  REMOVE_ARGS+=(--remove-label "$lbl")
+                fi
+              done < <(echo "$TARGET_PR" | jq -r --arg prefix "$LABEL_PREFIX" '.labels[].name | select(startswith($prefix))')
+
+              # Update Tracking PR: set Deploying title, remove old labels, and apply single Deploying label
+              gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} \
+                --title "🟡 ${LABEL_PREFIX} Deploying: Merging from ${SNAPSHOT} to ${BASE_BRANCH}" \
+                "${REMOVE_ARGS[@]}" \
+                --add-label "${LABEL_PREFIX} Deploying"
+
+              gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} \
+                --body "🔁 **SAP CI/CD Dashboard Re-Trigger Detected:** A new build was triggered directly from the SAP CI/CD portal for \`$RESOURCE_NAME\`. Tracking state transitioned from \`${LABEL_PREFIX} Failed\` to \`${LABEL_PREFIX} Deploying\`. Automatic monitoring and sync to \`${BASE_BRANCH}\` resumed."
+
+              echo "✅ Successfully transitioned Tracking PR #$PR_NUMBER to '${LABEL_PREFIX} Deploying' (clean single label)."
+
+              # Broadcast '🔄 Deployment Re-Triggered' card to MS Teams
+              TARGET_WEBHOOKS=()
+              if echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC-AddIn"; then
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_1")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_2")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_3")
+              elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02-DC"; then
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_1")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_2")
+                [ -n "$TEAMS_WEBHOOK_APM02_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_3")
+              elif echo "$RESOURCE_NAME" | grep -qi "AsInt-APM-02"; then
+                [ -n "$TEAMS_WEBHOOK_APM02_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_1")
+                [ -n "$TEAMS_WEBHOOK_APM02_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_2")
+                [ -n "$TEAMS_WEBHOOK_APM02_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_3")
+              fi
+
+              [ -n "$TEAMS_WEBHOOK_GLOBAL_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_1")
+              [ -n "$TEAMS_WEBHOOK_GLOBAL_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_2")
+              [ -n "$TEAMS_WEBHOOK_GLOBAL_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_GLOBAL_3")
+
+              if [ "${#TARGET_WEBHOOKS[@]}" -gt 0 ]; then
+                TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
+                PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+                DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
+
+                RETRIGGER_PAYLOAD=$(jq -n \
+                  --arg title "🔄 ${LABEL_PREFIX} Deployment Re-Triggered" \
+                  --arg subtitle "A new build was triggered directly from the SAP CI/CD portal." \
+                  --arg status "${LABEL_PREFIX} Deployment In Progress — SAP CI/CD Running (~55-60m)" \
+                  --arg repo "${{ github.repository }}" \
+                  --arg env_name "$LABEL_PREFIX" \
+                  --arg pr_url "$PR_URL" \
+                  --arg pr_num "#$PR_NUMBER" \
+                  --arg snapshot "$SNAPSHOT" \
+                  --arg base "$BASE_BRANCH" \
+                  --arg time "$TIMESTAMP" \
+                  --arg dashboard "$DASHBOARD_URL" \
+                  '{
+                    type: "message",
+                    attachments: [{
+                      contentType: "application/vnd.microsoft.card.adaptive",
+                      content: {
+                        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                        type: "AdaptiveCard",
+                        version: "1.4",
+                        body: [
+                          {
+                            type: "TextBlock",
+                            size: "Large",
+                            weight: "Bolder",
+                            text: $title,
+                            wrap: true
+                          },
+                          {
+                            type: "TextBlock",
+                            text: $subtitle,
+                            size: "Small",
+                            isSubtle: true,
+                            wrap: true
+                          },
+                          {
+                            type: "ColumnSet",
+                            columns: [
+                              {
+                                type: "Column",
+                                width: "auto",
+                                items: [{
+                                  type: "TextBlock",
+                                  text: $status,
+                                  weight: "Bolder",
+                                  color: "good"
+                                }]
+                              }
+                            ]
+                          },
+                          {
+                            type: "FactSet",
+                            facts: [
+                              { title: "Environment", value: $env_name },
+                              { title: "Main PR", value: ("[" + $pr_num + "](" + $pr_url + ")") },
+                              { title: "Snapshot Branch", value: $snapshot },
+                              { title: "Trigger Source", value: "SAP CI/CD Dashboard (Manual Re-Trigger)" },
+                              { title: "Recovery Status", value: ("Tracking state reset to Deploying. Snapshot will automatically merge to " + $base + " upon completion.") },
+                              { title: "Timestamp", value: $time }
+                            ]
+                          }
+                        ],
+                        actions: [
+                          {
+                            type: "Action.OpenUrl",
+                            title: ("Review " + $base + " PR " + $pr_num),
+                            url: $pr_url
+                          },
+                          {
+                            type: "Action.OpenUrl",
+                            title: "Open SAP CI/CD Dashboard",
+                            url: $dashboard
+                          }
+                        ]
+                      }
+                    }]
+                  }')
+
+                for WEBHOOK_URL in "${TARGET_WEBHOOKS[@]}"; do
+                  if [ -n "$WEBHOOK_URL" ]; then
+                    curl -s -X POST \
+                      -H "Content-Type: application/json" \
+                      -d "$RETRIGGER_PAYLOAD" \
+                      "$WEBHOOK_URL" || true
+                  fi
+                done
+                echo "📢 Successfully sent '🔄 ${LABEL_PREFIX} Deployment Re-Triggered' card to Teams."
+              fi
+            else
+              echo "ℹ️ No open tracking PR currently in '${LABEL_PREFIX} Failed' state."
+            fi
+          fi
 
       # ──────────────────────────────────────────────────────────
       # 📖 Global Wiki Deployment History Update
