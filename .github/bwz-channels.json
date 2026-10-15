@@ -1,0 +1,17 @@
+{
+  "environments": {
+    "APM-02": {
+      "aliases": [
+        "AsInt-APM-02",
+        "apm-02",
+        "apm02",
+        "asint-apm-02"
+      ],
+      "launchpad_url": "https://apm-02-asint.dt.launchpad.cfapps.us10.hana.ondemand.com",
+      "subdomain": "apm-02-asint",
+      "subaccountId": "9a06e582-c39e-457d-81d4-67fbb82ce18b",
+      "channel_id": "saas_approuter",
+      "channel_name": "HTML5 Apps"
+    }
+  }
+}

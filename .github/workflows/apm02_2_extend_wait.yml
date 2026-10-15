@@ -1,32 +1,14 @@
-name: "APM-02: 2. Extend Wait Window"
+name: "APM-02 Family: 2. Extend Wait Window"
 
 # An admin triggers this during the waiting window to give developers more (or less) time.
 # This workflow adjusts the requested duration, then notifies the channel.
 
 on:
   repository_dispatch:
-    types: [adjust_apm02_wait]
-#  workflow_dispatch:
-#    inputs:
-#      deploy_now:
-#        description: "Deploy Immediately (skip remaining wait)"
-#        type: boolean
-#        required: false
-#        default: false
-#      adjust_minutes:
-#        description: "How many minutes to adjust? (+ for extend, - for decrease)"
-#        required: true
-#        default: "10"
-#        type: choice
-#        options:
-#          - "-30"
-#          - "-20"
-#          - "-10"
-#          - "-5"
-#          - "5"
-#          - "10"
-#          - "20"
-#          - "30"
+    types: 
+      - adjust_apm02_wait
+      - adjust_apm02_dc_wait
+      - adjust_apm02_dc_addin_wait
 
 jobs:
   # ─────────────────────────────────────────────
@@ -38,16 +20,46 @@ jobs:
       contents: read
       pull-requests: write
     outputs:
+      env_name: ${{ steps.detect.outputs.env_name }}
+      base_branch: ${{ steps.detect.outputs.base_branch }}
+      tenant_branch: ${{ steps.detect.outputs.tenant_branch }}
+      label_prefix: ${{ steps.detect.outputs.label_prefix }}
       active_snapshot: ${{ steps.check.outputs.active_snapshot }}
       adjust_time_ist: ${{ steps.check.outputs.adjust_time_ist }}
       action_word: ${{ steps.check.outputs.action_word }}
       summary_text: ${{ steps.check.outputs.summary_text }}
       pr_number: ${{ steps.check.outputs.pr_number }}
     steps:
+      - name: Detect Environment Configuration
+        id: detect
+        run: |
+          ACTION="${{ github.event.action }}"
+          echo "Triggered action: [$ACTION]"
+
+          if [ "$ACTION" == "adjust_apm02_dc_addin_wait" ]; then
+            echo "env_name=APM-02 DC AddIn" >> $GITHUB_OUTPUT
+            echo "base_branch=main-dc-addin" >> $GITHUB_OUTPUT
+            echo "tenant_branch=tenant/asint-apm-02-dc-addin" >> $GITHUB_OUTPUT
+            echo "label_prefix=APM-02 DC AddIn" >> $GITHUB_OUTPUT
+          elif [ "$ACTION" == "adjust_apm02_dc_wait" ]; then
+            echo "env_name=APM-02 DC" >> $GITHUB_OUTPUT
+            echo "base_branch=main-dc" >> $GITHUB_OUTPUT
+            echo "tenant_branch=tenant/asint-apm-02-dc" >> $GITHUB_OUTPUT
+            echo "label_prefix=APM-02 DC" >> $GITHUB_OUTPUT
+          else
+            echo "env_name=APM-02" >> $GITHUB_OUTPUT
+            echo "base_branch=main" >> $GITHUB_OUTPUT
+            echo "tenant_branch=tenant/asint-apm-02-v2" >> $GITHUB_OUTPUT
+            echo "label_prefix=APM-02" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check active snapshot and update PR
         id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABEL_PREFIX: ${{ steps.detect.outputs.label_prefix }}
         run: |
-          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "APM-02 Active" --json number,headRefName --jq '.[0]')
+          ACTIVE_PR_JSON=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --label "${LABEL_PREFIX} Active" --json number,headRefName --jq '.[0]')
           
           if [ -n "$ACTIVE_PR_JSON" ] && [ "$ACTIVE_PR_JSON" != "null" ]; then
             ACTIVE=$(echo "$ACTIVE_PR_JSON" | jq -r '.headRefName')
@@ -95,11 +107,9 @@ jobs:
             echo "✅ Active snapshot '$ACTIVE' found (PR #$PR_NUM). Time extended to $EXTEND_TIME_IST."
           else
             echo "active_snapshot=" >> $GITHUB_OUTPUT
-            echo "❌ Blocked: No active snapshot found. You can only extend when a deployment is active."
+            echo "❌ Blocked: No active snapshot found for ${LABEL_PREFIX}. You can only extend when a deployment is active."
             exit 1
           fi
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
 
   # ─────────────────────────────────────────────
   # Notify Teams: adjustment started
@@ -108,14 +118,17 @@ jobs:
     needs: guard
     uses: ./.github/workflows/_apm02_notify.yml
     with:
-      card_title: "⏳ APM-02 Waiting Window Modified"
+      env_name: ${{ needs.guard.outputs.env_name }}
+      base_branch: ${{ needs.guard.outputs.base_branch }}
+      tenant_branch: ${{ needs.guard.outputs.tenant_branch }}
+      card_title: "⏳ ${{ needs.guard.outputs.env_name }} Waiting Window Modified"
       card_subtitle: "An admin has ${{ needs.guard.outputs.action_word }} the waiting window."
       status_text: "⏳ ${{ needs.guard.outputs.summary_text }}"
       status_color: "accent"
       snapshot_branch: ${{ needs.guard.outputs.active_snapshot }}
       pr_number: ${{ needs.guard.outputs.pr_number }}
       extra_fact_title: "Deployment Schedule"
-      extra_fact_value: "APM-02 deployment will now start at ${{ needs.guard.outputs.adjust_time_ist }}."
+      extra_fact_value: "${{ needs.guard.outputs.env_name }} deployment will now start at ${{ needs.guard.outputs.adjust_time_ist }}."
       show_snapshot_branch: true
       show_sap_dashboard: false
     secrets: inherit
