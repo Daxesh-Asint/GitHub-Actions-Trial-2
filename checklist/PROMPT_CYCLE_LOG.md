@@ -216,5 +216,27 @@
   - [`.github/workflows/auto_merge_approval_handler.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/auto_merge_approval_handler.yml)
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
-- **Git Commit:** `6620edd` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Git Commit:** `82b13ba` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 - **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #10: Test and Verify Workflow Branch Filtering via Live PR in POC Repo
+- **Date / Timestamp:** 2026-10-21T14:58:00+05:30
+- **User Request:**
+  - Raise a PR in the POC repo to test and verify all the checks and confirm the branch-filtering behavior.
+
+- **Activities:**
+  - Created test branch `test/verify-dev-pr-filtering` from `dev`.
+  - Raised PR #1104 targeting base `dev`: [`#1104`](https://github.com/Daxesh-Asint/GitHub-Actions-Trial-2/pull/1104).
+  - Pushed subsequent commit (`synchronize` event) to test update lifecycle.
+  - Closed PR #1104 (`closed` event).
+  - Verified across all lifecycle events that none of the 4 conflict or approval workflows were triggered or queued, and zero failing checks appeared on the PR.
+  - Returned local workspace to `dev` branch.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
