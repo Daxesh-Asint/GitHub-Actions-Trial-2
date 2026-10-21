@@ -1,2 +1,4 @@
 Verification test for PR branch-filtering on dev branch.
 Testing that apm02_4, apm02_5, auto_merge_conflict_resolver, and auto_merge_approval_handler do NOT trigger.
+
+Commit 2: Testing synchronize event on PR #1104 targeting dev.
