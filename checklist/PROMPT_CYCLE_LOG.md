@@ -237,6 +237,39 @@
 - **Files Modified:**
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
+- **Git Commit:** `76a0181` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #11: Propagate Workflow Branch-Filtering to Company Deployment Branches
+- **Date / Timestamp:** 2026-10-21T15:15:00+05:30
+- **User Request:**
+  - Push the branch-filtering changes to the 4 company deployment workflow branches in `StillSomehowSane/asint_ais` (Option A):
+    1. `ci/deployment-workflows-dev`
+    2. `ci/deployment-workflows-main`
+    3. `ci/deployment-workflows-main-dc`
+    4. `ci/deployment-workflows-main-dc-addin`
+
+- **Activities:**
+  - Added upstream remote `https://github.com/StillSomehowSane/asint_ais.git`.
+  - Fetched all 4 deployment workflow branches.
+  - Checked out each branch and applied the clean 4 workflow file edits:
+    - `.github/workflows/apm02_4_conflict_monitor.yml`
+    - `.github/workflows/apm02_5_apm02_conflict_monitor.yml`
+    - `.github/workflows/auto_merge_conflict_resolver.yml`
+    - `.github/workflows/auto_merge_approval_handler.yml`
+  - Committed and pushed each branch cleanly to `upstream`:
+    - `ci/deployment-workflows-dev`: commit `b1253a8d5f`
+    - `ci/deployment-workflows-main`: commit `f97f4e28a2`
+    - `ci/deployment-workflows-main-dc`: commit `08574c1406`
+    - `ci/deployment-workflows-main-dc-addin`: commit `c225ac7c9f`
+  - Returned workspace to `dev` in POC repository.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
 - **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 - **Status:** Completed, verified, and pushed to `origin/dev`.
+
 
