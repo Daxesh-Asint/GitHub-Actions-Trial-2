@@ -2,6 +2,10 @@ name: "APM-02 Family: Guard - Base PR Conflicts"
 
 on:
   pull_request:
+    branches:
+      - main
+      - main-dc
+      - main-dc-addin
     types: [synchronize, closed]
 
 permissions:

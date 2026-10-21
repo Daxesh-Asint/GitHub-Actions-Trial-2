@@ -189,13 +189,32 @@
 - **Files Modified:**
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
-- **Status:** Completed.
+- **Git Commit:** `5de8a74` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
 
 ---
 
+### Prompt #9: Restrict Conflict and Approval Workflows from Running on Developer PRs
+- **Date / Timestamp:** 2026-10-21T14:52:00+05:30
+- **User Request:**
+  - 4 automated checks (`APM-02 Base PR Conflicts`, `APM-02 Pre-Deploy Conflicts`, `Auto-Merge Conflict Resolver`, and `Auto-Merge PR Approval Handler`) were triggering and failing on regular developer PRs targeting `dev`.
+  - Disabling them completely would break automated deployments, so the user agreed to branch-filtering: restrict triggers so they only run on their relevant deployment target branches (`tenant/**`, `main*`, etc.) and NEVER on developer PRs targeting `dev`.
+  - Apply the changes to the POC repo and verify.
 
+- **Activities:**
+  - Configured `pull_request.branches` filter on:
+    - `.github/workflows/apm02_4_conflict_monitor.yml` (`[main, main-dc, main-dc-addin]`)
+    - `.github/workflows/apm02_5_apm02_conflict_monitor.yml` (`["tenant/asint-apm-02-v2", "tenant/asint-apm-02-dc", "tenant/asint-apm-02-dc-addin"]`)
+    - `.github/workflows/auto_merge_conflict_resolver.yml` (`["tenant/**", "apm-eiot-temp-copy", "st-env-for-contentfederation"]`)
+    - `.github/workflows/auto_merge_approval_handler.yml` (`["tenant/**", "apm-eiot-temp-copy", "st-env-for-contentfederation"]` + base ref guard in `jobs.handle-approval.if`)
+  - Verified that PRs targeting `dev` will be skipped pre-flight by GitHub Actions trigger evaluation, leaving developer PRs clean and running only the required checks (`CDS Schema Diff` & `require-tests-in-pr`).
 
+- **Files Modified:**
+  - [`.github/workflows/apm02_4_conflict_monitor.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/apm02_4_conflict_monitor.yml)
+  - [`.github/workflows/apm02_5_apm02_conflict_monitor.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/apm02_5_apm02_conflict_monitor.yml)
+  - [`.github/workflows/auto_merge_conflict_resolver.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/auto_merge_conflict_resolver.yml)
+  - [`.github/workflows/auto_merge_approval_handler.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/auto_merge_approval_handler.yml)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
-
-
-
+- **Git Commit:** `6620edd` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.

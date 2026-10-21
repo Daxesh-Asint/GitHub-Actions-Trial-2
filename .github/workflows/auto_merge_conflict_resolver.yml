@@ -2,6 +2,10 @@ name: "Auto-Merge: Conflict Resolution Handler"
 
 on:
   pull_request:
+    branches:
+      - "tenant/**"
+      - "apm-eiot-temp-copy"
+      - "st-env-for-contentfederation"
     types: [synchronize, closed]
   workflow_dispatch:
     inputs:

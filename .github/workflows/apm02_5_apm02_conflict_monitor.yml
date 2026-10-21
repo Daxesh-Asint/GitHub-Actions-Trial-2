@@ -2,6 +2,10 @@ name: "APM-02 Family: Guard - Pre-Deploy Conflicts"
 
 on:
   pull_request:
+    branches:
+      - "tenant/asint-apm-02-v2"
+      - "tenant/asint-apm-02-dc"
+      - "tenant/asint-apm-02-dc-addin"
     types: [synchronize, closed]
 
 permissions:
