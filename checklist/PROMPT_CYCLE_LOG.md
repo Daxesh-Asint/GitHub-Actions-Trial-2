@@ -285,8 +285,49 @@
 - **Files Modified:**
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
+- **Git Commit:** `d8ea960` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #13: Architecture Plan for GitHub Actions Quota Limit using GCP
+- **Date / Timestamp:** 2026-10-22T21:30:00+05:30
+- **User Request:**
+  - GitHub Actions runtime quota exhausted (spending limit error preventing jobs from starting).
+  - User requested alternative ways to run automations without purchasing GitHub Actions runtime, leveraging existing GCP services.
+  - Specified: entire suite for all environments, medium VM size, and pilot on POC repo first. Requested full plan before implementation.
+
+- **Activities:**
+  - Evaluated architectural alternatives: Self-Hosted Runner on Compute Engine ($0 GitHub runtime cost, unlimited minutes), Cloud Build, and Cloud Run.
+  - Recommended Self-Hosted Runner on GCP VM as it preserves 100% of workflow triggers, artifacts, and PR checks without rewriting YAML.
+  - Formulated comprehensive 5-phase plan: VM provisioning, environment & runner setup, POC workflow label updates (`runs-on: [self-hosted, linux]`), testing/verification, and company rollout path.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed and approved by user.
+
+---
+
+### Prompt #14: GCP VM Provisioning & GitHub Runner Registration
+- **Date / Timestamp:** 2026-10-22T21:50:00+05:30
+- **User Request:**
+  - Guided step-by-step creation of GCP Compute Engine VM (`e2-medium`, Ubuntu 22.04 LTS x86/64, 30 GB disk) in `AsInt-GCP-FTS`.
+  - Provide runner installation and registration script for POC repository.
+  - Clarified that the registration token is securely pre-generated from GitHub API and does not require a personal PAT.
+
+- **Activities:**
+  - Assisted user with GCP Console setup for `github-actions-runner` in `us-central1-b`.
+  - Generated live runner registration token (`BT3Z2Q24JXJWKLAEZLWVNFTK3JDEI`) via GitHub API for `Daxesh-Asint/GitHub-Actions-Trial-2`.
+  - Provided copy-paste installation script configuring dependencies, runner service (`actions-runner-linux-x64-2.338.1`), and persistent systemd service.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
 - **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 - **Status:** Completed, verified, and pushed to `origin/dev`.
+
 
 
 
