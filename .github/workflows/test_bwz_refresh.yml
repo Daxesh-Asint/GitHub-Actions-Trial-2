@@ -17,7 +17,7 @@ permissions:
 jobs:
   refresh-channel:
     name: "Refresh BWZ Channel (${{ inputs.target_env }})"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

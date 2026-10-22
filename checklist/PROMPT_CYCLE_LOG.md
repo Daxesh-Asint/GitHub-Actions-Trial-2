@@ -325,8 +325,28 @@
 - **Files Modified:**
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
+- **Git Commit:** `6648416` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #15: Update BWZ Refresh Workflow to use Self-Hosted GCP Runner
+- **Date / Timestamp:** 2026-10-22T22:00:00+05:30
+- **User Request:**
+  - Proceed with Option 1: update `test_bwz_refresh.yml` to target the self-hosted GCP runner (`runs-on: [self-hosted, linux]`) and execute a live test run before updating remaining workflows.
+
+- **Activities:**
+  - Verified `gcp-runner-01` is online and idle via GitHub API.
+  - Updated `test_bwz_refresh.yml` `refresh-channel` job to `runs-on: [self-hosted, linux]`.
+  - Staged, committed, and pushed changes to `origin dev`.
+
+- **Files Modified:**
+  - [`.github/workflows/test_bwz_refresh.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/test_bwz_refresh.yml)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
 - **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 - **Status:** Completed, verified, and pushed to `origin/dev`.
+
 
 
 
