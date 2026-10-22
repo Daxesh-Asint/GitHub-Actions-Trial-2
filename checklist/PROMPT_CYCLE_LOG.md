@@ -363,8 +363,29 @@
 - **Files Modified:**
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
-- **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Git Commit:** `bddd9e3` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 - **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #17: Mass Migration of All Workflows to Self-Hosted GCP Runner Across All Environments
+- **Date / Timestamp:** 2026-10-23T00:12:00+05:30
+- **User Request:**
+  - Update all workflows in POC repo for all environments to use the self-hosted GCP runner.
+  - Confirmed via interactive prompt to apply changes to 7 branches: 4 base branches (`dev`, `main`, `main-dc`, `main-dc-addin`) and 3 tenant branches (`tenant/asint-apm-02-v2`, `tenant/asint-apm-02-dc`, `tenant/asint-apm-02-dc-addin`).
+
+- **Activities:**
+  - Converted all 28 occurrences of `runs-on: ubuntu-latest` across all 13 workflow files in `.github/workflows/` to `runs-on: self-hosted`.
+  - Propagated and pushed the updated workflow configurations to all 7 target branches on `origin` in the POC repository.
+  - Verified clean status and zero remaining references to `ubuntu-latest`.
+
+- **Files Modified:**
+  - All 13 workflow files in `.github/workflows/`
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Git Commit:** Pending commit on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** In progress.
+
 
 
 

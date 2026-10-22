@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   check-env:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       is_target: ${{ steps.detect.outputs.is_target }}
       env_name: ${{ steps.detect.outputs.env_name }}
@@ -58,7 +58,7 @@ jobs:
   auto-merge-resolved:
     needs: check-env
     if: needs.check-env.outputs.is_target == 'true' && github.event.action == 'synchronize'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Wait for Mergeability Check
         run: sleep 10 # Give GitHub time to compute mergeability
@@ -118,7 +118,7 @@ jobs:
           (needs.auto-merge-resolved.result == 'success' && github.event.action == 'synchronize') || 
           (github.event.action == 'closed' && github.event.pull_request.merged == true)
         )
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -171,7 +171,7 @@ jobs:
   delete-snapshot-branch:
     needs: [check-env, auto-merge-resolved, notify-and-update-wiki, notify-success]
     if: always() && needs.check-env.outputs.is_target == 'true' && needs.notify-success.result == 'success' && (needs.auto-merge-resolved.result == 'success' || github.event.pull_request.merged == true)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:

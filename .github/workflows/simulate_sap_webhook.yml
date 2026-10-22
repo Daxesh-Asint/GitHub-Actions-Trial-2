@@ -141,7 +141,7 @@ permissions:
 
 jobs:
   simulate:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Trigger SAP CI/CD Webhook
         env:
