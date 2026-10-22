@@ -25,7 +25,7 @@ jobs:
   # STEP 1 — Guard & State Inspection
   # ──────────────────────────────────────────────────────────
   guard:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       env_name: ${{ steps.check.outputs.env_name }}
@@ -130,7 +130,7 @@ jobs:
   execute-recovery:
     needs: guard
     if: needs.guard.outputs.should_run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       recovery_mode: ${{ steps.deploy.outputs.recovery_mode }}
       status_message: ${{ steps.deploy.outputs.status_message }}
