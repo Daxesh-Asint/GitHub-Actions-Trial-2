@@ -72,7 +72,7 @@ on:
 
 jobs:
   notify:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Send MS Teams Adaptive Card
         env:
