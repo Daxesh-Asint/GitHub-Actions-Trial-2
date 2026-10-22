@@ -127,6 +127,10 @@ on:
         description: "Commit ID (optional, defaults to branch HEAD)"
         required: false
         default: ""
+      stage:
+        description: "Stage Name (optional, e.g. Release, Build, Acceptance)"
+        required: false
+        default: ""
       app_name:
         description: "CF App Name (optional, e.g. crawler-layer-backend)"
         required: false
@@ -137,18 +141,21 @@ permissions:
 
 jobs:
   simulate:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Trigger SAP CI/CD Webhook
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          STAGE_TEXT=""
+          [ -n "${{ inputs.stage }}" ] && STAGE_TEXT=" in stage '${{ inputs.stage }}'"
+
           if [ "${{ inputs.event_type }}" = "sap_cicd_started" ]; then
-            SUBJ="Build has started"
+            SUBJ="Build has started$STAGE_TEXT"
           elif [ "${{ inputs.status }}" = "SUCCESS" ] || [ "${{ inputs.status }}" = "INFO" ]; then
-            SUBJ="Build has finished with 'SUCCESS'"
+            SUBJ="Build has finished with 'SUCCESS'$STAGE_TEXT"
           else
-            SUBJ="Build has finished with 'FAILURE'"
+            SUBJ="Build has finished with 'FAILURE'$STAGE_TEXT"
           fi
 
           gh api repos/${{ github.repository }}/dispatches \
@@ -157,6 +164,7 @@ jobs:
             -F client_payload[status]="${{ inputs.status }}" \
             -F client_payload[resource_name]="${{ inputs.resource_name }}" \
             -F client_payload[commit_id]="${{ inputs.commit_id }}" \
+            -F client_payload[stage]="${{ inputs.stage }}" \
             -F client_payload[app_name]="${{ inputs.app_name }}" \
             -F client_payload[subject]="$SUBJ"
           echo "✅ Webhook successfully sent!"
