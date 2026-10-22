@@ -2,6 +2,10 @@ name: "Auto-Merge: Conflict Resolution Handler"
 
 on:
   pull_request:
+    branches:
+      - "tenant/**"
+      - "apm-eiot-temp-copy"
+      - "st-env-for-contentfederation"
     types: [synchronize, closed]
   workflow_dispatch:
     inputs:
@@ -20,7 +24,7 @@ permissions:
 
 jobs:
   handle-conflict-resolution:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

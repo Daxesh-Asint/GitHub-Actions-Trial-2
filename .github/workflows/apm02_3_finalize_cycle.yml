@@ -12,7 +12,7 @@ permissions:
 jobs:
   # ── Guard: dump payload and filter by job name ──
   guard:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       job_name: ${{ steps.extract.outputs.job_name }}
       is_target_job: ${{ steps.extract.outputs.is_target_job }}
@@ -69,7 +69,7 @@ jobs:
   finalize:
     needs: guard
     if: needs.guard.outputs.is_target_job == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       failure_reason: ${{ steps.eval.outputs.failure_reason }}
       merge_failure_reason: ${{ steps.merge.outputs.failure_reason }}
@@ -82,13 +82,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           LABEL_PREFIX: ${{ needs.guard.outputs.label_prefix }}
         run: |
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,labels --jq ".[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked)$\")) | .number" | head -n 1)
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,labels --jq ".[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked|Failed)$\")) | .number" | head -n 1)
           
           if [ -z "$DEPLOYING_PR" ]; then
-            echo "❌ ERROR: No active deployment found (No PR with '${LABEL_PREFIX} Deploying' or '${LABEL_PREFIX} Blocked' label). State is IDLE."
+            echo "❌ ERROR: No active deployment found (No PR with '${LABEL_PREFIX} Deploying', '${LABEL_PREFIX} Blocked', or '${LABEL_PREFIX} Failed' label). State is IDLE."
             exit 1
           fi
-          echo "✅ State is DEPLOYING. Proceeding."
+          echo "✅ State is ACTIVE (Deploying/Blocked/Failed). Proceeding."
 
       - name: Evaluate SAP CI/CD Payload and Get Snapshot
         id: eval
@@ -100,7 +100,7 @@ jobs:
           STATUS="${{ github.event.client_payload.status }}"
           
           # Extract the snapshot branch name securely from our Tracking PR!
-          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels --jq "[.[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked)$\"))][0]")
+          DEPLOYING_PR=$(gh pr list --repo ${{ github.repository }} --state open --limit 500 --json number,headRefName,labels --jq "[.[] | select(.labels[].name | test(\"^${LABEL_PREFIX} (Deploying|Blocked|Failed)$\"))][0]")
           SNAPSHOT=$(echo "$DEPLOYING_PR" | jq -r '.headRefName')
           PR_NUMBER=$(echo "$DEPLOYING_PR" | jq -r '.number')
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
@@ -164,7 +164,7 @@ jobs:
           if echo "$DIFF" | grep -qE "^(mta\.yaml|xs-security\.json)$"; then
             echo "❌ ERROR: Protected file changed (mta.yaml or xs-security.json). Cannot proceed."
             echo "failure_reason=protected_file" >> $GITHUB_OUTPUT
-            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Protected Files): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --add-label "${LABEL_PREFIX} Blocked"
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Protected Files): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Blocked"
             gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Protected file changed (mta.yaml or xs-security.json). Cannot proceed further. Manual confirmation required."
             exit 1
           fi
@@ -173,7 +173,7 @@ jobs:
             echo "ℹ️ No new commits to sync back to ${BASE_BRANCH}. Closing PR."
             gh pr close "$PR_NUMBER" --repo ${{ github.repository }}
             gh label create "${LABEL_PREFIX} Deployed" --color "#0E8A16" --description "${ENV_NAME} deployment completed successfully" --repo ${{ github.repository }} 2>/dev/null || true
-            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --add-label "${LABEL_PREFIX} Deployed"
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Deployed"
           else
             for i in {1..10}; do
               STATUS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json mergeable --jq '.mergeable')
@@ -182,14 +182,14 @@ jobs:
                 if gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --merge; then
                   echo "✅ PR #$PR_NUMBER merged into ${BASE_BRANCH} successfully"
                   gh label create "${LABEL_PREFIX} Deployed" --color "#0E8A16" --description "${ENV_NAME} deployment completed successfully" --repo ${{ github.repository }} 2>/dev/null || true
-                  gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --add-label "${LABEL_PREFIX} Deployed"
+                  gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "✅ ${ENV_NAME} Deployed: Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Blocked" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Deployed"
                 else
                   gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "Auto-merge into ${BASE_BRANCH} failed."
                   exit 1
                 fi
                 break
               elif [[ "$STATUS" == "CONFLICTING" ]]; then
-                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Conflicts): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --add-label "${LABEL_PREFIX} Blocked"
+                gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --title "🟠 ${ENV_NAME} Blocked (Conflicts): Merging from $SNAPSHOT to ${BASE_BRANCH}" --remove-label "${LABEL_PREFIX} Deploying" --remove-label "${LABEL_PREFIX} Failed" --add-label "${LABEL_PREFIX} Blocked"
                 gh pr comment "$PR_NUMBER" --repo ${{ github.repository }} --body "⚠️ Merge conflict detected. Manual resolution required. State is BLOCKED."
                 echo "failure_reason=conflict" >> $GITHUB_OUTPUT
                 exit 1
@@ -204,7 +204,7 @@ jobs:
   update-wiki-finalize:
     needs: [guard, finalize]
     if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.outputs.pr_number != ''
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -232,8 +232,43 @@ jobs:
         env:
           WIKI_PAYLOAD: '{"action": "${{ needs.finalize.result == ''success'' && ''finalize-success'' || ''finalize-fail'' }}", "environment": "${{ needs.guard.outputs.env_name }}", "snapshot": "${{ needs.finalize.outputs.snapshot }}", "pr_number": "${{ needs.finalize.outputs.pr_number }}"}'
 
+  refresh-bwz-channel:
+    name: "Refresh BWZ Content Channel"
+    needs: [guard, finalize]
+    if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Execute BWZ Channel Refresh
+        env:
+          TARGET_ENV: ${{ needs.guard.outputs.env_name }}
+          BWZ_USERNAME: ${{ secrets.BWZ_USERNAME }}
+          BWZ_PASSWORD: ${{ secrets.BWZ_PASSWORD }}
+        run: |
+          node .github/scripts/refresh_bwz_channel.js
+
+      - name: Upload Screenshot Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bwz-refresh-screenshots-${{ needs.guard.outputs.env_id }}
+          path: bwz_artifacts/
+          if-no-files-found: ignore
+
   notify-success:
-    needs: [guard, finalize, update-wiki-finalize]
+    needs: [guard, finalize, update-wiki-finalize, refresh-bwz-channel]
     if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success'
     uses: ./.github/workflows/_apm02_notify.yml
     with:
@@ -256,7 +291,7 @@ jobs:
   delete-snapshot-branch:
     needs: [guard, finalize, update-wiki-finalize, notify-success]
     if: always() && needs.guard.outputs.is_target_job == 'true' && needs.finalize.result == 'success' && needs.notify-success.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:
