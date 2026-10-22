@@ -40,7 +40,7 @@ jobs:
   # STEP 1 — Detect Target Environment & Guard
   # ─────────────────────────────────────────────
   guard:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
     outputs:
@@ -133,7 +133,7 @@ jobs:
   # ─────────────────────────────────────────────
   create-snapshot:
     needs: guard
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       snapshot_branch: ${{ steps.create.outputs.snapshot_branch }}
       date_ist: ${{ steps.create.outputs.date_ist }}
@@ -279,7 +279,7 @@ jobs:
   # ─────────────────────────────────────────────
   wait-main:
     needs: [guard, create-snapshot, notify-developers]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       current_deploy_time: ${{ steps.wait.outputs.current_deploy_time }}
       is_immediate: ${{ steps.wait.outputs.is_immediate }}
@@ -347,7 +347,7 @@ jobs:
   wait-final:
     needs: [guard, wait-main]
     if: needs.wait-main.outputs.is_immediate != 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Final wait countdown
         env:
@@ -381,7 +381,7 @@ jobs:
   merge-to-tenant:
     needs: [guard, create-snapshot, wait-main, wait-final]
     if: always() && needs.create-snapshot.result == 'success' && (needs.wait-main.outputs.is_immediate == 'true' || needs.wait-final.result == 'success')
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       merge_success: ${{ steps.merge.outputs.merge_success }}
       has_conflicts: ${{ steps.merge.outputs.has_conflicts }}
@@ -567,7 +567,7 @@ jobs:
   update-wiki-tenant:
     needs: [guard, create-snapshot, merge-to-tenant]
     if: always() && needs.merge-to-tenant.result != 'skipped' && needs.merge-to-tenant.outputs.tenant_pr_number != 'NO_COMMITS'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:
