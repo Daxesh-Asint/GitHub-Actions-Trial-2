@@ -393,10 +393,23 @@
   - `tenant/asint-apm-02-dc-addin`: [`a09b6dd`](https://github.com/Daxesh-Asint/GitHub-Actions-Trial-2/commit/a09b6dd682)
 - **Status:** Completed, verified, and pushed to all 7 branches on `origin`.
 
+---
 
+### Prompt #18: AWS EC2 Self-Hosted Runner Provisioning & Activation
+- **Date / Timestamp:** 2026-10-23T17:15:00+05:30
+- **User Request:**
+  - Transition self-hosted runner infrastructure from GCP to AWS per management alignment with Ashweyth Sunil (GCP credits depleted, AWS available).
+  - Launch AWS EC2 instance (`t3.small`, Ubuntu 24.04 LTS x86/64, 30 GB gp3 disk, named `asint-github-actions-runner`).
+  - Configure runner for POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 
+- **Activities:**
+  - Guided user through AWS EC2 Console setup, correcting AMI selection (avoiding paid SQL Server image) and storage configuration.
+  - Resolved EC2 Instance Connect browser terminal connection.
+  - Executed all-in-one setup script on AWS instance pre-installing `gh` (GitHub CLI), Git, dependencies, and runner service (`aws-runner-01`).
+  - Verified `aws-runner-01` registered, online, and actively processing jobs on GitHub Actions.
 
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
-
-
-
+- **Git Commit:** `380f50c` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
+- **Status:** Completed, verified, and pushed to `origin/dev`.
