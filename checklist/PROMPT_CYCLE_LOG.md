@@ -1198,6 +1198,24 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #61: Technical Migration-Only Ticket Scope (GitHub-Hosted to Self-Hosted)
+- **Date / Timestamp:** 2026-10-26T21:22:00+05:30
+- **User Request:**
+  - Refine ticket description and tasks to focus exclusively on the technical transition from GitHub-hosted to self-hosted runners.
+  - Remove all commercial / cost reduction figures (omitting point 4) to maintain pure technical CI/CD engineering scope.
+
+- **Activities:**
+  - Formulated concise technical description lines focusing on quota decoupling, AWS EC2 provisioning, 8-worker daemon orchestration, and workflow redirection (PR #19442).
+  - Streamlined tasks into 5 core engineering deliverables.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
