@@ -733,6 +733,29 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #34: AWS EC2 Infrastructure Specifications Breakdown for Senior Reviewer
+- **Date / Timestamp:** 2026-10-26T14:44:00+05:30
+- **User Request:**
+  - Provide an executive and technical infrastructure summary of the live AWS EC2 runner instance (`asint-github-actions-runner`, `i-0bf51cdca82e0113d`) to share with Alisha Verma.
+  - Detail compute specifications, OS, networking, security controls (IMDSv2, outbound-only traffic), and cost predictability.
+
+- **Activities:**
+  - Extracted and compiled all core attributes from AWS EC2 console summary:
+    1. Host & ID: `asint-github-actions-runner` (`i-0bf51cdca82e0113d`)
+    2. Sizing: `t3.medium` (2 vCPUs, 4 GiB RAM + 8 GiB Swap pool, 30 GiB gp3 disk)
+    3. OS Platform: Ubuntu Server 24.04 LTS (Canonical AMI `ami-02a9cdd4e98bc3c78`)
+    4. Network Placement: `Test_VPC` (`vpc-0ea4439dbddab7278`), Region `us-east-1`
+    5. Security & Isolation: IMDSv2 enforced, outbound HTTPS WebSocket polling to GitHub API with zero open inbound ports required.
+    6. Economics: Flat, predictable hosting cost (~$30/mo) eliminating variable GitHub per-minute charges.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
