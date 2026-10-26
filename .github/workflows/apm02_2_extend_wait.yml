@@ -15,7 +15,7 @@ jobs:
   # Guard: only allow extension if a snapshot is active
   # ─────────────────────────────────────────────
   guard:
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     permissions:
       contents: read
       pull-requests: write

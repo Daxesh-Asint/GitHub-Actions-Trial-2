@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   handle-conflict-resolution:
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
