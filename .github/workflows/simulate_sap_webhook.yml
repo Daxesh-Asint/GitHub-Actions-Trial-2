@@ -141,7 +141,7 @@ permissions:
 
 jobs:
   simulate:
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     steps:
       - name: Trigger SAP CI/CD Webhook
         env:

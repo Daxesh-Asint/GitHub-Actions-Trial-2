@@ -434,3 +434,37 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #20: Zero-PR Configurable Dynamic Runner Switching via Repository Variables (`vars.RUNNER_TYPE`)
+- **Date / Timestamp:** 2026-10-26T11:12:00+05:30
+- **User Request:**
+  - Make runner assignment dynamic and configurable so that when GitHub billing quota resets, runners can be switched to GitHub-hosted (`ubuntu-latest`) and back to self-hosted (`self-hosted`) without opening Pull Requests or waiting for PR approvals.
+  - Confirmed: Default fallback to `self-hosted`, variable name `RUNNER_TYPE`, apply to POC repo first.
+
+- **Activities:**
+  - Designed zero-PR architecture using GitHub Actions native variable evaluation: `runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}`.
+  - Tested and verified execution on `test_bwz_refresh.yml` (Run #40275504627 passed in 55s on `aws-runner-04`).
+  - Created repository variable `RUNNER_TYPE=self-hosted` in `Daxesh-Asint/GitHub-Actions-Trial-2`.
+  - Upgraded all 29 jobs across all 13 workflow files in `.github/workflows/` to use dynamic `${{ vars.RUNNER_TYPE || 'self-hosted' }}`.
+
+- **Files Modified:**
+  - `.github/workflows/_auto_merge.yml`
+  - `.github/workflows/_cf_app_control.yml`
+  - `.github/workflows/_apm02_notify.yml`
+  - `.github/workflows/test_bwz_refresh.yml`
+  - `.github/workflows/simulate_sap_webhook.yml`
+  - `.github/workflows/sap_cicd_notifier.yml`
+  - `.github/workflows/auto_merge_conflict_resolver.yml`
+  - `.github/workflows/auto_merge_approval_handler.yml`
+  - `.github/workflows/apm02_6_recovery.yml`
+  - `.github/workflows/apm02_5_apm02_conflict_monitor.yml`
+  - `.github/workflows/apm02_4_conflict_monitor.yml`
+  - `.github/workflows/apm02_3_finalize_cycle.yml`
+  - `.github/workflows/apm02_2_extend_wait.yml`
+  - `.github/workflows/apm02_1_create_and_wait.yml`
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed, verified, and pushed to `origin/dev`.
+
+
