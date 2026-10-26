@@ -773,6 +773,26 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #36: Clarification on Runner Connection Protocols (HTTPS vs SSH) & Script Provisioning
+- **Date / Timestamp:** 2026-10-26T15:15:00+05:30
+- **User Request:**
+  - Inquire about an "SSH file to connect AWS instance to GitHub".
+
+- **Activities:**
+  - Clarified connection protocol architecture:
+    1. GitHub Actions runners do **not** connect to GitHub over SSH. They communicate over **HTTPS (Port 443) via WebSocket/Long-Polling** using a registration token.
+    2. SSH is solely used if a user wants to connect from their local computer to the AWS EC2 instance.
+  - Created standalone automation script `scripts/setup_company_runners.sh` containing the clean-slate deployment script for 8 runners.
+  - Provided local SSH helper script `scripts/connect_ec2.bat` for optional direct terminal access.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
