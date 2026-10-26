@@ -565,6 +565,29 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #25: Merge Conflict Resolution on Company PR #19442 (`ci/deployment-workflows-dev`)
+- **Date / Timestamp:** 2026-10-26T12:30:00+05:30
+- **User Request:**
+  - Identify conflict in PR #19442 (`ci/deployment-workflows-dev` -> `dev`) in `StillSomehowSane/asint_ais`.
+  - Present root cause and exact resolution snippet for approval before executing.
+  - Upon receiving explicit user green light, execute the resolution and push to upstream.
+
+- **Activities:**
+  - Identified conflict root cause: duplicated commit history for PR restriction fix (`3c8347a092` on `dev` vs `b1253a8d5f` on staging branch) colliding on adjacent lines with runner target change in `.github/workflows/auto_merge_approval_handler.yml`.
+  - Merged `upstream/dev` into local `ci/deployment-workflows-dev`.
+  - Resolved conflict in `.github/workflows/auto_merge_approval_handler.yml` by keeping dynamic runner configuration `runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}` alongside the `if:` filter.
+  - Committed merge resolution (`36310b6072`) and pushed to `upstream ci/deployment-workflows-dev`.
+  - Confirmed PR #19442 conflicts resolved on GitHub.
+
+- **Files Modified:**
+  - `.github/workflows/auto_merge_approval_handler.yml` on `upstream/ci/deployment-workflows-dev`
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed, verified, and pushed to `upstream`.
+
+
 
 
 
