@@ -467,4 +467,29 @@
 
 - **Status:** Completed, verified, and pushed to `origin/dev`.
 
+---
+
+### Prompt #21: Multi-Branch Propagation of Zero-PR Configurable Dynamic Runner Switching
+- **Date / Timestamp:** 2026-10-26T11:38:00+05:30
+- **User Request:**
+  - Propagate the zero-PR configurable runner switching (`runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}`) across all remaining 6 branches in the POC repository (`main`, `main-dc`, `main-dc-addin`, `tenant/asint-apm-02-v2`, `tenant/asint-apm-02-dc`, `tenant/asint-apm-02-dc-addin`).
+
+- **Activities:**
+  - Synchronized and updated all 13 workflow files across each target branch on `origin`.
+  - Pushed commits cleanly across all 6 target branches:
+    - `main`: `3c1f79f0b1`
+    - `main-dc`: `cb254433fc`
+    - `main-dc-addin`: `9b0d835497`
+    - `tenant/asint-apm-02-v2`: `0900cfa5f3`
+    - `tenant/asint-apm-02-dc`: `d732e08a7d`
+    - `tenant/asint-apm-02-dc-addin`: `669da96534`
+  - Re-verified working tree cleanliness on `dev`.
+
+- **Files Modified:**
+  - All 13 workflow files in `.github/workflows/` across all 7 POC branches
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed, verified, and pushed to all 7 branches on `origin`.
+
+
 
