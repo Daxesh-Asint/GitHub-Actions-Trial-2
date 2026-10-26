@@ -530,6 +530,24 @@
 
 - **Status:** Completed, verified, and pushed to `upstream`.
 
+---
+
+### Prompt #23: Scope Clarification on Tenant Branches & Base Branch Pull Request Specifications
+- **Date / Timestamp:** 2026-10-26T12:02:00+05:30
+- **User Request:**
+  - Confirm that APM-02 deployments originate from `main`, `main-dc`, and `main-dc-addin`, eliminating the need for standalone workflow modifications on `tenant/asint-apm-02-*` branches.
+  - Formulate structured, professional Pull Request titles and descriptions for merging the 4 staging branches (`ci/deployment-workflows-*`) into the 4 base branches (`dev`, `main`, `main-dc`, `main-dc-addin`).
+
+- **Activities:**
+  - Confirmed architectural isolation: tenant branches inherit runner configurations directly from base branches during merge cycles.
+  - Prepared professional, reviewer-ready PR templates documenting the zero-cost self-hosted runner transition, dynamic variable switching mechanism (`RUNNER_TYPE`), zero business-logic impact, and operational rollback instructions.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Documented and verified.
+
+
 
 
 
