@@ -792,6 +792,25 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #37: Technical Walkthrough & Section-by-Section Explanation of setup_company_runners.sh
+- **Date / Timestamp:** 2026-10-26T15:18:00+05:30
+- **User Request:**
+  - Provide a section-by-section explanation of `scripts/setup_company_runners.sh` to present and explain to colleagues.
+
+- **Activities:**
+  - Prepared structured educational walkthrough covering:
+    1. Architectural intent (Zero-downtime, automated 8-worker registration).
+    2. Deep-dive into each section: Configuration, legacy service cleanup, 8 GB swap safeguard, dependency verification/caching, unattended multi-worker deployment loop, and systemd persistence.
+    3. Operational reliability safeguards (reboot auto-recovery, OOM protection, clean directory isolation).
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
