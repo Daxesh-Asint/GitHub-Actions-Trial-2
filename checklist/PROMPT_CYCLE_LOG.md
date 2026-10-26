@@ -606,6 +606,28 @@
 
 - **Status:** Documented and verified.
 
+---
+
+### Prompt #27: Clean-Slate EC2 Company Runner Migration Script & Instance Connect Procedure
+- **Date / Timestamp:** 2026-10-26T12:42:00+05:30
+- **User Request:**
+  - Create a clean-slate automated deployment script to transition the AWS EC2 instance entirely from the POC repository to the company repository (`StillSomehowSane/asint_ais`).
+  - Provide a single script to be executed in EC2 Instance Connect (browser terminal) that uninstalls legacy POC runner services, configures 8 GB swap, pre-installs dependencies, and registers 8 dedicated company runner workers (`asint-runner-01` through `asint-runner-08`).
+
+- **Activities:**
+  - Designed idempotent clean-slate bash script automating:
+    1. Graceful stop and removal of old POC runner services (`aws-runner-*`, `actions-runner`).
+    2. Swap configuration expansion to 8 GB.
+    3. Essential tool validation (`gh`, `git`, `jq`, `curl`, `libicu`, etc.).
+    4. Parallel runner loop registering 8 independent worker daemons for `StillSomehowSane/asint_ais`.
+    5. Automatic systemd daemon-reload and service activation.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
