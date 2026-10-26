@@ -896,6 +896,22 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #43: OS (Linux) & Architecture (x64) Specification in Token Request
+- **Date / Timestamp:** 2026-10-26T16:18:00+05:30
+- **User Request:**
+  - Update the admin request to explicitly ask Ashweyth to select **Runner image: Linux** and **Architecture: x64** when generating the new runner registration token.
+
+- **Activities:**
+  - Integrated the OS and architecture parameters into the communication templates for Ashweyth.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
