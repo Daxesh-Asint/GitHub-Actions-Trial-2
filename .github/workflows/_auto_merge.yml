@@ -47,7 +47,7 @@ on:
 
 jobs:
   process:
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     concurrency:
       group: auto-merge-${{ inputs.base }}
       cancel-in-progress: false
