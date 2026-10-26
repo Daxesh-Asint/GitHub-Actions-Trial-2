@@ -828,6 +828,27 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #39: Runner Registration 404 Troubleshooting & URL/Scope Reconciliation
+- **Date / Timestamp:** 2026-10-26T16:06:00+05:30
+- **User Request:**
+  - Diagnose error received during runner registration:
+    `Http response code: NotFound from 'POST https://api.github.com/actions/runner-registration'` `Response status code does not indicate success: 404 (Not Found)`.
+
+- **Activities:**
+  - Diagnosed GitHub API 404 rejection root causes:
+    1. Scope / URL Mismatch: Token generated at Organization level vs Repository level.
+    2. Token Expiration: Registration token expired (1-hour window) or has character discrepancy.
+    3. Disabled Actions / Self-Hosted Runner Permissions in target repository settings.
+  - Formulated direct diagnostic steps and instructed user to verify the exact `./config.sh --url ... --token ...` command displayed on the admin's GitHub runner creation page.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
