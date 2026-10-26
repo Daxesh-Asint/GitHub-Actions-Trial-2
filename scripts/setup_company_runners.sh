@@ -5,7 +5,7 @@ set -e
 # 🔑 1. CONFIGURATION (REPLACE WITH TOKEN PROVIDED BY REPO ADMIN)
 # ==============================================================================
 COMPANY_REPO_URL="https://github.com/StillSomehowSane/asint_ais"
-COMPANY_TOKEN="AXNICAWET234XXTVNAIMDJDK34LJA"
+COMPANY_TOKEN="AXNICATPQ2ZAA3KCQIO2B73K347ZY"
 RUNNER_VERSION="2.338.1"
 TOTAL_WORKERS=8
 

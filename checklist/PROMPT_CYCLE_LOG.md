@@ -911,6 +911,25 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #44: Live Fresh Company Registration Token Deployment & Execution
+- **Date / Timestamp:** 2026-10-26T16:27:00+05:30
+- **User Request:**
+  - Receive active, freshly generated Linux x64 company registration token (`AXNICATPQ2ZAA3KCQIO2B73K347ZY`) for `StillSomehowSane/asint_ais`.
+  - Provide ready-to-run automation block to execute immediately in EC2 Instance Connect browser terminal.
+
+- **Activities:**
+  - Injected token into `scripts/setup_company_runners.sh`.
+  - Formulated full-execution script block for EC2 Instance Connect.
+
+- **Files Modified:**
+  - [`scripts/setup_company_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/setup_company_runners.sh)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
