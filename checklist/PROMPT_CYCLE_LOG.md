@@ -1022,6 +1022,26 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #50: Economic Cost Breakdown (AWS EC2 vs GitHub-Hosted) & 30m Wait Analysis for Sharan
+- **Date / Timestamp:** 2026-10-26T17:11:00+05:30
+- **User Request:**
+  - Produce cost estimation and comparative financial breakdown between AWS EC2 (`t3.small` / `t3.medium`) and GitHub-hosted runners to answer Sharan's question: *"what will be the estimate of that instance bcz if that costs the same know bro / That action was waiting for 30+ mins those are waste of compute time only"*.
+
+- **Activities:**
+  - Calculated exact unit economics:
+    1. GitHub-hosted runners charge $0.008/min. A 50m wait costs $0.40 per deployment run ($100-$300+/month across all tenant deployments) and halts all pipelines upon quota exhaustion.
+    2. AWS EC2 operates on a fixed flat rate: `t3.small` is ~$15/mo, `t3.medium` is ~$30/mo (plus ~$2.40 for 30GB gp3 SSD). 
+    3. During 30-50m polling wait windows, the sleep process consumes ~0.1% CPU and negligible memory, costing $0 extra on AWS.
+  - Formulated two response options matching the team's collegial tone ("Sharan Anna / bhai").
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
