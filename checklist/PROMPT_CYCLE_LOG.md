@@ -587,6 +587,26 @@
 
 - **Status:** Completed, verified, and pushed to `upstream`.
 
+---
+
+### Prompt #26: Company Repository 8-Runner Setup Architecture & EC2 Connection Guidance
+- **Date / Timestamp:** 2026-10-26T12:38:00+05:30
+- **User Request:**
+  - Provide guidance on acquiring registration credentials for the company repository (`StillSomehowSane/asint_ais`).
+  - Configure 8 parallel self-hosted runners on AWS EC2 to process company jobs simultaneously.
+  - Provide connection specifications (EC2 Instance Connect vs SSH key file) and complete automated multi-runner deployment script.
+
+- **Activities:**
+  - Clarified company repository runner registration prerequisites and URL (`https://github.com/StillSomehowSane/asint_ais/settings/actions/runners/new`).
+  - Designed automated multi-runner provisioning script for 8 concurrent services (`asint-runner-01` through `asint-runner-08`) with 8 GB swap allocation.
+  - Provided connection options: browser-based EC2 Instance Connect (no key file required) and local SSH configuration script.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Documented and verified.
+
+
 
 
 
