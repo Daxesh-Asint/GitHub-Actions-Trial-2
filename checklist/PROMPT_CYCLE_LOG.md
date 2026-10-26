@@ -491,5 +491,45 @@
 
 - **Status:** Completed, verified, and pushed to all 7 branches on `origin`.
 
+---
+
+### Prompt #22: Company Repository Dynamic Runner Update on Staging Deployment Branches
+- **Date / Timestamp:** 2026-10-26T11:51:00+05:30
+- **User Request:**
+  - Apply the zero-PR configurable runner switching (`runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}`) strictly to the automation workflows that belong to the user in the company repository (`StillSomehowSane/asint_ais`).
+  - Do NOT touch unrelated workflows (e.g. `assign_reviewers_to_pr.yml`, `build.yml`, `cds_schema_diff.yml`, `checktests.yml`, `hana-tests.yml`, `ui-test-check.yml`, etc.).
+  - Push changes across the 4 staging branches:
+    1. `ci/deployment-workflows-dev`
+    2. `ci/deployment-workflows-main`
+    3. `ci/deployment-workflows-main-dc`
+    4. `ci/deployment-workflows-main-dc-addin`
+  - Identify any remaining branches that may need these changes.
+
+- **Activities:**
+  - Audited workflows across `upstream`: isolated exactly the 12 automation workflow files owned by this pipeline, keeping all 6 third-party / team CI files and 45 `deploy_*.yml` caller workflows completely untouched.
+  - Replaced `runs-on: ubuntu-latest` with `runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}` with zero other code modifications.
+  - Successfully committed and pushed to `upstream` (`StillSomehowSane/asint_ais`):
+    - `ci/deployment-workflows-dev`: `ae59c204c1`
+    - `ci/deployment-workflows-main`: `228f23d75b`
+    - `ci/deployment-workflows-main-dc`: `2615ddb939`
+    - `ci/deployment-workflows-main-dc-addin`: `271e0cce1d`
+
+- **Files Modified (12 files on each of the 4 staging branches):**
+  - `.github/workflows/_auto_merge.yml`
+  - `.github/workflows/_cf_app_control.yml`
+  - `.github/workflows/_apm02_notify.yml`
+  - `.github/workflows/apm02_1_create_and_wait.yml`
+  - `.github/workflows/apm02_2_extend_wait.yml`
+  - `.github/workflows/apm02_3_finalize_cycle.yml`
+  - `.github/workflows/apm02_4_conflict_monitor.yml`
+  - `.github/workflows/apm02_5_apm02_conflict_monitor.yml`
+  - `.github/workflows/apm02_6_recovery.yml`
+  - `.github/workflows/auto_merge_conflict_resolver.yml`
+  - `.github/workflows/auto_merge_approval_handler.yml`
+  - `.github/workflows/sap_cicd_notifier.yml`
+
+- **Status:** Completed, verified, and pushed to `upstream`.
+
+
 
 
