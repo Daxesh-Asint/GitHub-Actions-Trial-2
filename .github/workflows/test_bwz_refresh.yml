@@ -17,7 +17,7 @@ permissions:
 jobs:
   refresh-channel:
     name: "Refresh BWZ Channel (${{ inputs.target_env }})"
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
