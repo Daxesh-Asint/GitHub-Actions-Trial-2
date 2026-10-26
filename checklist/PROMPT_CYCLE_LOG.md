@@ -962,6 +962,29 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #47: Analysis of Default Wait Time Reduction (200m -> 30m) for APM-02 Families
+- **Date / Timestamp:** 2026-10-26T16:52:00+05:30
+- **User Request:**
+  - Locate and identify what needs to be changed to reduce the default cherry-pick countdown wait window from 200 minutes to 30 minutes when developers execute `Jarvis share snapshot` for APM-02 Core, DC, and DC-AddIn.
+
+- **Activities:**
+  - Audited codebase across ChatOps engine and GitHub Actions workflows:
+    1. Jarvis Bot ChatOps Engine:
+       - `gcp/index.js` (Line 223): Parses command and falls back to `'200'` if no custom minute argument is provided. Needs update to `'30'`.
+       - `gcp/teams.js` (Line 92), `gcp/messages.js` (Line 140), `gcp/manifest.json` (Line 38): Update documentation and Adaptive Card hints from 200m to 30m.
+       - `gcp 2 - APM02/index.js` (Line 69) and corresponding teams/messages files: Update if standalone deployment bot service is deployed.
+    2. GitHub Actions Orchestrator:
+       - `.github/workflows/apm02_1_create_and_wait.yml` (Line 164): Default fallback variable `WAIT_TIME` update from `'180'` to `'30'`.
+  - Compiled detailed change report and deployment guidance for Google Cloud Platform (Cloud Run / Cloud Functions) for the user.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
