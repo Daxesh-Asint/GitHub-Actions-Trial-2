@@ -676,6 +676,25 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #31: Private Repository Self-Hosted Runner Billing Verification & Documentation Breakdown
+- **Date / Timestamp:** 2026-10-26T14:01:00+05:30
+- **User Request:**
+  - Provide specific official documentation proving that self-hosted runners on **private repositories** have unlimited runtime and consume $0 in GitHub Actions minutes to satisfy the repository owner's inquiry.
+
+- **Activities:**
+  - Analyzed the official GitHub billing architecture and documentation structure:
+    1. Highlighted the distinction in GitHub Docs where the monthly minute quota on private repositories applies strictly **"for use with GitHub-hosted runners"**, whereas self-hosted runners are classified as universally **free**.
+    2. Cited the official table "Included minutes for GitHub-hosted runners" confirming self-hosted runners bypass the minute metering engine entirely.
+    3. Provided verification instructions for inspecting the live GitHub organization billing dashboard.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
