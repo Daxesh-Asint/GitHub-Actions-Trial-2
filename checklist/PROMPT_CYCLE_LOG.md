@@ -848,6 +848,23 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #40: Account-Level vs Repository-Level Runner Registration Verification
+- **Date / Timestamp:** 2026-10-26T16:10:00+05:30
+- **User Request:**
+  - Execute diagnostic registration commands testing both account/org scope (`https://github.com/StillSomehowSane`) and repository scope (`https://github.com/StillSomehowSane/asint_ais`) with token `AXNICAWET234XXTVNAIMDJDK34LJA`.
+
+- **Activities:**
+  - Verified repository attributes via GitHub API: `StillSomehowSane` is a personal account, `asint_ais` is private.
+  - Formulated direct diagnostic commands for both scopes to isolate whether the token was issued at the account level or repository level.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
