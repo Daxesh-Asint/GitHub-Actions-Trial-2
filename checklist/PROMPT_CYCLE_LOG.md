@@ -810,6 +810,25 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #38: Company Repository Registration Token Injection & Execution Package
+- **Date / Timestamp:** 2026-10-26T16:00:00+05:30
+- **User Request:**
+  - Receive company repository registration token (`AXNICAWET234XXTVNAIMDJDK34LJA`) for `StillSomehowSane/asint_ais`.
+  - Provide ready-to-execute script for AWS EC2 instance to register and activate 8 parallel self-hosted company runner daemons.
+
+- **Activities:**
+  - Injected token into `scripts/setup_company_runners.sh`.
+  - Prepared execution instructions for EC2 Instance Connect browser terminal.
+
+- **Files Modified:**
+  - [`scripts/setup_company_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/setup_company_runners.sh)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
