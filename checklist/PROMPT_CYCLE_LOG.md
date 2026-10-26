@@ -547,6 +547,25 @@
 
 - **Status:** Documented and verified.
 
+---
+
+### Prompt #24: Simplified PR Formatting & Team Communication for Self-Hosted Migration
+- **Date / Timestamp:** 2026-10-26T12:08:00+05:30
+- **User Request:**
+  - Create concise, "short and sweet" PR titles and descriptions stating simply that deployment runners have been transitioned from GitHub-hosted to self-hosted to resolve GitHub Actions runtime limit exhaustion.
+  - Do NOT disclose internal dynamic runner variable toggles (`vars.RUNNER_TYPE`) or zero-PR automation in reviewer-facing documents.
+  - Provide an executive, polished MS Teams message informing the team/seniors about the runner switch due to exhausted GitHub runtime minutes.
+
+- **Activities:**
+  - Formulated clean, conventional-commit PR titles and lightweight 1-paragraph PR descriptions emphasizing quota resolution and zero-logic impact.
+  - Drafted professional MS Teams notification message ready for senior leadership review.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and verified.
+
+
 
 
 
