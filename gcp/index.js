@@ -220,7 +220,7 @@ exports.deployBot = (req, res) => {
         }
 
         const match = cleanText.match(/(?:share\s+snapshot|deploy\s+apm-?02(?:-?dc)?(?:-?addin)?).*?(\d+)\s*(?:m|min|mins|minutes)?/);
-        const waitingMinutes = match ? match[1] : '200';
+        const waitingMinutes = match ? match[1] : '30';
 
         getActiveDeploymentPR(activeEnv, (err, activePr) => {
           if (err) {
