@@ -35,7 +35,7 @@
           "commands": [
             {
               "title": "share snapshot",
-              "description": "Default 60m wait, or specify custom wait time e.g. share snapshot 85m"
+              "description": "Default 200m wait, or specify custom wait time e.g. share snapshot 85m"
             },
             {
               "title": "deploy now",
