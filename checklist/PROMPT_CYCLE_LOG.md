@@ -658,6 +658,25 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #30: Official GitHub Documentation on Self-Hosted Runner Billing & Zero Runtime Cost
+- **Date / Timestamp:** 2026-10-26T13:57:00+05:30
+- **User Request:**
+  - Retrieve official, authoritative GitHub documentation proving that self-hosted runners consume $0 in GitHub Actions runtime minutes/credits to satisfy managerial review.
+
+- **Activities:**
+  - Fetched and verified official documentation from GitHub Docs (`docs.github.com`):
+    1. *About billing for GitHub Actions*: Explicitly states that GitHub Actions usage is **free** for self-hosted runners.
+    2. *About self-hosted runners*: Confirms self-hosted runners are **free to use with GitHub Actions**, with costs limited solely to the underlying host infrastructure (AWS EC2).
+  - Compiled executive evidence packet with direct official URLs, word-for-word citations, and side-by-side billing comparisons.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
