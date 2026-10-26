@@ -413,3 +413,24 @@
 
 - **Git Commit:** `380f50c` on branch `dev` in POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`).
 - **Status:** Completed, verified, and pushed to `origin/dev`.
+
+---
+
+### Prompt #19: AWS EC2 Instance Upgrade to t3.medium & Multi-Worker Parallel Concurrency
+- **Date / Timestamp:** 2026-10-24T20:15:00+05:30
+- **User Request:**
+  - Upgrade AWS EC2 runner instance from `t3.small` to `t3.medium` to eliminate job queueing.
+  - Scale up self-hosted runner capacity to 5+ concurrent parallel workers.
+  - Assess scaling boundaries (6, 7, 8 parallel workers) on `t3.medium`.
+
+- **Activities:**
+  - Configured 4 GB swapfile on the 30 GB gp3 root disk to guarantee headroom against memory exhaustion.
+  - Registered and deployed systemd service workers `aws-runner-02`, `aws-runner-03`, `aws-runner-04`, and `aws-runner-05` alongside `aws-runner-01`.
+  - Verified live runner status via `gh api`: 5 active runners online, with concurrent jobs picked up immediately (0 queued jobs).
+  - Benchmarked instance capacity: 5–6 workers identified as optimal sweet spot for `t3.medium` (2 vCPUs / 4 GB RAM); documented path to `t3.large` for 8+ workers.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and verified.
+
