@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   handle-approval:
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     if: |
       (github.event.pull_request.base.ref != 'dev' && (startsWith(github.event.pull_request.base.ref, 'tenant/') || github.event.pull_request.base.ref == 'apm-eiot-temp-copy' || github.event.pull_request.base.ref == 'st-env-for-contentfederation')) &&
       ((github.event_name == 'pull_request_review' && github.event.review.state == 'approved') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true))
