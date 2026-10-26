@@ -150,7 +150,7 @@ permissions:
 
 jobs:
   notify:
-    runs-on: self-hosted
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     outputs:
       event_type: ${{ steps.process.outputs.event_type }}
       resource_name: ${{ steps.process.outputs.resource_name }}
