@@ -1041,6 +1041,25 @@
 
 - **Status:** Completed and verified.
 
+---
+
+### Prompt #51: Educational Breakdown of APM-02 Cherry-Pick Wait Architecture for Sharan
+- **Date / Timestamp:** 2026-10-26T17:32:00+05:30
+- **User Request:**
+  - Formulate message explaining the underlying architectural reason for the 30+ minute workflow execution to Sharan N, who was unaware of the APM-02 automated cherry-pick countdown window.
+
+- **Activities:**
+  - Detailed the APM-02 snapshot lifecycle:
+    1. Deliberate Cherry-Pick Window: Creation of snapshot branch followed by a 30-50m polling wait allowing developers to cherry-pick fixes before code freeze.
+    2. Zero Compute Waste on AWS: Clarified that the wait is an idle countdown (`sleep 30`) using 0.1% CPU, which burned billable per-minute quotas on GitHub but costs $0 on flat-rate AWS EC2.
+    3. Bypass Mechanism: Instant deployment bypass via `@Jarvis deploy now`.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
+
+
 
 
 
