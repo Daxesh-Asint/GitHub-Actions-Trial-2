@@ -1323,3 +1323,20 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #65: Crontab Schedule Adjustment to 2:00 AM IST (20:30 UTC)
+- **Date / Timestamp:** 2026-11-03T12:39:00+05:30
+- **User Request:**
+  - Adjust the automated maintenance schedule so it executes at exactly 02:00 AM Indian Standard Time (IST) every night instead of UTC.
+
+- **Activities:**
+  - Calculated UTC offset: 02:00 AM IST corresponds to 20:30 UTC (`30 20 * * *`).
+  - Provided command to update the crontab schedule on AWS EC2.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
