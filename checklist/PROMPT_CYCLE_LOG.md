@@ -1285,3 +1285,22 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #63: Native AWS Self-Contained Maintenance Script Setup & Successful Verification
+- **Date / Timestamp:** 2026-11-03T12:26:00+05:30
+- **User Request:**
+  - Create the cleanup script exclusively on the AWS EC2 instance without any external dependency on the POC GitHub repository.
+  - Successfully test and verify execution and logging.
+
+- **Activities:**
+  - Placed production cleanup script directly at `/usr/local/bin/cleanup_runners.sh` on the AWS instance.
+  - Verified live test execution: log created successfully at `/home/ubuntu/runner-cleanup.log` showing `[Tue Nov 3 06:54:54 UTC 2026] 2AM cleanup completed. Free disk: 6.1G`.
+  - Identified stray text on line 14 and guided user to clean and finalize the crontab schedule (`0 2 * * *`).
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
