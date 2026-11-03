@@ -1435,3 +1435,25 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #71: Root Crontab Execution Verification & Live Scheduler Proof
+- **Date / Timestamp:** 2026-11-04T00:19:00+05:30
+- **User Request:**
+  - Verify that the automated cleanup scheduler runs reliably on AWS EC2 without permission failures.
+
+- **Activities:**
+  - Migrated crontab from unprivileged user `ubuntu` to `sudo crontab` to resolve permission constraints on `/home/ubuntu/runner-cleanup.log` and system logs.
+  - Executed 1-minute live verification test (`* * * * *`).
+  - Terminal output verified continuous automatic execution:
+    - `[Tue Nov 3 18:46:01 UTC 2026] 2AM cleanup completed. Free disk: 8.7G`
+    - `[Tue Nov 3 18:47:01 UTC 2026] 2AM cleanup completed. Free disk: 8.7G`
+    - `[Tue Nov 3 18:48:01 UTC 2026] 2AM cleanup completed. Free disk: 8.7G`
+  - Guided user to finalize production schedule to every 2 hours (`0 */2 * * *`).
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
