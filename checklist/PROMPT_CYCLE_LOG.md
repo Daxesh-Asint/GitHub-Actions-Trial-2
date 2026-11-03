@@ -1417,3 +1417,21 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #70: Multi-Interval 2-Hour Cleanup Automation Configuration
+- **Date / Timestamp:** 2026-11-03T18:26:00+05:30
+- **User Request:**
+  - Configure the automated cleanup job to run every 2 hours every day to prevent intra-day disk saturation.
+
+- **Activities:**
+  - Updated crontab schedule to `0 */2 * * * /usr/local/bin/cleanup_runners.sh` (runs every 2 hours around the clock).
+  - Adjusted age threshold from 24 hours (`-mmin +1440`) to 2 hours (`-mmin +120`) so completed daytime builds older than 2 hours are pruned when runners are idle.
+  - Maintained `pgrep Runner.Worker` active-job protection.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
