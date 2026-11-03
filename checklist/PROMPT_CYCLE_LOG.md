@@ -1257,3 +1257,31 @@
 
 
 
+
+
+---
+
+### Prompt #62: "No Space Left on Device" Root Cause Resolution & Production-Grade Runner Cleanup Safeguard
+- **Date / Timestamp:** 2026-11-03T11:58:00+05:30
+- **User Request:**
+  - Diagnose why company repo workflow failed during `Set up job` on runner `asint-runner-01`.
+  - Fix root cause: EBS disk 99.9% full (`No space left on device`).
+  - Create production-safe daily cleanup script with active job protection (`pgrep Runner.Worker`) to permanently prevent future disk exhaustion.
+  - Overcome AWS EC2 Instance Connect browser double-paste issue.
+
+- **Activities:**
+  - Diagnosed disk full issue from GitHub Actions log line 15 (`Cannot write: No space left on device`).
+  - Guided user to perform emergency cleanup freeing ~9 GB immediately.
+  - Analyzed 20 GB baseline: 8 GB swapfile + 4 GB OS + ~7.5 GB for 8 runner installations (~924 MB each).
+  - Authored `scripts/cleanup_runners.sh` featuring:
+    1. Active-job safeguard: checks `pgrep -f Runner.Worker` before touching any files.
+    2. Exact `-mmin +1440` age filter for workspaces while preserving `_actions/` caches.
+    3. `journalctl` vacuuming and `apt clean`.
+    4. Execution logging to `/home/ubuntu/runner-cleanup.log`.
+  - Pushed `scripts/cleanup_runners.sh` to public repository branch `dev` so user can fetch directly via short `curl` command without clipboard double-paste errors.
+
+- **Files Modified:**
+  - [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
