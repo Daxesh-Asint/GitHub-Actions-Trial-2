@@ -1457,3 +1457,25 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #72: Granular Per-Runner Active Safeguard & 30-Minute Idle Pruning Finalization
+- **Date / Timestamp:** 2026-11-04T14:29:00+05:30
+- **User Request:**
+  - Diagnose why available disk dropped to 2.9 GB despite 2-hour cron job being active.
+  - Implement granular per-runner isolation and confirm age retention policy (30 minutes).
+
+- **Activities:**
+  - Diagnosed that global `pgrep Runner.Worker` skipped all 8 runners whenever a single runner was busy, allowing builds on the other 7 runners to accumulate.
+  - Upgraded `/usr/local/bin/cleanup_runners.sh` to evaluate each runner independently:
+    - Protects individual busy runner (`asint-runner-08 is busy, skipping`).
+    - Immediately prunes workspaces older than 30 minutes on all idle runners.
+  - Live execution confirmed disk space restored from 2.9 GB to 7.7 GB free space.
+  - User confirmed 30-minute idle retention policy; finalized production configuration.
+
+- **Files Modified:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
