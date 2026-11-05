@@ -1499,3 +1499,24 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #74: IST Timezone Verification & Full Maintenance History Archival in AWS Folder
+- **Date / Timestamp:** 2026-11-05T11:18:00+05:30
+- **User Request:**
+  - Clarify why past log entries in `/home/ubuntu/runner-cleanup.log` still display "UTC".
+  - Provide a test run command to generate the first live "IST" timestamp in the log.
+  - Ensure all AWS infrastructure history, scripts, and logs are comprehensively documented in the `AWS/` directory.
+
+- **Activities:**
+  - Explained that existing lines in `/home/ubuntu/runner-cleanup.log` were written when the server was in UTC; all subsequent executions now write in IST.
+  - Provided command to run the script and print the latest entry confirming IST (`Asia/Kolkata`).
+  - Updated [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md) with complete historical context and IST details.
+
+- **Files Modified:**
+  - [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
