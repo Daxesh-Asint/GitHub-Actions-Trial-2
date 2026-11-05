@@ -90,8 +90,8 @@ for runner_dir in /home/ubuntu/asint-runner-*; do
         if pgrep -f "$runner_name.*Runner.Worker" > /dev/null; then
             echo "[$(date)] $runner_name is busy, skipping." >> "$LOG_FILE"
         else
-            # Delete old work folders on this idle runner (older than 30 mins)
-            find "$runner_dir/_work" -mindepth 1 -maxdepth 2 -type d ! -name "_actions" -mmin +30 -exec rm -rf {} + 2>/dev/null
+            # Delete old work folders on this idle runner (older than 10 mins)
+            find "$runner_dir/_work" -mindepth 1 -maxdepth 2 -type d ! -name "_actions" -mmin +10 -exec rm -rf {} + 2>/dev/null
             rm -rf "$runner_dir/_work/_temp/*" 2>/dev/null
         fi
     fi
@@ -114,8 +114,8 @@ echo "[$(date)] Cleanup finished. Free disk: $(df -h / | awk 'NR==2 {print $4}')
 The maintenance script runs automatically under root crontab (`sudo crontab -l`):
 
 ```text
-# Run automated cleanup every 2 hours:
-0 */2 * * * /usr/local/bin/cleanup_runners.sh
+# Run automated cleanup every 5 minutes:
+*/5 * * * * /usr/local/bin/cleanup_runners.sh
 ```
 
 ---
@@ -150,3 +150,4 @@ tail -n 25 /home/ubuntu/runner-cleanup.log
 sudo timedatectl set-timezone Asia/Kolkata
 timedatectl
 ```
+

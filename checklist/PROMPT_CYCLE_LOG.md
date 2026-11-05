@@ -1520,3 +1520,33 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #75: Cron Frequency Optimization — Every 5 Min + 10 Min Idle Pruning
+- **Date / Timestamp:** 2026-11-05T11:49:00+05:30
+- **User Request:**
+  - Evaluate impact of running cron job every 5 minutes with files older than 10 minutes deleted.
+  - Confirm whether this is good or bad practice and whether it increases AWS billing.
+  - Proceed with implementation: `*/5 * * * *` cron + `-mmin +10` file age threshold.
+
+- **Activities:**
+  - Confirmed: `Runner.Worker` check is the primary protection — cron frequency and `-mmin` value do NOT affect active workflow safety.
+  - Confirmed: Cron every 5 min on EC2 adds zero billing cost (instance runs 24/7 regardless; script takes <1 sec).
+  - User confirmed `-mmin +10` (10 min safety buffer) is preferred over `-mmin +5`.
+  - Provided 4 EC2 commands; user executed successfully:
+    1. `sudo sed -i 's/-mmin +30/-mmin +10/g' /usr/local/bin/cleanup_runners.sh` — updated threshold.
+    2. `grep 'mmin' /usr/local/bin/cleanup_runners.sh` — confirmed `-mmin +10` (shown highlighted in red = normal grep color).
+    3. Updated cron to `*/5 * * * * /usr/local/bin/cleanup_runners.sh`.
+    4. `sudo crontab -l` — confirmed `*/5 * * * *` live.
+  - Disk status at time of change: 81% used (5.4G free) after manual emergency clear.
+  - Updated local `scripts/cleanup_runners.sh` to match live EC2 script (per-runner safeguard + `-mmin +10`).
+  - Updated `AWS/README.md` cron schedule from `0 */2 * * *` to `*/5 * * * *` and `-mmin +30` to `-mmin +10`.
+
+- **Files Modified:**
+  - [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh)
+  - [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
