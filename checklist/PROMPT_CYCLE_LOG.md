@@ -1479,3 +1479,23 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #73: Server Timezone Configuration to IST & Complete AWS Documentation Folder Creation
+- **Date / Timestamp:** 2026-11-05T11:10:00+05:30
+- **User Request:**
+  - Provide system command to permanently convert EC2 instance clock and log output from UTC to Indian Standard Time (IST / Asia/Kolkata).
+  - Create dedicated `AWS/` documentation directory containing end-to-end infrastructure architecture, 8-worker provisioning setup, maintenance scripts, and troubleshooting operational procedures.
+
+- **Activities:**
+  - Provided `sudo timedatectl set-timezone Asia/Kolkata` command.
+  - Authored comprehensive architecture document [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md).
+  - Committed and pushed documentation to repository.
+
+- **Files Modified:**
+  - [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
