@@ -1550,3 +1550,40 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #76: Auto-Update Leftover Cleanup — tar.gz, bin.*, externals.*, _diag
+- **Date / Timestamp:** 2026-11-05T14:16:00+05:30
+- **User Request:**
+  - Investigate why disk usage grew from 20GB to 25GB over a few days.
+  - Identify root cause and implement preventive cleanup in the 5-min cron script.
+
+- **Activities:**
+  - Diagnosed root cause: GitHub Actions runner auto-updated from v2.338.1 → v2.338.2 and left behind backup folders across all 8 runners:
+    - `actions-runner-linux-x64-2.338.1.tar.gz` (218M × 8 = ~1.7GB)
+    - `externals.2.338.2` (~400M × 8 = ~3.2GB)
+    - `bin.2.338.2` (82M × 8 = ~656MB)
+    - `_diag` logs (31M × 8 = ~248MB)
+  - Total bloat: ~5.7GB — explains 20G → 25G jump exactly.
+  - User ran dry-run preview, confirmed safe, then deleted manually:
+    ```bash
+    sudo rm -f /home/ubuntu/asint-runner-*/actions-runner-linux-x64-*.tar.gz
+    sudo rm -rf /home/ubuntu/asint-runner-*/bin.*
+    sudo rm -rf /home/ubuntu/asint-runner-*/externals.*
+    sudo rm -rf /home/ubuntu/asint-runner-*/_diag/*
+    ```
+  - Disk recovered: 25G used → 18G used (11G free, 62%).
+  - Updated `/usr/local/bin/cleanup_runners.sh` on EC2 and locally to include:
+    - Delete `*.tar.gz` installer archives per idle runner
+    - Delete `bin.*` and `externals.*` versioned backup dirs per idle runner
+    - Trim `_diag` files older than 7 days per idle runner
+  - All new cleanup steps run only inside the per-runner idle check (Runner.Worker not active).
+
+- **Files Modified:**
+  - [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh)
+  - [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.

@@ -93,19 +93,33 @@ for runner_dir in /home/ubuntu/asint-runner-*; do
             # Delete old work folders on this idle runner (older than 10 mins)
             find "$runner_dir/_work" -mindepth 1 -maxdepth 2 -type d ! -name "_actions" -mmin +10 -exec rm -rf {} + 2>/dev/null
             rm -rf "$runner_dir/_work/_temp/*" 2>/dev/null
+
+            # Delete leftover installer tar.gz archives (safe — runner already installed)
+            rm -f "$runner_dir"/actions-runner-linux-x64-*.tar.gz 2>/dev/null
+
+            # Delete versioned auto-update backup folders (bin.X.X.X, externals.X.X.X)
+            # Active versions are plain 'bin' and 'externals' — these are old backups only
+            find "$runner_dir" -maxdepth 1 -type d -name "bin.*" -exec rm -rf {} + 2>/dev/null
+            find "$runner_dir" -maxdepth 1 -type d -name "externals.*" -exec rm -rf {} + 2>/dev/null
+
+            # Trim _diag logs older than 7 days (keep folder, remove old log files)
+            find "$runner_dir/_diag" -type f -mtime +7 -delete 2>/dev/null
         fi
     fi
 done
 
 journalctl --vacuum-size=100M > /dev/null 2>&1
+apt-get clean > /dev/null 2>&1
 echo "[$(date)] Cleanup finished. Free disk: $(df -h / | awk 'NR==2 {print $4}')" >> "$LOG_FILE"
 ```
 
 ### Key Safeguard Features:
 1. **Per-Runner Active Protection:** Evaluates each runner independently. If Runner 8 is compiling code, it skips Runner 8 while safely cleaning Runners 1 through 7.
 2. **Preserves `_actions`:** Retains downloaded GitHub action tools so workflows don't re-download `actions/checkout` every time.
-3. **Vacuum System Logs:** Restricts Linux `journalctl` to 100 MB max.
-4. **Execution Audit Log:** Records every run with timestamp and available free disk space to `/home/ubuntu/runner-cleanup.log`.
+3. **Cleans Auto-Update Leftovers:** Removes old `bin.X.X.X`, `externals.X.X.X` backup folders and installer `.tar.gz` archives left behind when GitHub auto-updates the runner binary.
+4. **Trims `_diag` Logs:** Deletes diagnostic log files older than 7 days (keeps the folder intact).
+5. **Vacuum System Logs:** Restricts Linux `journalctl` to 100 MB max.
+6. **Execution Audit Log:** Records every run with timestamp and available free disk space to `/home/ubuntu/runner-cleanup.log`.
 
 ---
 
