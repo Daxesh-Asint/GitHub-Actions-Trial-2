@@ -106,6 +106,11 @@ done
 journalctl --vacuum-size=100M > /dev/null 2>&1
 apt-get clean > /dev/null 2>&1
 echo "[$(date)] Cleanup finished. Free disk: $(df -h / | awk 'NR==2 {print $4}')" >> "$LOG_FILE"
+
+# Log file size safeguard: keep only latest 1000 lines (caps file under ~70 KB)
+if [ -f "$LOG_FILE" ]; then
+    tail -n 1000 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+fi
 ```
 
 ### Key Safeguard Features:
@@ -114,7 +119,8 @@ echo "[$(date)] Cleanup finished. Free disk: $(df -h / | awk 'NR==2 {print $4}')
 3. **Removes Installer Caches:** Deletes installer `.tar.gz` archives safely.
 4. **Trims `_diag` Logs:** Deletes diagnostic log files older than 7 days (keeps the folder intact).
 5. **Vacuum System Logs:** Restricts Linux `journalctl` to 100 MB max.
-6. **Execution Audit Log:** Records every run with timestamp and available free disk space to `/home/ubuntu/runner-cleanup.log`.
+6. **Log Rotation Safeguard:** Automatically caps `/home/ubuntu/runner-cleanup.log` to the most recent 1,000 lines (~70 KB max), preventing infinite file growth.
+7. **Execution Audit Log:** Records every run with timestamp and available free disk space to `/home/ubuntu/runner-cleanup.log`.
 
 ---
 

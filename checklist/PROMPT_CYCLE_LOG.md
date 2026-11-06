@@ -1636,3 +1636,29 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #79: Cleanup Log Rotation Safeguard (1000-line cap)
+- **Date / Timestamp:** 2026-11-06T11:11:00+05:30
+- **User Request:**
+  - Address concerns regarding long-term disk growth from continuous logging in `/home/ubuntu/runner-cleanup.log`.
+  - Add log rotation safeguard to keep log file capped to latest 1,000 lines (~70 KB max).
+
+- **Activities:**
+  - Appended tail-based in-place log rotation logic to `/usr/local/bin/cleanup_runners.sh`:
+    ```bash
+    if [ -f "$LOG_FILE" ]; then
+        tail -n 1000 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+    fi
+    ```
+  - Updated local script [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh) and documentation [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md).
+  - Committed and pushed to `origin dev`.
+
+- **Files Modified:**
+  - [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh)
+  - [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.

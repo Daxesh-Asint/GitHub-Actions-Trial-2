@@ -24,3 +24,8 @@ done
 journalctl --vacuum-size=100M > /dev/null 2>&1
 apt-get clean > /dev/null 2>&1
 echo "[$(date)] Cleanup finished. Free disk: $(df -h / | awk 'NR==2 {print $4}')" >> "$LOG_FILE"
+
+# Log file size safeguard: keep only latest 1000 lines (caps file under ~70 KB)
+if [ -f "$LOG_FILE" ]; then
+    tail -n 1000 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+fi
