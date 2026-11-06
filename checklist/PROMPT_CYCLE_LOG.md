@@ -1687,3 +1687,32 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #81: Pure Deployment Filter — Removal of Non-Deployment CI Files & Scripts
+- **Date / Timestamp:** 2026-11-06T11:28:00+05:30
+- **User Request:**
+  - Remove non-deployment test/CI workflows from `Daxesh-Asint/asint-deployment-workflows`:
+    - `ui-test-check.yml`
+    - `hana-tests.yml`
+    - `build.yml`
+    - `cds_schema_diff.yml`
+    - `checktests.yml`
+    - `_pr_gate.yml`
+  - Remove the entire `.github/scripts/` directory so the repository strictly houses pure deployment workflows.
+
+- **Activities:**
+  - Removed all 6 testing/CI workflow files and the entire `.github/scripts/` folder.
+  - Updated `README.md` to reflect a pure deployment structure:
+    - APM-02 Deployment Family (1–6)
+    - Autonomous Auto-Merge & Governance Engine
+    - All 43 Tenant Deployment Callers
+    - Complete Analysis Document ([`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md))
+  - Committed and pushed changes cleanly to `https://github.com/Daxesh-Asint/asint-deployment-workflows` (`main` branch).
+
+- **Files Modified (in POC repo):**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
