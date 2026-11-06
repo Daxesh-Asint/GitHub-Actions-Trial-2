@@ -1716,3 +1716,31 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #82: Simplified Team-Centric Workflow Guide (What, Trigger & Steps Only)
+- **Date / Timestamp:** 2026-11-06T11:46:00+05:30
+- **User Request:**
+  - Strip away all theoretical business reason ("Why do we have it") and optimization ("Can it be clubbed or removed") sections from documentation.
+  - Remove all external references to AWS, GCP, billing, or cost.
+  - Retain strictly the essential technical reference for the team:
+    1. File name with clickable link to the GitHub repository file.
+    2. What does each workflow do? (Simple, non-technical explanation).
+    3. When is it triggered? (Exact YAML trigger code snippet).
+    4. Action steps performed (Numbered step-by-step summary without raw code).
+  - Include a clean, straightforward visual architecture diagram illustrating how all workflows connect with one another.
+  - Update `Daxesh-Asint/asint-deployment-workflows` (`README.md` and `docs/WORKFLOW_INVENTORY_DOCUMENT.md`).
+
+- **Activities:**
+  - Completely rewrote [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md) into clean, concise English with clickable links and YAML trigger blocks.
+  - Built an intuitive Mermaid architecture diagram showing end-to-end connectivity across all 5 phases (ChatOps -> Snapshot & Wait -> Conflict Check -> Auto-Merge -> SAP CI/CD Finalize -> Tenant Callers).
+  - Synced changes directly into `README.md` of `asint-deployment-workflows` so it renders immediately on the repository homepage.
+  - Pushed to `https://github.com/Daxesh-Asint/asint-deployment-workflows` (`main` branch) and committed to POC repository `origin/dev`.
+
+- **Files Modified:**
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
