@@ -1774,3 +1774,34 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #84: Exact Trigger Audit & Removal of BWZ Refresh Mentions
+- **Date / Timestamp:** 2026-11-06T12:10:00+05:30
+- **User Request:**
+  - Remove all mentions of "BWZ refresh / Playwright" from documentation because BWZ refresh is only in the POC repo and was **not** pushed to the company deployment pipeline.
+  - Audit every single workflow file's `on:` trigger directly from the YAML files in `asint-deployment-workflows` to correct inaccurate trigger event names (e.g. `apm02_2_extend_wait.yml` triggers on `adjust_apm02_wait`, `adjust_apm02_dc_wait`, `adjust_apm02_dc_addin_wait`, not `extend_apm02_wait`).
+  - Correct all trigger blocks and step descriptions across `README.md` and `docs/WORKFLOW_INVENTORY_DOCUMENT.md`.
+
+- **Activities:**
+  - Extracted and verified exact `on:` triggers across all 12 workflows directly from local cloned repo `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\.github\workflows`:
+    - `apm02_2_extend_wait.yml`: `adjust_apm02_wait`, `adjust_apm02_dc_wait`, `adjust_apm02_dc_addin_wait`.
+    - `apm02_4_conflict_monitor.yml`: `pull_request` on `branches: [main, main-dc, main-dc-addin]` with `types: [synchronize, closed]`.
+    - `apm02_5_apm02_conflict_monitor.yml`: `pull_request` on APM-02 tenant branches with `types: [synchronize, closed]`.
+    - `apm02_6_recovery.yml`: `push` on snapshot branches + `repository_dispatch` (`retrigger_apm02_*`, `redeploy_apm02_*`).
+    - `_auto_merge.yml`: `workflow_call` with `base`, `compare`, `deployment_name`, `cf_stop_app`, etc.
+    - `auto_merge_conflict_resolver.yml`: `pull_request` (`synchronize`, `closed`) on `tenant/**`, `apm-eiot-temp-copy`, `st-env-for-contentfederation` + `workflow_dispatch`.
+    - `auto_merge_approval_handler.yml`: `pull_request_review` (`submitted`) + `pull_request` (`closed`) on `tenant/**`.
+    - `sap_cicd_notifier.yml`: `repository_dispatch` (`sap_cicd_started`, `sap_cicd_finished`) + `workflow_dispatch`.
+  - Completely erased all mentions of BWZ refresh, Playwright, and Launchpad tiles from all descriptions and diagrams.
+  - Pushed commit `a5ecc78` to `asint-deployment-workflows` and synced with POC repo.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
