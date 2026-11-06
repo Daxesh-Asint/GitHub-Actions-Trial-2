@@ -15,11 +15,6 @@ for runner_dir in /home/ubuntu/asint-runner-*; do
             # Delete leftover installer tar.gz archives (safe — runner already installed)
             rm -f "$runner_dir"/actions-runner-linux-x64-*.tar.gz 2>/dev/null
 
-            # Delete versioned auto-update backup folders (bin.X.X.X, externals.X.X.X)
-            # Active versions are plain 'bin' and 'externals' — these are old backups only
-            find "$runner_dir" -maxdepth 1 -type d -name "bin.*" -exec rm -rf {} + 2>/dev/null
-            find "$runner_dir" -maxdepth 1 -type d -name "externals.*" -exec rm -rf {} + 2>/dev/null
-
             # Trim _diag logs older than 7 days (keep folder, remove old log files)
             find "$runner_dir/_diag" -type f -mtime +7 -delete 2>/dev/null
         fi

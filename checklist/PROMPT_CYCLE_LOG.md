@@ -1607,3 +1607,32 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #78: Emergency Recovery of All 8 Runners & Binary Symlink Safeguard
+- **Date / Timestamp:** 2026-11-06T09:31:00+05:30
+- **User Request:**
+  - Investigate why disk usage dropped to 12GB and why all deployment workflows in `StillSomehowSane/asint_ais` were stuck in `Queued`.
+  - Resolve runner daemon exit failures and restore pipeline execution.
+
+- **Activities:**
+  - Checked `systemctl status`: discovered all 8 runner services failed around 06:44 AM IST with exit-code.
+  - Inspected journalctl logs: identified `Runner.Listener ENOENT` and empty `runsvc.sh` (0 bytes).
+  - Diagnosed root cause: Runner auto-update to version 2.338.2 converted `bin` and `externals` to symlinks pointing to `bin.2.338.2` and `externals.2.338.2`. Deleting `bin.*` and `externals.*` broke the symlinks and orphaned runner listener daemons.
+  - Executed emergency restoration on EC2:
+    1. Stopped runner services.
+    2. Extracted `./bin` and `./externals` from local cache `/home/ubuntu/runner-cache/actions-runner-linux-x64-2.338.1.tar.gz` across all 8 runner directories.
+    3. Recreated standard executable `runsvc.sh` scripts across all 8 runners.
+    4. Reloaded systemd daemon and restarted all services.
+    5. Confirmed all 8 runners active and running (`asint-runner-01` to `asint-runner-08`).
+  - Hardened `/usr/local/bin/cleanup_runners.sh` to permanently exclude runner binary directories (`bin` and `externals`) from cleanup, safely preserving runner engine integrity.
+  - Re-enabled 5-minute crontab with the safe script.
+
+- **Files Modified:**
+  - [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh)
+  - [`AWS/README.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/AWS/README.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
