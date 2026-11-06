@@ -1662,3 +1662,28 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #80: Creation of Dedicated Public AsInt Workflows Repository
+- **Date / Timestamp:** 2026-11-06T11:20:00+05:30
+- **User Request:**
+  - Read all deployment workflows, tenant callers, helper scripts, and documentation from `StillSomehowSane/asint_ais`.
+  - Create a dedicated public repository under username `Daxesh-Asint` named `asint-deployment-workflows`.
+  - Copy and push all YAML workflow files (including all tenant deployment workflows), helper scripts, and architecture documentation.
+
+- **Activities:**
+  - Audited `upstream/dev` in `StillSomehowSane/asint_ais`: extracted all 61 workflow files (`.github/workflows/*.yml`) and all 16 helper scripts (`.github/scripts/*`).
+  - Created public GitHub repository via GitHub CLI: `gh repo create Daxesh-Asint/asint-deployment-workflows --public`.
+  - Structured the new repository:
+    - `.github/workflows/`: 61 workflows (APM-02 steps 1-6, Auto-Merge engine, and all 43 tenant caller workflows across AIS 02, APM 01, EIOT, Baystar, Indorama, HSC, IRC, ST, VMOS, etc.).
+    - `.github/scripts/`: 16 deployment & health scripts (Teams adaptive card notifiers, QUnit parsers, etc.).
+    - `docs/WORKFLOW_INVENTORY_DOCUMENT.md`: Complete 4-question inventory and optimization analysis.
+    - `README.md`: Comprehensive index, classification, tenant breakdown table, and documentation guide.
+  - Successfully committed and pushed to `https://github.com/Daxesh-Asint/asint-deployment-workflows` on branch `main`.
+
+- **Files Modified (in POC repo):**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
