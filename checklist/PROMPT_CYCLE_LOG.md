@@ -1744,3 +1744,33 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #83: Branching Accuracy Fix & Dedicated Local Subfolder Sync
+- **Date / Timestamp:** 2026-11-06T12:01:00+05:30
+- **User Request:**
+  - Create a local clone/subfolder in `GitHub Actions Copy 2` synced from `Daxesh-Asint/asint-deployment-workflows`.
+  - Fix factual inaccuracies identified by user:
+    - Snapshot creation in `apm02_1_create_and_wait.yml` originates from base branches (`main`, `main-dc`, `main-dc-addin`), **not** `dev`.
+    - Finalize step in `apm02_3_finalize_cycle.yml` merges snapshot back into base branch (`main`, `main-dc`, `main-dc-addin`), **not** tenant branches.
+  - Audit all other workflow interactions to ensure 100% technical fidelity with actual YAML files.
+
+- **Activities:**
+  - Cloned `https://github.com/Daxesh-Asint/asint-deployment-workflows.git` into `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows`.
+  - Audited code in `apm02_1_create_and_wait.yml`, `apm02_3_finalize_cycle.yml`, and `_auto_merge.yml`:
+    - Verified `base_branch` detection: `main` (APM-02), `main-dc` (APM-02 DC), `main-dc-addin` (APM-02 DC AddIn).
+    - Verified `apm02_1` creates snapshot from `base_branch` (`main*`) and merges snapshot into tenant branch upon countdown completion.
+    - Verified `apm02_3` merges snapshot back into `base_branch` (`main*`) upon verified SAP build success.
+    - Verified `_auto_merge.yml` handles tenant deployment callers merging `compare` (typically `dev`) into tenant base branches.
+  - Updated `README.md` and `docs/WORKFLOW_INVENTORY_DOCUMENT.md` in `asint-deployment-workflows` and synced to POC workspace.
+  - Committed and pushed cleanly to `main` branch on `asint-deployment-workflows` and `origin dev` on POC repo.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
