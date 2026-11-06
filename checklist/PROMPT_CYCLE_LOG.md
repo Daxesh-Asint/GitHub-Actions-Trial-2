@@ -1886,3 +1886,31 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #88: Data Conduit Nomenclature, Clean Section 4 Trigger & Dual Flow Separation
+- **Date / Timestamp:** 2026-11-06T14:06:00+05:30
+- **User Request:**
+  - Remove leftover `workflow_dispatch` trigger code block from Section 4 (Tenant Deployment Callers).
+  - Terminology Correction: Replace all occurrences of "Data Collector" with **"Data Conduit"** across the entire documentation suite (DC = Data Conduit).
+  - Architecture Enhancement: Split the end-to-end flowchart into **two separate, dedicated flowcharts** for maximum clarity:
+    1. **📦 APM-02 Release Lifecycle Flow**
+    2. **⚡ Direct Auto-Merge Deployment Flow**
+
+- **Activities:**
+  - Corrected Section 4 trigger snippet to strictly `repository_dispatch: types: [trigger_<environment>_deployment]`.
+  - Replaced "Data Collector" with "Data Conduit" across all files.
+  - Replaced single combined diagram with 2 distinct visual Mermaid flows:
+    - Flow 1 (APM-02): Step 1 (Snapshot & Countdown) -> Step 2 (Tenant Merge & SAP Build) -> Step 3 (Sync back to main* & Cleanup).
+    - Flow 2 (Auto-Merge): ChatOps Trigger -> Caller Workflow -> `_auto_merge.yml` -> 3 Decision Pathways (Path A: Direct Merge, Path B: Conflict Resolver, Path C: Approval Handler) -> Tenant Build & Teams Card.
+  - Pushed commit `b8bcbb6` to `asint-deployment-workflows` (`main` branch) and synced locally.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
