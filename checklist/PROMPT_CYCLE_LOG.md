@@ -1827,3 +1827,29 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #86: Tenant Branching Analysis & Comprehensive Section 4 Mapping Table
+- **Date / Timestamp:** 2026-11-06T12:29:00+05:30
+- **User Request:**
+  - Audit all 42 tenant deployment caller workflows (`deploy_*.yml` + `merge_dev_to_tenant_ais02.yml`) across all 3 modules (Core, Data Collector, DC Add-In).
+  - Clarify that `compare` branch is **not always `dev`**:
+    - Several environments (APM-01, APM-EIOT, Baystar, Demo, HSC Non-Prod, Indorama QA, IRC, VMOS) compare against `main`, `main-dc`, and `main-dc-addin`.
+    - Production tenants (HSC Prod, Indorama Prod 900, Indorama Prod 933) compare against their respective Non-Prod / QA tenant branches (`tenant/hemlock-non-prod*`, `tenant/indorama-qa-233*`, etc.).
+    - Dev-staging tenants (AIS-02, ST-ENV) compare against `dev`.
+  - Add a comprehensive, structured Markdown table in Section 4 detailing every single tenant's Core, DC, and DC-AddIn workflow file, its exact compare branch, and its destination tenant branch.
+
+- **Activities:**
+  - Scanned all 42 caller YAML files in `asint-deployment-workflows/.github/workflows/` and extracted exact `compare` and `base` branch inputs.
+  - Formatted comprehensive mapping table in `docs/WORKFLOW_INVENTORY_DOCUMENT.md` and `README.md`.
+  - Pushed commit `f88b301` to `Daxesh-Asint/asint-deployment-workflows` (`main` branch) and synced locally.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
