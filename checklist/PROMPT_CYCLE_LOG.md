@@ -1940,3 +1940,27 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #90: Clarify Cloud Foundry App Stop Step in `_auto_merge.yml` Documentation
+- **Date / Timestamp:** 2026-11-06T14:48:00+05:30
+- **User Request:**
+  - Update step 3 of `_auto_merge.yml` documentation to clarify the exact operational purpose of stopping Cloud Foundry apps.
+  - Change: *"If configured, stops Cloud Foundry apps during migration."*  
+    To: *"If configured, stops Cloud Foundry apps during deployment to prevent organization or space memory exceed release fail issue."*
+  - Apply across both `asint-deployment-workflows` and local repositories.
+
+- **Activities:**
+  - Updated step 3 under workflow 7 (`_auto_merge.yml`) in `docs/WORKFLOW_INVENTORY_DOCUMENT.md` and `README.md` in `asint-deployment-workflows`.
+  - Committed and pushed commit `d8fb9c2` to `asint-deployment-workflows` (`main` branch).
+  - Updated `docs/WORKFLOW_INVENTORY_DOCUMENT.md` in `just-for-poc-GitHub-`.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
