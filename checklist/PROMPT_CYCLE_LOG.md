@@ -1805,3 +1805,25 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #85: Documentation Refinement for Cloud Foundry Space/Org Memory Limits
+- **Date / Timestamp:** 2026-11-06T12:23:00+05:30
+- **User Request:**
+  - Update the explanation for `_cf_app_control.yml` (workflow #12) and `_auto_merge.yml` (workflow #7) to clearly state the exact operational reason for stopping apps: **to avoid Cloud Foundry space memory or organization memory limits being exceeded**.
+
+- **Activities:**
+  - Updated `_cf_app_control.yml` summary in `asint-deployment-workflows/README.md` and `docs/WORKFLOW_INVENTORY_DOCUMENT.md` to:
+    > *"Controls Cloud Foundry application states (stops, starts, or checks status of apps/approuters) during deployments to avoid Cloud Foundry space memory or organization memory limits from being exceeded."*
+  - Synchronized and updated `_auto_merge.yml` to reflect the same memory safeguard purpose.
+  - Committed and pushed commit `b578691` to `Daxesh-Asint/asint-deployment-workflows` (`main` branch) and synced locally.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
