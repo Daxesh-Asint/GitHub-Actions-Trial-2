@@ -1853,3 +1853,36 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #87: Documentation Trigger Polishing & High-Readability Architecture Diagram
+- **Date / Timestamp:** 2026-11-06T13:50:00+05:30
+- **User Request:**
+  - Remove unnecessary `workflow_dispatch` trigger from `11. sap_cicd_notifier.yml` description so as not to confuse team members and seniors (since it operates strictly as a webhook receiver in production).
+  - Enhance the end-to-end architecture diagram to be substantially more readable, clean, and intuitive.
+
+- **Activities:**
+  - Removed `workflow_dispatch` from `sap_cicd_notifier.yml` in `README.md` and `docs/WORKFLOW_INVENTORY_DOCUMENT.md`, leaving strictly:
+    ```yaml
+    on:
+      repository_dispatch:
+        types: [sap_cicd_started, sap_cicd_finished]
+    ```
+  - Upgraded the Mermaid architecture diagram:
+    - Added distinct color-coded semantic classes (`classDef` for triggers, processes, wait loops, success completions, notifications, and monitors).
+    - Grouped workflows into 3 clean, visually labeled subgraphs:
+      1. `📦 APM-02 Release Lifecycle` (Steps 1, 2, 3)
+      2. `⚡ Tenant Auto-Merge Deployments` (Direct merge, conflict resolver, approval handler)
+      3. `📢 Monitoring & Teams Alerts`
+    - Formatted nodes with clean emoji numbering (1️⃣, 2️⃣, 3️⃣) and bulleted step summaries.
+  - Pushed commit `29db1be` to `asint-deployment-workflows` (`main` branch) and synced locally.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
