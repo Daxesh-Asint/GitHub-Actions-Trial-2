@@ -1964,3 +1964,26 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #91: Remove `workflow_dispatch` Trigger from `auto_merge_conflict_resolver.yml` Documentation
+- **Date / Timestamp:** 2026-11-06T14:52:00+05:30
+- **User Request:**
+  - Remove leftover `workflow_dispatch` trigger block from workflow 8 (`auto_merge_conflict_resolver.yml`) in the inventory documentation to eliminate confusion.
+  - Apply across both `asint-deployment-workflows` and local repositories.
+
+- **Activities:**
+  - Cleaned `workflow_dispatch` trigger block under section 8 (`auto_merge_conflict_resolver.yml`) in `docs/WORKFLOW_INVENTORY_DOCUMENT.md` and `README.md` in `asint-deployment-workflows`.
+  - Confirmed zero remaining occurrences of unintentional `workflow_dispatch` triggers across the entire documentation.
+  - Committed and pushed commit `2eab50a` to `asint-deployment-workflows` (`main` branch).
+  - Updated `docs/WORKFLOW_INVENTORY_DOCUMENT.md` in `just-for-poc-GitHub-`.
+
+- **Files Modified:**
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\README.md`
+  - `e:\4) Copy\GitHub Actions Copy 2\asint-deployment-workflows\docs\WORKFLOW_INVENTORY_DOCUMENT.md`
+  - [`docs/WORKFLOW_INVENTORY_DOCUMENT.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/docs/WORKFLOW_INVENTORY_DOCUMENT.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
