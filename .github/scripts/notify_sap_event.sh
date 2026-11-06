@@ -11,26 +11,103 @@ echo "================================"
 [ -z "$RESOURCE_NAME" ] && RESOURCE_NAME="SAP CI/CD Pipeline"
 
 ALLOWED_JOBS=(
+  # ── 1. Core Module Jobs ─────────────────────────────────────
+  # 1.
   "AsInt-AIS-02"
-  "AsInt-AIS-02-Safety-Test-DND"
-  "AsInt-AIS-02-mta-fix"
+  # 2.
   "AsInt-APM-01"
+  # 3.
   "AsInt-APM-02"
+  # 4.
   "AsInt-APM-EIOT"
+  # 5.
   "AsInt-DEMO"
+  # 6.
   "AsInt-IRC"
   "IRC"
+  # 7.
   "AsInt-ST"
+  # 8.
   "BAYSTAR"
   "Baystar"
+  # 9.
   "Hemlock-NON-PROD"
+  # 10.
   "Hemlock-PROD"
+  # 11.
   "Indorama-PROD-900"
+  # 12.
   "Indorama-PROD-933"
+  # 13.
   "Indorama-QA-233"
+  # 14.
   "Indorama-QA-234"
+  # 15.
   "VMOS"
+
+  # ── 2. DC Module Jobs ───────────────────────────────────────
+  # 1.
   "AsInt-AIS-02-DC"
+  # 2.
+  "AsInt-APM-01-DC"
+  # 3.
+  "AsInt-APM-02-DC"
+  # 4.
+  "AsInt-APM-EIOT-DC"
+  # 5.
+  "AsInt-DEMO-DC"
+  # 6.
+  "IRC-DC"
+  # 7.
+  "AsInt-ST-DC"
+  # 8.
+  "Baystar-DC"
+  # 9.
+  "Hemlock-NON-PROD-DC"
+  # 10.
+  "Hemlock-PROD-DC"
+  # 11.
+  "Indorama-PROD-900-DC"
+  # 12.
+  "Indorama-PROD-933-DC"
+  # 13.
+  "Indorama-QA-233-DC"
+  # 14.
+  "Indorama-QA-234-DC"
+  # 15.
+  "VMOS-DC"
+
+  # ── 3. DC AddIn Module Jobs ─────────────────────────────────
+  # 1.
+  "AsInt-AIS-02-DC-AddIn"
+  # 2.
+  "AsInt-APM-01-DC-AddIn"
+  # 3.
+  "AsInt-APM-02-DC-AddIn"
+  # 4.
+  "AsInt-APM-EIOT-DC-AddIn"
+  # 5.
+  "AsInt-DEMO-DC-AddIn"
+  # 6.
+  "IRC-DC-AddIn"
+  # 7.
+  "AsInt-ST-DC-AddIn"
+  # 8.
+  "Baystar-DC-AddIn"
+  # 9.
+  "Hemlock-NON-PROD-DC-AddIn"
+  # 10.
+  "Hemlock-PROD-DC-AddIn"
+  # 11.
+  "Indorama-PROD-900-DC-AddIn"
+  # 12.
+  "Indorama-PROD-933-DC-AddIn"
+  # 13.
+  "Indorama-QA-233-DC-AddIn"
+  # 14.
+  "Indorama-QA-234-DC-AddIn"
+  # 15.
+  "VMOS-DC-AddIn"
 )
 
 IS_ALLOWED=false
@@ -59,59 +136,203 @@ SUBJECT="$PAYLOAD_SUBJECT"
 BODY="$PAYLOAD_BODY"
 CATEGORY="$PAYLOAD_CATEGORY"
 
+STAGE="${PAYLOAD_STAGE:-$INPUT_STAGE}"
+if [ -z "$STAGE" ]; then
+  if [[ "$SUBJECT $BODY" =~ [sS]tage[[:space:]]*[\'\"\`]?([a-zA-Z0-9_-]+) ]]; then
+    STAGE="${BASH_REMATCH[1]}"
+  fi
+fi
+
 # Clean Resource Name for Display (e.g. AsInt-Indorama-Prod-900 -> Indorama Prod 900)
 CLEAN_NAME=$(echo "$RESOURCE_NAME" | sed -e 's/^AsInt-//I' -e 's/-/ /g')
 
 # Map Resource Name to Target Branch to determine Commit ID
 TARGET_BRANCH=""
 case "$RESOURCE_NAME" in
-  "AsInt-AIS-02"|"AsInt-AIS-02-Safety-Test-DND"|"AsInt-AIS-02-mta-fix")
+  # ── 1. Core Module Jobs ─────────────────────────────────────
+  # 1.
+  "AsInt-AIS-02")
     TARGET_BRANCH="tenant/asint-ais-02"
     ;;
+  # 2.
   "AsInt-APM-01")
     TARGET_BRANCH="tenant/asint-apm-01-new"
     ;;
+  # 3.
   "AsInt-APM-02")
     TARGET_BRANCH="tenant/asint-apm-02-v2"
     ;;
+  # 4.
   "AsInt-APM-EIOT")
     TARGET_BRANCH="apm-eiot-temp-copy"
     ;;
+  # 5.
   "AsInt-DEMO")
     TARGET_BRANCH="tenant/asint-demo"
     ;;
+  # 6.
   "AsInt-IRC"|"IRC")
     TARGET_BRANCH="tenant/asint-irc-temp"
     ;;
+  # 7.
   "AsInt-ST")
     TARGET_BRANCH="st-env-for-contentfederation"
     ;;
+  # 8.
   "BAYSTAR"|"Baystar")
     TARGET_BRANCH="tenant/baystar"
     ;;
+  # 9.
   "Hemlock-NON-PROD")
     TARGET_BRANCH="tenant/hemlock-non-prod"
     ;;
+  # 10.
   "Hemlock-PROD")
     TARGET_BRANCH="tenant/hemlock-prod"
     ;;
+  # 11.
   "Indorama-PROD-900")
     TARGET_BRANCH="tenant/indorama-prod-900"
     ;;
+  # 12.
   "Indorama-PROD-933")
     TARGET_BRANCH="tenant/indorama-prod-933"
     ;;
+  # 13.
   "Indorama-QA-233")
     TARGET_BRANCH="tenant/indorama-qa-233"
     ;;
+  # 14.
   "Indorama-QA-234")
     TARGET_BRANCH="tenant/indorama-qa-234"
     ;;
+  # 15.
   "VMOS")
     TARGET_BRANCH="tenant/vmos-dev"
     ;;
+
+  # ── 2. DC Module Jobs ───────────────────────────────────────
+  # 1.
   "AsInt-AIS-02-DC")
     TARGET_BRANCH="tenant/asint-ais-02-dc"
+    ;;
+  # 2.
+  "AsInt-APM-01-DC")
+    TARGET_BRANCH="tenant/asint-apm-01-dc"
+    ;;
+  # 3.
+  "AsInt-APM-02-DC")
+    TARGET_BRANCH="tenant/asint-apm-02-dc"
+    ;;
+  # 4.
+  "AsInt-APM-EIOT-DC")
+    TARGET_BRANCH="tenant/asint-apm-eiot-dc"
+    ;;
+  # 5.
+  "AsInt-DEMO-DC")
+    TARGET_BRANCH="tenant/asint-demo-dc"
+    ;;
+  # 6.
+  "IRC-DC")
+    TARGET_BRANCH="tenant/irc-dc"
+    ;;
+  # 7.
+  "AsInt-ST-DC")
+    TARGET_BRANCH="tenant/asint-st-env-dc"
+    ;;
+  # 8.
+  "Baystar-DC")
+    TARGET_BRANCH="tenant/baystar-dc"
+    ;;
+  # 9.
+  "Hemlock-NON-PROD-DC")
+    TARGET_BRANCH="tenant/hemlock-non-prod-dc"
+    ;;
+  # 10.
+  "Hemlock-PROD-DC")
+    TARGET_BRANCH="tenant/hemlock-prod-dc"
+    ;;
+  # 11.
+  "Indorama-PROD-900-DC")
+    TARGET_BRANCH="tenant/indorama-prod-900-dc"
+    ;;
+  # 12.
+  "Indorama-PROD-933-DC")
+    TARGET_BRANCH="tenant/indorama-prod-933-dc"
+    ;;
+  # 13.
+  "Indorama-QA-233-DC")
+    TARGET_BRANCH="tenant/indorama-qa-233-dc"
+    ;;
+  # 14.
+  "Indorama-QA-234-DC")
+    TARGET_BRANCH="tenant/indorama-qa-234-dc"
+    ;;
+  # 15.
+  "VMOS-DC")
+    TARGET_BRANCH="tenant/vmos-dc"
+    ;;
+
+  # ── 3. DC AddIn Module Jobs ─────────────────────────────────
+  # 1.
+  "AsInt-AIS-02-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-ais-02-dc-addin"
+    ;;
+  # 2.
+  "AsInt-APM-01-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-apm-01-dc-addin"
+    ;;
+  # 3.
+  "AsInt-APM-02-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-apm-02-dc-addin"
+    ;;
+  # 4.
+  "AsInt-APM-EIOT-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-apm-eiot-dc-addin"
+    ;;
+  # 5.
+  "AsInt-DEMO-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-demo-dc-addin"
+    ;;
+  # 6.
+  "IRC-DC-AddIn")
+    TARGET_BRANCH="tenant/irc-dc-addin"
+    ;;
+  # 7.
+  "AsInt-ST-DC-AddIn")
+    TARGET_BRANCH="tenant/asint-st-env-dc-addin"
+    ;;
+  # 8.
+  "Baystar-DC-AddIn")
+    TARGET_BRANCH="tenant/baystar-dc-addin"
+    ;;
+  # 9.
+  "Hemlock-NON-PROD-DC-AddIn")
+    TARGET_BRANCH="tenant/hemlock-non-prod-dc-addin"
+    ;;
+  # 10.
+  "Hemlock-PROD-DC-AddIn")
+    TARGET_BRANCH="tenant/hemlock-prod-dc-addin"
+    ;;
+  # 11.
+  "Indorama-PROD-900-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-prod-900-dc-addin"
+    ;;
+  # 12.
+  "Indorama-PROD-933-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-prod-933-dc-addin"
+    ;;
+  # 13.
+  "Indorama-QA-233-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-qa-233-dc-addin"
+    ;;
+  # 14.
+  "Indorama-QA-234-DC-AddIn")
+    TARGET_BRANCH="tenant/indorama-qa-234-dc-addin"
+    ;;
+  # 15.
+  "VMOS-DC-AddIn")
+    TARGET_BRANCH="tenant/vmos-dc-addin"
     ;;
 esac
 
@@ -148,25 +369,38 @@ fi
 echo "commit_id=$COMMIT_ID" >> $GITHUB_OUTPUT
 echo "status=$STATUS" >> $GITHUB_OUTPUT
 echo "clean_name=$CLEAN_NAME" >> $GITHUB_OUTPUT
+echo "stage=$STAGE" >> $GITHUB_OUTPUT
 
 DASHBOARD_URL="https://asint-payg-development.cicd.cfapps.eu10.hana.ondemand.com/ui/index.html#"
 TIMESTAMP=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %I:%M %p IST")
 
 # 2. Configure Card Header, Color, and Subtitle based on Event Type
 if [ "$EVENT_TYPE" = "sap_cicd_started" ]; then
-  CARD_TITLE="🟡 SAP CI/CD Pipeline Started"
+  CARD_TITLE="🟡 SAP CI/CD Job Started"
   CARD_COLOR="warning"
-  STATUS_BADGE="⏳ Running Build & Deployment"
+  if [ -n "$STAGE" ]; then
+    STATUS_BADGE="⏳ Running $STAGE Stage"
+  else
+    STATUS_BADGE="⏳ Running Build & Deployment"
+  fi
   CARD_SUBTITLE="Build execution is now in progress for $CLEAN_NAME."
 elif [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "INFO" ]; then
   CARD_TITLE="✅ SAP CI/CD Deployment Succeeded"
   CARD_COLOR="good"
-  STATUS_BADGE="🚀 Deployed Successfully"
+  if [ -n "$STAGE" ]; then
+    STATUS_BADGE="🚀 $STAGE Succeeded"
+  else
+    STATUS_BADGE="🚀 Deployed Successfully"
+  fi
   CARD_SUBTITLE="Pipeline build and deployment completed without errors."
 else
   CARD_TITLE="❌ SAP CI/CD Deployment Failed"
   CARD_COLOR="attention"
-  STATUS_BADGE="⚠️ Build / Deployment Failed"
+  if [ -n "$STAGE" ]; then
+    STATUS_BADGE="⚠️ $STAGE Failed"
+  else
+    STATUS_BADGE="⚠️ Build / Deployment Failed"
+  fi
   CARD_SUBTITLE="Pipeline execution encountered an error. Please inspect logs."
 fi
 
@@ -418,6 +652,141 @@ case "$NORM_ENV" in
     [ -n "$TEAMS_WEBHOOK_AIS02_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_2")
     [ -n "$TEAMS_WEBHOOK_AIS02_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_3")
     ;;
+  "asintapm02dc"|"apm02dc")
+    [ -n "$TEAMS_WEBHOOK_APM02_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_1")
+    [ -n "$TEAMS_WEBHOOK_APM02_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_2")
+    [ -n "$TEAMS_WEBHOOK_APM02_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_3")
+    ;;
+  "asintapm02dcaddin"|"apm02dcaddin")
+    [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_APM02_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APM02_DC_ADDIN_3")
+    ;;
+  "asintais02dcaddin"|"ais02dcaddin")
+    [ -n "$TEAMS_WEBHOOK_AIS02_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_AIS02_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_AIS02_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_AIS02_DC_ADDIN_3")
+    ;;
+  "asintapmeiotdc"|"apmeiotdc")
+    [ -n "$TEAMS_WEBHOOK_APMEIOT_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APMEIOT_DC_1")
+    [ -n "$TEAMS_WEBHOOK_APMEIOT_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APMEIOT_DC_2")
+    [ -n "$TEAMS_WEBHOOK_APMEIOT_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APMEIOT_DC_3")
+    ;;
+  "asintapmeiotdcaddin"|"apmeiotdcaddin")
+    [ -n "$TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_APMEIOT_DC_ADDIN_3")
+    ;;
+  "asintdemodc"|"demodc")
+    [ -n "$TEAMS_WEBHOOK_DEMO_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_DEMO_DC_1")
+    [ -n "$TEAMS_WEBHOOK_DEMO_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_DEMO_DC_2")
+    [ -n "$TEAMS_WEBHOOK_DEMO_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_DEMO_DC_3")
+    ;;
+  "asintdemodcaddin"|"demodcaddin")
+    [ -n "$TEAMS_WEBHOOK_DEMO_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_DEMO_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_DEMO_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_DEMO_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_DEMO_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_DEMO_DC_ADDIN_3")
+    ;;
+  "baystardc"|"asintbaystardc")
+    [ -n "$TEAMS_WEBHOOK_BAYSTAR_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_BAYSTAR_DC_1")
+    [ -n "$TEAMS_WEBHOOK_BAYSTAR_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_BAYSTAR_DC_2")
+    [ -n "$TEAMS_WEBHOOK_BAYSTAR_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_BAYSTAR_DC_3")
+    ;;
+  "baystardcaddin"|"asintbaystardcaddin")
+    [ -n "$TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_BAYSTAR_DC_ADDIN_3")
+    ;;
+  "hscnonproddc"|"hemlocknonproddc"|"asinthemlocknonproddc")
+    [ -n "$TEAMS_WEBHOOK_HSC_NON_PROD_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_NON_PROD_DC_1")
+    [ -n "$TEAMS_WEBHOOK_HSC_NON_PROD_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_NON_PROD_DC_2")
+    [ -n "$TEAMS_WEBHOOK_HSC_NON_PROD_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_NON_PROD_DC_3")
+    ;;
+  "hscnonproddcaddin"|"hemlocknonproddcaddin"|"asinthemlocknonproddcaddin")
+    [ -n "$TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_NON_PROD_DC_ADDIN_3")
+    ;;
+  "hscproddc"|"hemlockproddc"|"asinthemlockproddc")
+    [ -n "$TEAMS_WEBHOOK_HSC_PROD_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_PROD_DC_1")
+    [ -n "$TEAMS_WEBHOOK_HSC_PROD_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_PROD_DC_2")
+    [ -n "$TEAMS_WEBHOOK_HSC_PROD_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_PROD_DC_3")
+    ;;
+  "hscproddcaddin"|"hemlockproddcaddin"|"asinthemlockproddcaddin")
+    [ -n "$TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_HSC_PROD_DC_ADDIN_3")
+    ;;
+  "indoramaprod900dc"|"asintindoramaprod900dc")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_3")
+    ;;
+  "indoramaprod900dcaddin"|"asintindoramaprod900dcaddin")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_900_DC_ADDIN_3")
+    ;;
+  "indoramaprod933dc"|"asintindoramaprod933dc")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_3")
+    ;;
+  "indoramaprod933dcaddin"|"asintindoramaprod933dcaddin")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_PROD_933_DC_ADDIN_3")
+    ;;
+  "indoramaqa233dc"|"asintindoramaqa233dc")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_3")
+    ;;
+  "indoramaqa233dcaddin"|"asintindoramaqa233dcaddin")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_233_DC_ADDIN_3")
+    ;;
+  "indoramaqa234dc"|"asintindoramaqa234dc")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_3")
+    ;;
+  "indoramaqa234dcaddin"|"asintindoramaqa234dcaddin")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_INDORAMA_QA_234_DC_ADDIN_3")
+    ;;
+  "ircdc"|"asintircdc")
+    [ -n "$TEAMS_WEBHOOK_IRC_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_IRC_DC_1")
+    [ -n "$TEAMS_WEBHOOK_IRC_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_IRC_DC_2")
+    [ -n "$TEAMS_WEBHOOK_IRC_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_IRC_DC_3")
+    ;;
+  "ircdcaddin"|"asintircdcaddin")
+    [ -n "$TEAMS_WEBHOOK_IRC_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_IRC_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_IRC_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_IRC_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_IRC_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_IRC_DC_ADDIN_3")
+    ;;
+  "stenvdc"|"asintstenvdc"|"asintstdc"|"stdc")
+    [ -n "$TEAMS_WEBHOOK_ST_ENV_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_DC_1")
+    [ -n "$TEAMS_WEBHOOK_ST_ENV_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_DC_2")
+    [ -n "$TEAMS_WEBHOOK_ST_ENV_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_DC_3")
+    ;;
+  "stenvdcaddin"|"asintstenvdcaddin"|"asintstdcaddin"|"stdcaddin")
+    [ -n "$TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_ST_ENV_DC_ADDIN_3")
+    ;;
+  "vmosdc"|"asintvmosdc")
+    [ -n "$TEAMS_WEBHOOK_VMOS_DC_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_DC_1")
+    [ -n "$TEAMS_WEBHOOK_VMOS_DC_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_DC_2")
+    [ -n "$TEAMS_WEBHOOK_VMOS_DC_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_DC_3")
+    ;;
+  "vmosdcaddin"|"asintvmosdcaddin")
+    [ -n "$TEAMS_WEBHOOK_VMOS_DC_ADDIN_1" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_DC_ADDIN_1")
+    [ -n "$TEAMS_WEBHOOK_VMOS_DC_ADDIN_2" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_DC_ADDIN_2")
+    [ -n "$TEAMS_WEBHOOK_VMOS_DC_ADDIN_3" ] && TARGET_WEBHOOKS+=("$TEAMS_WEBHOOK_VMOS_DC_ADDIN_3")
+    ;;
 esac
 
 # Always include Global Webhook URLs for universal notification broadcast
@@ -438,6 +807,7 @@ PAYLOAD=$(jq -n \
   --arg status "$STATUS_BADGE" \
   --arg job "$RESOURCE_NAME" \
   --arg env_name "$CLEAN_NAME" \
+  --arg stage "$STAGE" \
   --arg commit_id "$COMMIT_ID" \
   --arg time "$TIMESTAMP" \
   --arg dashboard "$DASHBOARD_URL" \
@@ -485,7 +855,12 @@ PAYLOAD=$(jq -n \
             facts: (
               [
                 { title: "Environment", value: $env_name },
-                { title: "SAP CI/CD Job", value: $job },
+                { title: "SAP CI/CD Job", value: $job }
+              ] +
+              (if $stage != "" then [
+                { title: "Stage", value: $stage }
+              ] else [] end) +
+              [
                 { title: "CI/CD Commit ID", value: $commit_id },
                 { title: "Timestamp", value: $time }
               ] +

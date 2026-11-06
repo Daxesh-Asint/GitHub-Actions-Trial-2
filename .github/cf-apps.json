@@ -8,6 +8,16 @@
       "apps": [
         "crawler-layer-backend"
       ]
+    },
+    "Indorama QA 234": {
+      "aliases": ["Indorama-QA-234", "indorama-qa-234", "indoramaqa234"],
+      "api": "https://api.cf.us10-001.hana.ondemand.com",
+      "org": "indorama-ais-qa-234",
+      "space": "ais-qa-234",
+      "apps": [
+        "asint-ais-backend"
+      ]
     }
   }
 }
+
