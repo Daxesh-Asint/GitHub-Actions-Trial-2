@@ -1987,3 +1987,29 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #92: EC2 Disk Leak Investigation, Duplicate Runner Engine Cleanup & Automation
+- **Date / Timestamp:** 2026-11-12T12:20:00+05:30
+- **User Request:**
+  - Investigate why EC2 disk utilization climbed from 19 GB to 27 GB (94% full, only 2.0 GB free).
+  - Identify root cause and provide permanent automated resolution so storage leaks never reoccur.
+
+- **Root Cause Identified:**
+  1. **Duplicate Runner Engine Binaries (5.5 GB wasted):** GitHub Actions runner auto-updated from `2.338.1` to `2.338.2`. GitHub retained the entire inactive `2.338.1` directory (`bin.2.338.1` 82MB, `externals.2.338.1` 601MB) across all 8 runners, duplicating ~5.5 GB of dead storage.
+  2. **Ghost Open File Descriptors:** Continuous running runner listener daemons held open unlinked file descriptors (`run.sh (deleted)` and temp memory maps), locking up disk space until service restart.
+
+- **Activities:**
+  - Safely purged dead rollback folders `bin.2.338.1` and `externals.2.338.1` across all 8 runners.
+  - Restarted all 8 systemd runner services, releasing trapped open file handles.
+  - Updated `/usr/local/bin/cleanup_runners.sh` on EC2 with **Smart Runner Pruning**: automatically inspects active symlinks (`readlink -f "$runner_dir/bin"`) and permanently prunes obsolete inactive version folders on idle runners.
+  - Verified script syntax (`bash -n`), verified all 8 runner services active (`Active: active (running)`), and verified cleanup script execution in crontab.
+  - Disk space successfully recovered: available storage jumped from **2.0 GB (94% used) to 8.7 GB (~70% used)**.
+
+- **Files Modified:**
+  - [`scripts/cleanup_runners.sh`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/scripts/cleanup_runners.sh)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
+
+- **Status:** Completed and verified.
