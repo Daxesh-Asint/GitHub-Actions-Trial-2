@@ -25,29 +25,110 @@ on:
         required: true
         type: choice
         options:
+          # ── 1. Core Module Jobs ───────────────────────────
+          # 1.
           - "AsInt-AIS-02"
-          - "AsInt-AIS-02-Safety-Test-DND"
-          - "AsInt-AIS-02-mta-fix"
+          # 2.
           - "AsInt-APM-01"
+          # 3.
           - "AsInt-APM-02"
+          # 4.
           - "AsInt-APM-EIOT"
+          # 5.
           - "AsInt-DEMO"
+          # 6.
           - "AsInt-IRC"
           - "IRC"
+          # 7.
           - "AsInt-ST"
+          # 8.
           - "BAYSTAR"
           - "Baystar"
+          # 9.
           - "Hemlock-NON-PROD"
+          # 10.
           - "Hemlock-PROD"
+          # 11.
           - "Indorama-PROD-900"
+          # 12.
           - "Indorama-PROD-933"
+          # 13.
           - "Indorama-QA-233"
+          # 14.
           - "Indorama-QA-234"
+          # 15.
           - "VMOS"
+
+          # ── 2. DC Module Jobs ─────────────────────────────
+          # 1.
           - "AsInt-AIS-02-DC"
+          # 2.
+          - "AsInt-APM-01-DC"
+          # 3.
+          - "AsInt-APM-02-DC"
+          # 4.
+          - "AsInt-APM-EIOT-DC"
+          # 5.
+          - "AsInt-DEMO-DC"
+          # 6.
+          - "IRC-DC"
+          # 7.
+          - "AsInt-ST-DC"
+          # 8.
+          - "Baystar-DC"
+          # 9.
+          - "Hemlock-NON-PROD-DC"
+          # 10.
+          - "Hemlock-PROD-DC"
+          # 11.
+          - "Indorama-PROD-900-DC"
+          # 12.
+          - "Indorama-PROD-933-DC"
+          # 13.
+          - "Indorama-QA-233-DC"
+          # 14.
+          - "Indorama-QA-234-DC"
+          # 15.
+          - "VMOS-DC"
+
+          # ── 3. DC AddIn Module Jobs ───────────────────────
+          # 1.
+          - "AsInt-AIS-02-DC-AddIn"
+          # 2.
+          - "AsInt-APM-01-DC-AddIn"
+          # 3.
+          - "AsInt-APM-02-DC-AddIn"
+          # 4.
+          - "AsInt-APM-EIOT-DC-AddIn"
+          # 5.
+          - "AsInt-DEMO-DC-AddIn"
+          # 6.
+          - "IRC-DC-AddIn"
+          # 7.
+          - "AsInt-ST-DC-AddIn"
+          # 8.
+          - "Baystar-DC-AddIn"
+          # 9.
+          - "Hemlock-NON-PROD-DC-AddIn"
+          # 10.
+          - "Hemlock-PROD-DC-AddIn"
+          # 11.
+          - "Indorama-PROD-900-DC-AddIn"
+          # 12.
+          - "Indorama-PROD-933-DC-AddIn"
+          # 13.
+          - "Indorama-QA-233-DC-AddIn"
+          # 14.
+          - "Indorama-QA-234-DC-AddIn"
+          # 15.
+          - "VMOS-DC-AddIn"
         default: "AsInt-Indorama-Prod-900"
       commit_id:
         description: "Commit ID (optional, defaults to branch HEAD)"
+        required: false
+        default: ""
+      stage:
+        description: "Stage Name (optional, e.g. Release, Build, Acceptance)"
         required: false
         default: ""
       app_name:
@@ -60,18 +141,21 @@ permissions:
 
 jobs:
   simulate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     steps:
       - name: Trigger SAP CI/CD Webhook
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          STAGE_TEXT=""
+          [ -n "${{ inputs.stage }}" ] && STAGE_TEXT=" in stage '${{ inputs.stage }}'"
+
           if [ "${{ inputs.event_type }}" = "sap_cicd_started" ]; then
-            SUBJ="Build has started"
+            SUBJ="Build has started$STAGE_TEXT"
           elif [ "${{ inputs.status }}" = "SUCCESS" ] || [ "${{ inputs.status }}" = "INFO" ]; then
-            SUBJ="Build has finished with 'SUCCESS'"
+            SUBJ="Build has finished with 'SUCCESS'$STAGE_TEXT"
           else
-            SUBJ="Build has finished with 'FAILURE'"
+            SUBJ="Build has finished with 'FAILURE'$STAGE_TEXT"
           fi
 
           gh api repos/${{ github.repository }}/dispatches \
@@ -80,6 +164,7 @@ jobs:
             -F client_payload[status]="${{ inputs.status }}" \
             -F client_payload[resource_name]="${{ inputs.resource_name }}" \
             -F client_payload[commit_id]="${{ inputs.commit_id }}" \
+            -F client_payload[stage]="${{ inputs.stage }}" \
             -F client_payload[app_name]="${{ inputs.app_name }}" \
             -F client_payload[subject]="$SUBJ"
           echo "✅ Webhook successfully sent!"

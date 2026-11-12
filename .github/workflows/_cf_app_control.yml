@@ -28,7 +28,7 @@ on:
 
 jobs:
   cf_execute:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
     outputs:
       app_status: ${{ steps.action.outputs.app_status }}
     steps:
