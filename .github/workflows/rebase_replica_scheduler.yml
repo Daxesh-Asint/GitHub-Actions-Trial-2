@@ -1,0 +1,33 @@
+name: Auto Rebase Replica Scheduler
+
+on:
+  pull_request:
+    branches:
+      - 'tenant/st-env-exxon-replica'
+    types: [closed]
+  workflow_dispatch:
+
+jobs:
+  rebase:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout scheduler branch
+        uses: actions/checkout@v4
+        with:
+          ref: 'tenant/st-env-exxon-replica-scheduler'
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Rebase onto tenant/st-env-exxon-replica
+        run: |
+          git fetch origin tenant/st-env-exxon-replica
+          git rebase origin/tenant/st-env-exxon-replica
+          git push origin tenant/st-env-exxon-replica-scheduler --force-with-lease
