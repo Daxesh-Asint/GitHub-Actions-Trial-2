@@ -2013,3 +2013,154 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md) on POC `origin/dev`
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #93: Linter Workflow Investigation across `dev` and `tenant/exxon-ps` in `asint_ais`
+- **Date / Timestamp:** 2026-11-16T11:00:00+05:30
+- **User Request:**
+  - Investigate the linter configuration in `StillSomehowSane/asint_ais` repository.
+  - Review PR #17456 and determine why linting was removed from `dev` and whether `superlinter.yml` still exists on `tenant/exxon-ps`.
+  - Provide guidance on enabling linting for PRs targeting `tenant/exxon-ps`.
+
+- **Activities:**
+  - Analyzed commit history and PR #17456 authored by Sarath Merangi on Aug 18, 2026, which deleted `.github/workflows/superlinter.yml` from `dev`.
+  - Inspected branch `tenant/exxon-ps` and confirmed `.github/workflows/superlinter.yml` is present, using `super-linter/super-linter@v6` with rule files in `.github/linters/` (`.eslintrc.yml`, `stylelint.config.js`, `checkstyle.xml`).
+  - Advised on branch trigger update from `branches: ['dev']` to `branches: ['tenant/exxon-ps']` without needing extra environment variables for v6.
+
+- **Files Modified / Referenced:**
+  - `StillSomehowSane/asint_ais`: `.github/workflows/superlinter.yml`
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and documented.
+
+---
+
+### Prompt #94: Automated Rebase Workflow for Replica Scheduler (`asint_ais` & POC)
+- **Date / Timestamp:** 2026-11-16T12:30:00+05:30
+- **User Request:**
+  - Automatically keep `tenant/st-env-exxon-replica-scheduler` rebased whenever changes occur in `tenant/st-env-exxon-replica`.
+  - Must trigger on BOTH: PR merges into `replica` AND direct commits pushed to `replica` without a PR.
+  - Pilot, test, and verify all scenarios in the POC repository (`Daxesh-Asint/GitHub-Actions-Trial-2`) before touching company repository.
+  - Raise PR in company repository once POC is 100% verified.
+
+- **Activities:**
+  - Designed `.github/workflows/rebase_replica_scheduler.yml` using `on: push: branches: ['tenant/st-env-exxon-replica']` and `workflow_dispatch`.
+  - Implemented safe git rebase logic with automated abort on conflicts, concurrency group isolation (`concurrency: group: rebase-replica-scheduler`), and `--force-with-lease` push.
+  - Tested 4 scenarios in POC repo (`Daxesh-Asint/GitHub-Actions-Trial-2`):
+    1. Direct commit push: successfully rebased scheduler branch automatically.
+    2. PR merge: successfully rebased scheduler branch on PR merge event.
+    3. Concurrency: multiple simultaneous events queued and executed cleanly.
+    4. Conflict handling: gracefully aborted with exit code 1 and step summary error without corrupting branch history.
+  - Created branch `feature/auto-rebase-replica-scheduler` in `StillSomehowSane/asint_ais` and opened [PR #20007](https://github.com/StillSomehowSane/asint_ais/pull/20007).
+
+- **Files Modified:**
+  - [`.github/workflows/rebase_replica_scheduler.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/rebase_replica_scheduler.yml) (Created in POC repo)
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed, verified, and PR #20007 raised.
+
+---
+
+### Prompt #95: Impact Analysis & Team Communication on Branch Flow into `tenant/exxon-ps`
+- **Date / Timestamp:** 2026-11-16T15:30:00+05:30
+- **User Request:**
+  - Address queries from Rahul Jagdale and Sarath Merangi regarding whether commits from `tenant/st-env-exxon-replica` or `tenant/st-env-exxon-replica-scheduler` flowing into `tenant/exxon-ps` in future would cause any workflow issues.
+  - Provide a clear, professional explanation reassuring the team.
+
+- **Activities:**
+  - Analyzed workflow trigger boundary: the workflow strictly evaluates `branches: ['tenant/st-env-exxon-replica']`.
+  - Verified that even when merged into `tenant/exxon-ps` (or any other branch), the workflow file remains completely dormant and inactive because the branch name does not match.
+  - Drafted concise, professional Teams messages for Rahul and Sarath.
+
+- **Files Modified:**
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and delivered to user.
+
+---
+
+### Prompt #96: Deployment Workflows Architecture & Cloud Foundry Start/Stop Optimization
+- **Date / Timestamp:** 2026-11-16T16:00:00+05:30
+- **User Request:**
+  - Deeply analyze `asint-deployment-workflows` repository and compare with local configurations in `just-for-poc-GitHub-`.
+  - Determine where Cloud Foundry (CF) app start and stop configuration is maintained.
+  - Confirm if hardcoded CF parameters (`cf_stop_app`, `cf_api`, `cf_org`, `cf_space`) in caller workflows (`deploy_<tenant>.yml`) can be safely eliminated.
+
+- **Activities:**
+  - Audited all 54 workflows in `asint-deployment-workflows` and local repositories.
+  - Verified that [`.github/cf-apps.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/cf-apps.json) is the single source of truth for CF endpoints, credentials, and app stop lists (`asint-ais-backend`, `crawler-layer-backend`, etc.).
+  - Verified `_auto_merge.yml` uses `jq` to read `.github/cf-apps.json` using `deployment_name` and aliases; inputs in `deploy_<tenant>.yml` are strictly fallbacks.
+  - Confirmed: hardcoded CF inputs in `deploy_<tenant>.yml` can be safely removed to achieve a clean, DRY deployment architecture.
+  - Created comprehensive architecture report `asint_deployment_workflow_analysis.md` and updated master notes `deployment_workflows_notes.md`.
+
+- **Files Modified / Created:**
+  - [`asint_deployment_workflow_analysis.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/asint_deployment_workflow_analysis.md)
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and documented.
+
+---
+
+### Prompt #97: Root Cause Analysis of PR #20024 Check Status Failure in `asint_ais`
+- **Date / Timestamp:** 2026-11-16T17:15:00+05:30
+- **User Request:**
+  - Investigate why check `Auto Rebase Replica Scheduler / rebase (push)` was showing and failing on PR #20024 (`tenant/exxon-ps` <- `tenant/st-env-exxon-replica`).
+  - Explain why the check ran and why it was red.
+
+- **Activities:**
+  - Inspected workflow run `43857190165` via `gh run view --log-failed`:
+    - Discovered root cause: merge conflict in `mta.yaml` between `replica` and `replica-scheduler` caused by commit `ee4cd8037a` on the scheduler branch.
+  - Clarified GitHub status check behavior: GitHub attaches commit checks to the commit SHA (`fdf0b98a0828`), and surfaces all checks from the source branch's head commit on PR #20024.
+  - Confirmed PR #20024 is **"Able to merge"** because the check is non-required on `tenant/exxon-ps`.
+
+- **Files Modified:**
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and explained to user.
+
+---
+
+### Prompt #98: Trigger Evaluation (`push` vs `pull_request` vs `schedule`) & PR Check Isolation
+- **Date / Timestamp:** 2026-11-16T17:25:00+05:30
+- **User Request:**
+  - Advise whether switching trigger from `push` to `pull_request` would prevent checks on PRs targeting `tenant/exxon-ps`.
+  - Provide a permanent solution to prevent rebase checks from appearing on PRs.
+
+- **Activities:**
+  - Clarified why changing to `pull_request` is counterproductive: it drops direct push support and still renders check badges on PRs.
+  - Proved that the workflow has 0 runs on `tenant/exxon-ps` and will never run on `exxon-ps`.
+  - Formulated the clean architectural solution: **Scheduled Background Sync (`schedule: cron`)**, which executes independently in the background and attaches 0 check badges to commits and PRs.
+
+- **Files Modified:**
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and documented.
+
+---
+
+### Prompt #99: Executive Timestamp Proof & Team Communication for PR #20024
+- **Date / Timestamp:** 2026-11-16T17:40:00+05:30
+- **User Request:**
+  - Provide definitive proof that the failing check on PR #20024 was an existing/old check from `replica` and was not triggered by Sarath's new PR to `exxon-ps`.
+  - Specify exact locations in GitHub UI to inspect timestamps.
+
+- **Activities:**
+  - Retrieved exact timestamps via GitHub CLI:
+    - Workflow Run #43857190165: triggered at `11:22:36Z`, completed at `11:23:34Z`.
+    - PR #20024: opened at `11:27:08Z` (5 minutes after the check had already completed).
+  - Provided exact UI navigation instructions (hovering on PR header timestamp and Actions run timestamp) to verify the timeline.
+  - Drafted immediate response for Sarath confirming the PR did not trigger the check and is safe to merge.
+
+- **Files Modified:**
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and verified.
