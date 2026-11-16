@@ -2164,3 +2164,32 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Completed and verified.
+
+
+---
+
+### Prompt #100: CF App Start/Stop Control Centralization & Hardcoded Parameter Elimination
+- **Date / Timestamp:** 2026-11-16T22:15:00+05:30
+- **User Request:**
+  - Confirm keeping detailed prompt cycle logs in `checklist/PROMPT_CYCLE_LOG.md` for every single prompt.
+  - Verify whether `cf-apps.json` is the sole place where Cloud Foundry app start/stop control should be maintained.
+  - Confirm whether the hardcoded CF parameters (`cf_stop_app`, `cf_api`, `cf_org`, `cf_space`) in `deploy_<>.yml` can be safely removed without impacting deployments.
+
+- **Technical Findings & Architectural Confirmation:**
+  - **Resolution Mechanism in `_auto_merge.yml`:**
+    - Lines 64–69 fetch `.github/cf-apps.json` from the repository.
+    - Lines 253–282 (`Resolve CF App Configuration`) check `cf-apps.json` first using `jq`.
+    - If found in `cf-apps.json`, it extracts `api`, `org`, `space`, and the list of `apps` to stop.
+    - The inputs from `deploy_<>.yml` (`inputs.cf_stop_app`, `inputs.cf_api`, etc.) are strictly **fallbacks**.
+  - **Can hardcoded parameters be removed from `deploy_<>.yml`?**
+    - **Yes, absolutely.** As long as an environment's details exist in `.github/cf-apps.json`, the caller workflow inputs in `deploy_<>.yml` are completely ignored by `_auto_merge.yml`.
+    - **Prerequisite:** Before removing fallback inputs from `deploy_<>.yml`, each tenant that requires app stopping must have its entry populated in `.github/cf-apps.json`.
+    - Once populated in `cf-apps.json`, removing the inputs from `deploy_<>.yml` makes caller workflows 100% DRY and eliminates maintenance overhead across 45+ files.
+
+- **Files Referenced / Modified:**
+  - [`.github/cf-apps.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/cf-apps.json)
+  - [`.github/workflows/_auto_merge.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/asint-deployment-workflows/.github/workflows/_auto_merge.yml#L253-L282)
+  - [`deployment_workflows_notes.md`](file:///C:/Users/Daxesh%20Prajapati/.gemini/antigravity/brain/211f23d5-dfc7-4b9d-805d-491c76bb6059/deployment_workflows_notes.md)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Documented, verified, and committed to POC repository.
