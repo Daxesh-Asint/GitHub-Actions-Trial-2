@@ -7,6 +7,11 @@ on:
     types: [closed]
   workflow_dispatch:
 
+# Queue runs sequentially so back-to-back merges don't race
+concurrency:
+  group: rebase-replica-scheduler
+  cancel-in-progress: false
+
 jobs:
   rebase:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
@@ -20,6 +25,7 @@ jobs:
         with:
           ref: 'tenant/st-env-exxon-replica-scheduler'
           fetch-depth: 0
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
@@ -31,3 +37,18 @@ jobs:
           git fetch origin tenant/st-env-exxon-replica
           git rebase origin/tenant/st-env-exxon-replica
           git push origin tenant/st-env-exxon-replica-scheduler --force-with-lease
+
+      - name: Report Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "### ✅ Auto Rebase Succeeded" >> $GITHUB_STEP_SUMMARY
+            echo "- **Source:** \`tenant/st-env-exxon-replica\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Target:** \`tenant/st-env-exxon-replica-scheduler\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status:** Rebase completed and pushed cleanly." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Auto Rebase Failed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Source:** \`tenant/st-env-exxon-replica\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Target:** \`tenant/st-env-exxon-replica-scheduler\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reason:** Conflicts detected during rebase. Manual resolution required." >> $GITHUB_STEP_SUMMARY
+          fi
