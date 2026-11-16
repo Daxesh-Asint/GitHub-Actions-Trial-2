@@ -2193,3 +2193,31 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Documented, verified, and committed to POC repository.
+
+
+---
+
+### Prompt #101: Consolidation Architecture: 42 Callers to 1 Dynamic Dispatcher (`deploy_tenant.yml`)
+- **Date / Timestamp:** 2026-11-16T23:05:00+05:30
+- **User Request:**
+  - Consolidate all 42 `deploy_<>.yml` files into 1 single unified workflow and 1 configuration file.
+  - Keep Option A: `.github/environments.json` (for branch mappings and deployment settings) separate from `.github/cf-apps.json` (for Cloud Foundry app stop control).
+  - Extract and analyze every exact `repository_dispatch` event type used across the entire workflow suite so MS Teams bot / Jarvis triggers remain 100% functional.
+  - Implement and pilot first in POC repository (`just-for-poc-GitHub-`).
+
+- **Activities & Implementations:**
+  - **Full Repository Scan:** Inspected all 42 workflows and extracted all 42 exact `repository_dispatch` event types (`trigger_ais02_deployment` through `trigger_vmos_dc_addin_deployment`).
+  - **CF Config Completeness:** Updated [`.github/cf-apps.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/cf-apps.json) to add `AIS-02` (`crawler-layer-backend`, `ais-02-eu10-org`, `main`), completing all known CF stop configurations.
+  - **Centralized Environment Registry:** Created [`.github/environments.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/environments.json) (UTF-8, no BOM) mapping all 42 environments with `deployment_name`, `dispatch_type`, `compare`, `base`, and `dashboard_url`.
+  - **Unified Dispatcher Workflow:** Created [`.github/workflows/deploy_tenant.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/deploy_tenant.yml):
+    - Triggers on all 42 existing `repository_dispatch` types for zero-change ChatOps compatibility.
+    - Includes `workflow_dispatch` with a 42-item choice dropdown for manual 1-click deployments from GitHub UI.
+    - Two-stage architecture: Job 1 (`resolve-config`) extracts environment metadata using `jq`; Job 2 (`merging-process`) calls `_auto_merge.yml` with resolved parameters.
+
+- **Files Modified / Created:**
+  - [`.github/environments.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/environments.json) (Created)
+  - [`.github/workflows/deploy_tenant.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/deploy_tenant.yml) (Created)
+  - [`.github/cf-apps.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/cf-apps.json) (Updated with AIS-02)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Implemented in POC repo, ready for testing and verification.
