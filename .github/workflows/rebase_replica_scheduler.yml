@@ -1,20 +1,18 @@
 name: Auto Rebase Replica Scheduler
 
 on:
-  pull_request:
+  push:
     branches:
       - 'tenant/st-env-exxon-replica'
-    types: [closed]
   workflow_dispatch:
 
-# Queue runs sequentially so back-to-back merges don't race
+# Queue runs sequentially so back-to-back changes don't race
 concurrency:
   group: rebase-replica-scheduler
   cancel-in-progress: false
 
 jobs:
   rebase:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
