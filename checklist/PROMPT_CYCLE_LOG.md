@@ -2277,3 +2277,26 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Documented and explained to user.
+
+
+---
+
+### Prompt #104: Multi-Branch Deployment Flow Analysis (`main`, `main-dc`, `main-dc-addin`)
+- **Date / Timestamp:** 2026-11-17T17:15:00+05:30
+- **User Request:**
+  - Analyze whether environments deploying from `main`, `main-dc`, and `main-dc-addin` require `.github/environments.json`, `.github/cf-apps.json`, and `deploy_tenant.yml` on those respective source branches, or if `dev` alone is sufficient.
+
+- **Technical Analysis & Architectural Recommendation:**
+  - **Runtime Execution:**
+    - GitHub Actions executes `repository_dispatch` and `workflow_dispatch` off the default branch (`dev`).
+    - The dispatcher checks out `dev` and reads `environments.json` from `dev`, then invokes `_auto_merge.yml`.
+  - **Why `main`, `main-dc`, and `main-dc-addin` SHOULD have these files:**
+    1. **Native Configuration Resolution:** When `_auto_merge.yml` runs comparisons against `main`, `main-dc`, or `main-dc-addin`, having `.github/cf-apps.json` and `.github/environments.json` natively on those branches avoids reliance on fallback checkout steps.
+    2. **Branch Synchronization & Drift Elimination:** If `main*` branches retain the 42 legacy caller files while `dev` has them deleted, promoting code from `dev` to `main*` in regular release cycles would cause merge collisions.
+    3. **Operational Consistency:** All 4 base streams (`dev`, `main`, `main-dc`, `main-dc-addin`) remain identical in workflow architecture.
+  - **Recommendation:** Propagate the 2 configuration files (`environments.json`, `cf-apps.json`) and `deploy_tenant.yml`, while deleting the 42 legacy files, across `main`, `main-dc`, and `main-dc-addin` in the POC repository.
+
+- **Files Referenced:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Documented and explained to user.
