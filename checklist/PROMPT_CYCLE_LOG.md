@@ -2356,3 +2356,33 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Documented and explained to user.
+
+
+---
+
+### Prompt #107: Company Repository Audit for `cf-apps.json` & Active CF App Controls
+- **Date / Timestamp:** 2026-11-17T17:35:00+05:30
+- **User Request:**
+  - Audit the company repository (`StillSomehowSane/asint_ais`) to locate `.github/cf-apps.json`.
+  - Identify which environments and controls are currently enabled in `cf-apps.json` in the company repository.
+
+- **Audit Findings in `StillSomehowSane/asint_ais`:**
+  1. **File Location / Existence:**
+     - `.github/cf-apps.json` does **NOT exist** in the company repository (`asint_ais`) on any branch.
+     - `_auto_merge.yml` on `ci/deployment-workflows-*` and `dev` contains the code to read `.github/cf-apps.json` (lines 64–70 and 255–288), but falls back to direct workflow inputs because the JSON file was never created in `asint_ais`.
+  2. **Currently Enabled CF App Controls in Company Repo:**
+     - In `asint_ais`, exactly two workflows have hardcoded CF app stopping configured:
+       - `deploy_apm01.yml`: stops `crawler-layer-backend` (`asint-apm-01` / `demo` on `https://api.cf.eu10-004.hana.ondemand.com`).
+       - `merge_dev_to_tenant_ais02.yml`: stops `crawler-layer-backend` (`ais-02-eu10-org` / `main` on `https://api.cf.eu10-004.hana.ondemand.com`).
+  3. **Comparison with POC Repository (`just-for-poc-GitHub-`):**
+     - In POC repository, `.github/cf-apps.json` exists and centralizes:
+       - `APM-01` (stops `crawler-layer-backend`)
+       - `AIS-02` (stops `crawler-layer-backend`)
+       - `Indorama QA 234` (stops `asint-ais-backend`)
+  4. **Next Steps:** When propagating the unified architecture to company staging branches (`ci/deployment-workflows-*`), creating `.github/cf-apps.json` with `APM-01`, `AIS-02`, and `Indorama QA 234` will activate the centralized JSON engine.
+
+- **Files Referenced:**
+  - `StillSomehowSane/asint_ais`: `.github/workflows/_auto_merge.yml`, `.github/workflows/deploy_apm01.yml`, `.github/workflows/merge_dev_to_tenant_ais02.yml`
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Completed and documented.
