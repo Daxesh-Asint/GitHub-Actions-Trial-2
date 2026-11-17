@@ -88,7 +88,7 @@ function buildHelpCard(botName) {
     const commands = [
         {
             syntax: `@${name} share snapshot`,
-            desc: `Starts a new snapshot deployment with a default 60m cherry-pick window. You can specify a custom wait time (e.g. @${name} share snapshot 85m).`,
+            desc: `Starts a new snapshot deployment with a default 200m cherry-pick window. You can specify a custom wait time (e.g. @${name} share snapshot 85m).`,
             color: 'Accent'
         },
         {
