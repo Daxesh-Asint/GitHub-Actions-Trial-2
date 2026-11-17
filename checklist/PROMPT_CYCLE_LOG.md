@@ -2221,3 +2221,30 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Implemented in POC repo, ready for testing and verification.
+
+
+---
+
+### Prompt #102: Purge of 42 Legacy Callers & Multi-Scenario Testing in POC Repository
+- **Date / Timestamp:** 2026-11-17T16:20:00+05:30
+- **User Request:**
+  - Confirm that `.github/environments.json` and `.github/cf-apps.json` (alongside `deploy_tenant.yml`) completely eliminate the need for the 42 separate `deploy_<>.yml` files.
+  - Maintain strict prompt cycle logging in `checklist/PROMPT_CYCLE_LOG.md`, referencing all historical context before answering.
+  - Permanently remove all 42 `deploy_<>.yml` files from the POC repository (`just-for-poc-GitHub-`).
+  - Test all possible scenarios (ChatOps dispatch, manual dispatch, CF stop environments, standard environments, and error handling) in the POC repo only.
+
+- **Activities & Progress:**
+  - Removed all 42 legacy deployment caller workflow files (`deploy_ais02_dc.yml` through `merge_dev_to_tenant_ais02.yml`) from `.github/workflows/` using `git rm`.
+  - Committed and pushed the deletion to `origin/dev` on `Daxesh-Asint/GitHub-Actions-Trial-2`.
+  - Validated that the core workflow engine (`_auto_merge.yml`, `_cf_app_control.yml`, APM-02 family, and `deploy_tenant.yml`) remains intact.
+  - Prepared multi-scenario test execution for `deploy_tenant.yml`.
+
+- **Files Removed (42 files):**
+  - All 42 `deploy_<>.yml` and `merge_dev_to_tenant_ais02.yml` files in `.github/workflows/`
+- **Files Modified / Referenced:**
+  - [`.github/environments.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/environments.json)
+  - [`.github/cf-apps.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/cf-apps.json)
+  - [`.github/workflows/deploy_tenant.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/deploy_tenant.yml)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Deletion complete; multi-scenario verification underway in POC repo.
