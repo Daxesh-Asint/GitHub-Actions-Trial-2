@@ -2251,3 +2251,29 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Completed and verified: 42 files removed and 100% of scenarios validated in POC repo.
+
+
+---
+
+### Prompt #103: Multi-Branch Scope Analysis for Dynamic Deployment Architecture
+- **Date / Timestamp:** 2026-11-17T17:10:00+05:30
+- **User Request:**
+  - Clarify which branches received the unified architecture files (`.github/environments.json`, `.github/cf-apps.json`, and `.github/workflows/deploy_tenant.yml`).
+  - Determine whether pushing to `dev` is sufficient or if other branches (`main`, `main-dc`, `main-dc-addin`, etc.) also require these updates.
+
+- **Technical Analysis & Findings:**
+  - **Where it was pushed:**
+    - Committed to branch `dev` in `Daxesh-Asint/GitHub-Actions-Trial-2` (Commit `44365454ca` and `554f38b9b2`).
+  - **Is `dev` enough for execution? YES:**
+    - In GitHub Actions, `repository_dispatch` (MS Teams / ChatOps triggers) and `workflow_dispatch` (manual Actions UI triggers) execute strictly against the repository's **default branch** (`dev`).
+    - Therefore, `dev` alone is 100% sufficient to receive dispatches and execute deployments for all 42 environments.
+  - **Repository Cleanliness Consideration:**
+    - In POC repo, branches `main`, `main-dc`, and `main-dc-addin` still contain the legacy 42 `deploy_<>.yml` files.
+    - While they do not interfere with execution, propagating the change across `main`, `main-dc`, and `main-dc-addin` keeps all base branches identical.
+  - **In `asint-deployment-workflows`:**
+    - The repository only has a single branch: `main` (which is the default branch). Once rolled out there, `main` covers the entire repository.
+
+- **Files Referenced:**
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Documented and explained to user.
