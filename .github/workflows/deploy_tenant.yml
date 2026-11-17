@@ -1,0 +1,162 @@
+name: "Deploy: Dynamic Tenant Dispatcher"
+
+on:
+  repository_dispatch:
+    types:
+      - trigger_ais02_deployment
+      - trigger_ais02_dc_deployment
+      - trigger_ais02_dc_addin_deployment
+      - trigger_apm01_deployment
+      - trigger_apm01_dc_deployment
+      - trigger_apm01_dc_addin_deployment
+      - trigger_apm_eiot_deployment
+      - trigger_apm_eiot_dc_deployment
+      - trigger_apm_eiot_dc_addin_deployment
+      - trigger_asint_demo_deployment
+      - trigger_asint_demo_dc_deployment
+      - trigger_asint_demo_dc_addin_deployment
+      - trigger_baystar_deployment
+      - trigger_baystar_dc_deployment
+      - trigger_baystar_dc_addin_deployment
+      - trigger_hsc_non_prod_deployment
+      - trigger_hsc_non_prod_dc_deployment
+      - trigger_hsc_non_prod_dc_addin_deployment
+      - trigger_hsc_prod_deployment
+      - trigger_hsc_prod_dc_deployment
+      - trigger_hsc_prod_dc_addin_deployment
+      - trigger_indorama_prod_900_deployment
+      - trigger_indorama_prod_900_dc_deployment
+      - trigger_indorama_prod_900_dc_addin_deployment
+      - trigger_indorama_prod_933_deployment
+      - trigger_indorama_prod_933_dc_deployment
+      - trigger_indorama_prod_933_dc_addin_deployment
+      - trigger_indorama_qa_233_deployment
+      - trigger_indorama_qa_233_dc_deployment
+      - trigger_indorama_qa_233_dc_addin_deployment
+      - trigger_indorama_qa_234_deployment
+      - trigger_indorama_qa_234_dc_deployment
+      - trigger_indorama_qa_234_dc_addin_deployment
+      - trigger_irc_deployment
+      - trigger_irc_dc_deployment
+      - trigger_irc_dc_addin_deployment
+      - trigger_st_env_deployment
+      - trigger_st_env_dc_deployment
+      - trigger_st_env_dc_addin_deployment
+      - trigger_vmos_deployment
+      - trigger_vmos_dc_deployment
+      - trigger_vmos_dc_addin_deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select Tenant Environment to Deploy"
+        required: true
+        type: choice
+        options:
+          - ais02
+          - ais02_dc
+          - ais02_dc_addin
+          - apm01
+          - apm01_dc
+          - apm01_dc_addin
+          - apm_eiot
+          - apm_eiot_dc
+          - apm_eiot_dc_addin
+          - asint_demo
+          - asint_demo_dc
+          - asint_demo_dc_addin
+          - baystar
+          - baystar_dc
+          - baystar_dc_addin
+          - hsc_non_prod
+          - hsc_non_prod_dc
+          - hsc_non_prod_dc_addin
+          - hsc_prod
+          - hsc_prod_dc
+          - hsc_prod_dc_addin
+          - indorama_prod_900
+          - indorama_prod_900_dc
+          - indorama_prod_900_dc_addin
+          - indorama_prod_933
+          - indorama_prod_933_dc
+          - indorama_prod_933_dc_addin
+          - indorama_qa_233
+          - indorama_qa_233_dc
+          - indorama_qa_233_dc_addin
+          - indorama_qa_234
+          - indorama_qa_234_dc
+          - indorama_qa_234_dc_addin
+          - irc
+          - irc_dc
+          - irc_dc_addin
+          - st_env
+          - st_env_dc
+          - st_env_dc_addin
+          - vmos
+          - vmos_dc
+          - vmos_dc_addin
+
+jobs:
+  resolve-config:
+    runs-on: ${{ vars.RUNNER_TYPE || 'self-hosted' }}
+    outputs:
+      base: ${{ steps.cfg.outputs.base }}
+      compare: ${{ steps.cfg.outputs.compare }}
+      deployment_name: ${{ steps.cfg.outputs.deployment_name }}
+      dashboard_url: ${{ steps.cfg.outputs.dashboard_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Resolve Environment Configuration
+        id: cfg
+        shell: bash
+        run: |
+          CONFIG_FILE=".github/environments.json"
+          TARGET_EVENT="${{ github.event.action || inputs.environment }}"
+
+          echo "🔍 Resolving configuration for target: '$TARGET_EVENT'"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "::error::Configuration file '$CONFIG_FILE' not found!"
+            exit 1
+          fi
+
+          # Find environment by direct key OR by matching dispatch_type
+          ENV_DATA=$(jq -r --arg target "$TARGET_EVENT" '
+            .environments as $envs |
+            ($envs[$target] // ($envs[] | select(.dispatch_type == $target)))
+          ' "$CONFIG_FILE")
+
+          if [ -z "$ENV_DATA" ] || [ "$ENV_DATA" = "null" ]; then
+            echo "::error::Could not find configuration for '$TARGET_EVENT' in $CONFIG_FILE"
+            exit 1
+          fi
+
+          DEPLOYMENT_NAME=$(echo "$ENV_DATA" | jq -r '.deployment_name')
+          COMPARE=$(echo "$ENV_DATA" | jq -r '.compare')
+          BASE=$(echo "$ENV_DATA" | jq -r '.base')
+          DASHBOARD_URL=$(echo "$ENV_DATA" | jq -r '.dashboard_url // ""')
+
+          echo "📋 Resolved Configuration:"
+          echo "   - Deployment Name : $DEPLOYMENT_NAME"
+          echo "   - Compare (Source): $COMPARE"
+          echo "   - Base (Target)   : $BASE"
+          echo "   - Dashboard URL   : $DASHBOARD_URL"
+
+          echo "deployment_name=$DEPLOYMENT_NAME" >> "$GITHUB_OUTPUT"
+          echo "compare=$COMPARE" >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "dashboard_url=$DASHBOARD_URL" >> "$GITHUB_OUTPUT"
+
+  merging-process:
+    needs: resolve-config
+    uses: ./.github/workflows/_auto_merge.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    with:
+      base: ${{ needs.resolve-config.outputs.base }}
+      compare: ${{ needs.resolve-config.outputs.compare }}
+      deployment_name: ${{ needs.resolve-config.outputs.deployment_name }}
+      dashboard_url: ${{ needs.resolve-config.outputs.dashboard_url }}
+    secrets: inherit
