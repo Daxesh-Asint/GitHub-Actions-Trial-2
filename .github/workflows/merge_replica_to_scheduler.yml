@@ -1,0 +1,130 @@
+name: Auto Merge Replica to Scheduler
+
+on:
+  push:
+    branches:
+      - 'tenant/st-env-exxon-replica'
+  workflow_dispatch:
+
+# Queue runs sequentially so back-to-back changes don't race
+concurrency:
+  group: sync-replica-to-scheduler
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Check for new commits
+        id: check_commits
+        run: |
+          git fetch origin tenant/st-env-exxon-replica tenant/st-env-exxon-replica-scheduler
+          COMMITS_AHEAD=$(git rev-list --count origin/tenant/st-env-exxon-replica-scheduler..origin/tenant/st-env-exxon-replica)
+          echo "Commits ahead: $COMMITS_AHEAD"
+          echo "commits_ahead=$COMMITS_AHEAD" >> $GITHUB_OUTPUT
+          if [ "$COMMITS_AHEAD" -eq 0 ]; then
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "Both branches are already in sync. No new commits to merge."
+          else
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Process PR and Auto Merge
+        if: steps.check_commits.outputs.has_commits == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          BASE="tenant/st-env-exxon-replica-scheduler"
+          HEAD="tenant/st-env-exxon-replica"
+
+          # Check for existing open PR
+          PR_LIST_JSON=$(gh pr list --base "$BASE" --head "$HEAD" --state open --json number,url)
+          EXISTING_PR=$(echo "$PR_LIST_JSON" | jq -r '.[0].number // empty')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Existing open PR found: #$EXISTING_PR"
+            PR_NUMBER="$EXISTING_PR"
+          else
+            echo "Creating a new PR from $HEAD into $BASE..."
+            gh pr create \
+              --base "$BASE" \
+              --head "$HEAD" \
+              --title "Auto Merge: \`$HEAD\` into \`$BASE\`" \
+              --body "Automated PR created from changes in \`$HEAD\`. Merging into \`$BASE\` using standard merge."
+            
+            PR_LIST_JSON=$(gh pr list --base "$BASE" --head "$HEAD" --state open --json number,url)
+            PR_NUMBER=$(echo "$PR_LIST_JSON" | jq -r '.[0].number // empty')
+            echo "Created PR #$PR_NUMBER"
+          fi
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: Could not retrieve PR number."
+            exit 1
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
+
+          # Give GitHub API a moment to calculate mergeability
+          sleep 5
+
+          # Poll mergeability up to 6 times (30 seconds)
+          MERGEABLE="UNKNOWN"
+          for i in {1..6}; do
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+            echo "Attempt $i: PR #$PR_NUMBER mergeable state: $MERGEABLE"
+            if [ "$MERGEABLE" != "UNKNOWN" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          echo "pr_mergeable=$MERGEABLE" >> $GITHUB_ENV
+
+          if [ "$MERGEABLE" = "CONFLICTING" ]; then
+            echo "merge_status=conflicting" >> $GITHUB_ENV
+            echo "PR #$PR_NUMBER has merge conflicts. Leaving PR open for manual resolution in GitHub UI."
+            exit 0
+          fi
+
+          # Attempt standard merge (no squash)
+          echo "Attempting standard merge for PR #$PR_NUMBER..."
+          if gh pr merge "$PR_NUMBER" --merge --admin; then
+            echo "merge_status=merged" >> $GITHUB_ENV
+            echo "PR #$PR_NUMBER merged successfully with admin bypass."
+          elif gh pr merge "$PR_NUMBER" --merge; then
+            echo "merge_status=merged" >> $GITHUB_ENV
+            echo "PR #$PR_NUMBER merged successfully."
+          else
+            echo "merge_status=pending_manual" >> $GITHUB_ENV
+            echo "Auto-merge could not be completed automatically. Leaving PR #$PR_NUMBER open for manual review."
+          fi
+
+      - name: Report Summary
+        if: always()
+        run: |
+          echo "### 🔄 Replica to Scheduler Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source:** \`tenant/st-env-exxon-replica\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** \`tenant/st-env-exxon-replica-scheduler\`" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_commits.outputs.has_commits }}" == "false" ]; then
+            echo "- **Status:** ✅ Already in sync (0 new commits to merge)." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ env.merge_status }}" == "merged" ]; then
+            echo "- **Status:** ✅ PR #${{ env.pr_number }} merged successfully via standard merge." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ env.merge_status }}" == "conflicting" ]; then
+            echo "- **Status:** ⚠️ PR #${{ env.pr_number }} has merge conflicts. Left open for manual resolution in GitHub UI." >> $GITHUB_STEP_SUMMARY
+          elif [ -n "${{ env.pr_number }}" ]; then
+            echo "- **Status:** ℹ️ PR #${{ env.pr_number }} is open for review/merge." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status:** ℹ️ Completed." >> $GITHUB_STEP_SUMMARY
+          fi
