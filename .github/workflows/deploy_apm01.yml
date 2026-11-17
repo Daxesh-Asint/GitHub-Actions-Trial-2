@@ -3,7 +3,6 @@ name: "Deploy: APM-01"
 on:
   repository_dispatch:
     types: [trigger_apm01_deployment]
-  workflow_dispatch:
 
 jobs:
   merging-process:
