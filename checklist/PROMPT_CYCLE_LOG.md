@@ -2300,3 +2300,38 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Documented and explained to user.
+
+
+---
+
+### Prompt #105: Multi-Branch Pull Request Rollout (`main`, `main-dc`, `main-dc-addin`)
+- **Date / Timestamp:** 2026-11-17T17:25:00+05:30
+- **User Request:**
+  - Propagate the unified dynamic deployment architecture to `main`, `main-dc`, and `main-dc-addin` via dedicated Pull Requests.
+  - Add `.github/environments.json`, `.github/cf-apps.json`, and `.github/workflows/deploy_tenant.yml`.
+  - Remove all 42 legacy `deploy_<>.yml` files from each branch.
+  - Strictly avoid touching any other workflow files.
+  - Use clear branch naming indicating source/target relationships, conventional commit messages, and professional PR titles and descriptions.
+
+- **Activities & PR Deliverables:**
+  1. **Branch 1: `main` Base Stream**
+     - Branch: `feature/consolidate-deployments-from-main` (created from `origin/main`)
+     - Commit: `aeff885d74` (`refactor(workflows): consolidate 42 tenant callers into unified deploy_tenant.yml`)
+     - Pull Request: [PR #1139](https://github.com/Daxesh-Asint/GitHub-Actions-Trial-2/pull/1139) (Target: `main` <- Head: `feature/consolidate-deployments-from-main`)
+  2. **Branch 2: `main-dc` Base Stream**
+     - Branch: `feature/consolidate-deployments-from-main-dc` (created from `origin/main-dc`)
+     - Commit: `7ad7d6e0f0` (`refactor(workflows): consolidate 42 tenant callers into unified deploy_tenant.yml`)
+     - Pull Request: [PR #1140](https://github.com/Daxesh-Asint/GitHub-Actions-Trial-2/pull/1140) (Target: `main-dc` <- Head: `feature/consolidate-deployments-from-main-dc`)
+  3. **Branch 3: `main-dc-addin` Base Stream**
+     - Branch: `feature/consolidate-deployments-from-main-dc-addin` (created from `origin/main-dc-addin`)
+     - Commit: `a49887a393` (`refactor(workflows): consolidate 42 tenant callers into unified deploy_tenant.yml`)
+     - Pull Request: [PR #1141](https://github.com/Daxesh-Asint/GitHub-Actions-Trial-2/pull/1141) (Target: `main-dc-addin` <- Head: `feature/consolidate-deployments-from-main-dc-addin`)
+  - Confirmed: Zero unintended file modifications. All 42 legacy callers cleanly removed and replaced with unified dispatcher and config files.
+  - Local working directory safely restored to `dev`.
+
+- **Files Modified / Created per Branch:**
+  - Added: `.github/environments.json`, `.github/cf-apps.json`, `.github/workflows/deploy_tenant.yml`
+  - Removed: 42 files (`deploy_ais02_dc.yml` through `merge_dev_to_tenant_ais02.yml`)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** All 3 Pull Requests raised, verified, and documented.
