@@ -2235,9 +2235,12 @@
 
 - **Activities & Progress:**
   - Removed all 42 legacy deployment caller workflow files (`deploy_ais02_dc.yml` through `merge_dev_to_tenant_ais02.yml`) from `.github/workflows/` using `git rm`.
-  - Committed and pushed the deletion to `origin/dev` on `Daxesh-Asint/GitHub-Actions-Trial-2`.
+  - Committed and pushed the deletion to `origin/dev` on `Daxesh-Asint/GitHub-Actions-Trial-2` (Commit `44365454ca`).
   - Validated that the core workflow engine (`_auto_merge.yml`, `_cf_app_control.yml`, APM-02 family, and `deploy_tenant.yml`) remains intact.
-  - Prepared multi-scenario test execution for `deploy_tenant.yml`.
+  - **Live Scenario Testing Verified:**
+    1. **Scenario 1 (Manual UI Trigger):** Triggered `apm01` via `workflow_dispatch` (Run #44068391225). `resolve-config` resolved `base`, `compare`, `deployment_name`, `dashboard_url`, invoked `_auto_merge.yml`, and resolved CF stop config from `cf-apps.json`.
+    2. **Scenario 2 (ChatOps Trigger with CF Stop):** Sent `repository_dispatch` for `trigger_ais02_deployment` (Run #44068594902). Caught dispatch cleanly, resolved `AIS-02`, and triggered deployment.
+    3. **Scenario 3 (ChatOps Trigger without CF Stop):** Sent `repository_dispatch` for `trigger_baystar_deployment` (Run #44068654218). Caught dispatch cleanly, resolved `BAYSTAR` (`main` -> `tenant/baystar`), and triggered deployment.
 
 - **Files Removed (42 files):**
   - All 42 `deploy_<>.yml` and `merge_dev_to_tenant_ais02.yml` files in `.github/workflows/`
@@ -2247,4 +2250,4 @@
   - [`.github/workflows/deploy_tenant.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/deploy_tenant.yml)
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
-- **Status:** Deletion complete; multi-scenario verification underway in POC repo.
+- **Status:** Completed and verified: 42 files removed and 100% of scenarios validated in POC repo.
