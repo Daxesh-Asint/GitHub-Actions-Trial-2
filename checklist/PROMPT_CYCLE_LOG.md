@@ -2335,3 +2335,24 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** All 3 Pull Requests raised, verified, and documented.
+
+
+---
+
+### Prompt #106: Architectural Clarification on `cf-apps.json` Update
+- **Date / Timestamp:** 2026-11-17T17:30:00+05:30
+- **User Request:**
+  - Explain why `.github/cf-apps.json` was updated since it was already present in the repository, and clarify the exact operational need for that update.
+
+- **Activities & Explanation:**
+  - Audited previous state of `.github/cf-apps.json`: it previously only contained entries for `APM-01` and `Indorama QA 234`.
+  - Audited the 42 legacy caller workflows being deleted: `merge_dev_to_tenant_ais02.yml` had hardcoded inputs:
+    `cf_stop_app: "crawler-layer-backend"`, `cf_api: "https://api.cf.eu10-004.hana.ondemand.com"`, `cf_org: "ais-02-eu10-org"`, `cf_space: "main"`.
+  - **The Need:** To safely delete `merge_dev_to_tenant_ais02.yml` without losing CF app stop control for `AIS-02`, its configuration was migrated into `.github/cf-apps.json`.
+  - Without this 9-line entry, deleting `merge_dev_to_tenant_ais02.yml` would have left `AIS-02` unmanaged during deployments, leading to Cloud Foundry memory limit exhaustion.
+
+- **Files Referenced:**
+  - [`.github/cf-apps.json`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/cf-apps.json)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Documented and explained to user.
