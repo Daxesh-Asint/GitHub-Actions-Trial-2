@@ -1,1 +1,2 @@
 CONFLICT TEST: Line written by REPLICA branch (different content).
+Another line while PR is open
