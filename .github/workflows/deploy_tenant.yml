@@ -45,55 +45,6 @@ on:
       - trigger_vmos_deployment
       - trigger_vmos_dc_deployment
       - trigger_vmos_dc_addin_deployment
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Select Tenant Environment to Deploy"
-        required: true
-        type: choice
-        options:
-          - ais02
-          - ais02_dc
-          - ais02_dc_addin
-          - apm01
-          - apm01_dc
-          - apm01_dc_addin
-          - apm_eiot
-          - apm_eiot_dc
-          - apm_eiot_dc_addin
-          - asint_demo
-          - asint_demo_dc
-          - asint_demo_dc_addin
-          - baystar
-          - baystar_dc
-          - baystar_dc_addin
-          - hsc_non_prod
-          - hsc_non_prod_dc
-          - hsc_non_prod_dc_addin
-          - hsc_prod
-          - hsc_prod_dc
-          - hsc_prod_dc_addin
-          - indorama_prod_900
-          - indorama_prod_900_dc
-          - indorama_prod_900_dc_addin
-          - indorama_prod_933
-          - indorama_prod_933_dc
-          - indorama_prod_933_dc_addin
-          - indorama_qa_233
-          - indorama_qa_233_dc
-          - indorama_qa_233_dc_addin
-          - indorama_qa_234
-          - indorama_qa_234_dc
-          - indorama_qa_234_dc_addin
-          - irc
-          - irc_dc
-          - irc_dc_addin
-          - st_env
-          - st_env_dc
-          - st_env_dc_addin
-          - vmos
-          - vmos_dc
-          - vmos_dc_addin
 
 jobs:
   resolve-config:
@@ -112,16 +63,16 @@ jobs:
         shell: bash
         run: |
           CONFIG_FILE=".github/environments.json"
-          TARGET_EVENT="${{ github.event.action || inputs.environment }}"
+          TARGET_EVENT="${{ github.event.action }}"
 
-          echo "🔍 Resolving configuration for target: '$TARGET_EVENT'"
+          echo "🔍 Resolving configuration for dispatch event: '$TARGET_EVENT'"
 
           if [ ! -f "$CONFIG_FILE" ]; then
             echo "::error::Configuration file '$CONFIG_FILE' not found!"
             exit 1
           fi
 
-          # Find environment by direct key OR by matching dispatch_type
+          # Find environment matching dispatch_type or key
           ENV_DATA=$(jq -r --arg target "$TARGET_EVENT" '
             .environments as $envs |
             ($envs[$target] // ($envs[] | select(.dispatch_type == $target)))

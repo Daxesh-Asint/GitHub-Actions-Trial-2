@@ -2411,3 +2411,28 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Verified and documented.
+
+
+---
+
+### Prompt #109: Removal of Manual Dispatch in Favor of Pure Jarvis Bot `repository_dispatch`
+- **Date / Timestamp:** 2026-11-18T11:55:00+05:30
+- **User Request:**
+  - Remove `workflow_dispatch` (manual UI trigger) completely from `deploy_tenant.yml`.
+  - Ensure the workflow triggers strictly via `repository_dispatch` for the Jarvis / MS Teams bot.
+  - Update the PR description to eliminate any mention of manual triggers or dropdowns.
+  - Present the updated PR description and workflow specifications for confirmation before executing any changes in the company repository.
+
+- **Activities & Adjustments:**
+  - Updated [`.github/workflows/deploy_tenant.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md):
+    - Removed `workflow_dispatch` block and all input definitions.
+    - Preserved all 42 exact `repository_dispatch` event types for 100% Jarvis / MS Teams bot compatibility.
+    - Updated `TARGET_EVENT` extraction to strictly read `${{ github.event.action }}`.
+  - Revised PR description to focus purely on centralized configuration and Jarvis ChatOps compatibility.
+  - Committed and pushed updates to `origin/dev` in POC repository.
+
+- **Files Modified:**
+  - [`.github/workflows/deploy_tenant.yml`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/.github/workflows/deploy_tenant.yml)
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Adjustments completed, ready for user review and confirmation.
