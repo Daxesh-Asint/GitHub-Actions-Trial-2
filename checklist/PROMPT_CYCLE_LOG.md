@@ -2386,3 +2386,28 @@
   - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
 
 - **Status:** Completed and documented.
+
+
+---
+
+### Prompt #108: Definitive Verification of `cf-apps.json` in Company Repository
+- **Date / Timestamp:** 2026-11-18T11:35:00+05:30
+- **User Request:**
+  - Verify and confirm whether `.github/cf-apps.json` is indeed unavailable in the company repository (`StillSomehowSane/asint_ais`).
+
+- **Verification Activities & Direct API Results:**
+  - Queried GitHub API across all relevant branches in `StillSomehowSane/asint_ais`:
+    - `dev`: `HTTP 404 Not Found`
+    - `main`: `HTTP 404 Not Found`
+    - `ci/deployment-workflows-dev`: `HTTP 404 Not Found`
+    - `tenant/exxon-ps`: `HTTP 404 Not Found`
+  - Ran GitHub Code Search across the entire company organization:
+    - Zero files named `cf-apps.json` exist.
+    - Code references to `.github/cf-apps.json` exist in `.github/workflows/_auto_merge.yml`, `.github/scripts/notify_sap_event.sh`, and handler workflows because the automation logic was designed to support it.
+  - **Conclusion:** The company repo has been relying 100% on the fallback code path (`inputs.cf_stop_app`, `inputs.cf_api`, etc.) in `deploy_apm01.yml` and `merge_dev_to_tenant_ais02.yml`. `.github/cf-apps.json` currently exists exclusively in the POC repository (`just-for-poc-GitHub-`).
+
+- **Files Referenced:**
+  - `StillSomehowSane/asint_ais`: `.github/workflows/_auto_merge.yml`
+  - [`checklist/PROMPT_CYCLE_LOG.md`](file:///e:/4%29%20Copy/GitHub%20Actions%20Copy%202/just-for-poc-GitHub-/checklist/PROMPT_CYCLE_LOG.md)
+
+- **Status:** Verified and documented.
