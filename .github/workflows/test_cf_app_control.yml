@@ -1,0 +1,41 @@
+name: "[Test] Cloud Foundry App Control"
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform"
+        required: true
+        type: choice
+        options:
+          - status
+          - stop
+          - start
+        default: status
+      app_name:
+        description: "App Name"
+        required: true
+        default: "asint_ais_event_layer"
+      space:
+        description: "CF Space"
+        required: true
+        default: "main"
+      org:
+        description: "CF Org"
+        required: true
+        default: "ais-provider-eu10-cf"
+      api_endpoint:
+        description: "CF API Endpoint"
+        required: true
+        default: "https://api.cf.eu10-004.hana.ondemand.com"
+
+jobs:
+  test_control:
+    uses: ./.github/workflows/_cf_app_control.yml
+    with:
+      api_endpoint: ${{ inputs.api_endpoint }}
+      org: ${{ inputs.org }}
+      space: ${{ inputs.space }}
+      app_name: ${{ inputs.app_name }}
+      action: ${{ inputs.action }}
+    secrets: inherit
