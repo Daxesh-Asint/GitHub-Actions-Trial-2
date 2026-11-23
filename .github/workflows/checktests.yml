@@ -8,26 +8,63 @@ on:
 permissions:
   contents: read
   pull-requests: write
+
+concurrency:
+  group: require-tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
-  gate:
-    name: gate-tests
-    uses: ./.github/workflows/_pr_gate.yml
-    with: { check: tests }
 
   check-tests-present:
-    needs: gate
-    if: needs.gate.outputs.run == 'true'
+    if: github.event.pull_request.draft == false
     name: Check for Tests in PR
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
-      - name: Ensure PR is not a draft
-        if: ${{ github.event.pull_request.draft == true }}
-        run: |
-          echo "PR is a draft; skipping check."
-          exit 0
+
+      - name: Gate (policy check)
+        id: gate
+        uses: actions/github-script@v7
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+          POLICY: ${{ vars.PR_CHECKS }}
+          CHECK: tests
+        with:
+          script: |
+            const raw = process.env.POLICY ?? '';
+            let policy = {};
+            if (raw.trim() === '') {
+              core.warning('PR_CHECKS is empty or not visible to this run; running the check.');
+            } else {
+              try {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) policy = parsed;
+                else core.warning('PR_CHECKS is not a JSON object; running the check.');
+              } catch (e) {
+                core.warning(`PR_CHECKS is not valid JSON, running the check: ${e.message}`);
+              }
+            }
+
+            const check = process.env.CHECK;
+            const self = `${context.repo.owner}/${context.repo.repo}`;
+            const head = context.payload.pull_request?.head?.repo?.full_name ?? self;
+            const checks = policy.checks && typeof policy.checks === 'object' ? policy.checks : {};
+            let mode = checks[check] ?? policy.default ?? 'always';
+            if (!['always', 'off', 'skip-bridged'].includes(mode)) {
+              core.warning(`Unknown mode "${mode}" for ${check}, treating as always.`);
+              mode = 'always';
+            }
+            const bridgedList = Array.isArray(policy.bridged) ? policy.bridged : [];
+            const bridged = bridgedList.some((r) => String(r).toLowerCase() === head.toLowerCase());
+            const run = mode === 'always' || (mode === 'skip-bridged' && !bridged);
+
+            core.info(`repo=${self} check=${check} head=${head} policy=${raw.trim() ? 'set' : 'empty'} mode=${mode} bridged=${bridged} -> run=${run}`);
+            core.setOutput('run', String(run));
+
 
       - name: Verify PR contains required test files
+        if: steps.gate.outputs.run == 'true'
         id: verify
         uses: actions/github-script@v7
         env:
