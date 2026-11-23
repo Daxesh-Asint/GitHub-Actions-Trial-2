@@ -9,9 +9,9 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: require-tests-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# concurrency:
+#   group: require-tests-${{ github.event.pull_request.number }}
+#   cancel-in-progress: true
 
 jobs:
 
